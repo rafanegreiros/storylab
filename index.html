@@ -4861,16 +4861,19 @@ async function loadHistoryList() {
       const dateStr = date.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
       const timeStr = date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
       return `
-        <div class="history-item" onclick="loadSession('${item.id}')">
+        <div class="history-item" data-id="${item.id}">
           <div class="history-item-body">
             <div class="history-item-tema">${item.tema}</div>
             <div class="history-item-meta">${dateStr} · ${timeStr}</div>
           </div>
-          <button class="history-item-del" onclick="event.stopPropagation();deleteSession('${item.id}',this)" title="Remover">
+          <button class="history-item-del" data-del-id="${item.id}" title="Remover">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </button>
         </div>`;
     }).join('');
+
+    // Event delegation via dedicated function
+    bindHistoryEvents();
 
   } catch(e) {
     list.innerHTML = '<div class="history-empty">Erro ao carregar histórico.</div>';
@@ -4881,7 +4884,6 @@ let _currentHistSnap = null; // snap in memory for step navigation
 let _currentHistId = null;
 
 async function loadSession(id) {
-  // Show loading state on item
   const item = document.querySelector(`.history-item[onclick*="${id}"]`);
   if (item) item.style.opacity = '0.5';
 
@@ -4894,7 +4896,12 @@ async function loadSession(id) {
     const snap = JSON.parse(data.session_data);
     _currentHistSnap = snap;
     _currentHistId = id;
-    showStepNavigator(snap);
+
+    // Abre direto — restaura estado e navega para a etapa salva
+    restoreSnap(snap, id);
+    closeHistory();
+    renderStep(snap.step || 1);
+
   } catch(e) {
     alert('Erro ao carregar sessão.');
     if (item) item.style.opacity = '';
@@ -5027,22 +5034,41 @@ function restoreAndRefazer() {
   showSaveIndicator();
 }
 
-async function deleteSession(id, btn) {
+async function deleteSession(id, itemEl) {
   try {
     const token = getAuthToken();
-    await fetch(BACKEND_URL + '/api/history/' + id, {
+    const res = await fetch(BACKEND_URL + '/api/history/' + id, {
       method: 'DELETE',
       headers: { 'Authorization': 'Bearer ' + token }
     });
-    btn.closest('.history-item').remove();
-    // If list is empty, show empty state
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    // Remove from DOM
+    if (itemEl) itemEl.remove();
+    // If list is now empty, show empty state
     const list = document.getElementById('history-list');
-    if (!list.querySelector('.history-item')) {
+    if (list && !list.querySelector('.history-item')) {
       list.innerHTML = '<div class="history-empty">Nenhuma sessão salva ainda.</div>';
     }
+    // Rebind event listener for remaining items
+    bindHistoryEvents();
   } catch(e) {
-    console.error('Erro ao deletar:', e);
+    console.error('Erro ao deletar:', e.message);
   }
+}
+
+function bindHistoryEvents() {
+  const list = document.getElementById('history-list');
+  if (!list) return;
+  list.onclick = function(e) {
+    const delBtn = e.target.closest('[data-del-id]');
+    if (delBtn) {
+      e.stopPropagation();
+      deleteSession(delBtn.dataset.delId, delBtn.closest('.history-item'));
+      return;
+    }
+    const item = e.target.closest('[data-id]');
+    if (item) loadSession(item.dataset.id);
+  };
 }
 
 
