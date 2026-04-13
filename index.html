@@ -284,8 +284,8 @@ textarea { min-height: 120px; }
 
 .primary-btn {
   width: 100%;
-  background: var(--ink);
-  color: var(--bg);
+  background: #0071e3;
+  color: #ffffff;
   border: none;
   border-radius: 6px;
   padding: 12px;
@@ -312,6 +312,46 @@ textarea { min-height: 120px; }
   transition: all 0.2s;
 }
 .secondary-btn:hover { border-color: var(--ink); color: var(--ink); }
+
+
+/* ── COLOR ROLE SELECTOR ── */
+.color-role-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.color-role-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.color-role-label {
+  font-size: 0.58rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+.color-role-swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.color-role-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+.color-role-swatch:hover { transform: scale(1.15); }
+.color-role-swatch.active { border-color: var(--ink); transform: scale(1.1); }
 
 /* ── CANVAS ── */
 .canvas {
@@ -939,8 +979,8 @@ textarea { min-height: 120px; }
 .img-status-bar.done { background: rgba(45,122,79,0.08); border: 1.5px solid rgba(45,122,79,0.3); color: var(--success); }
 
 .export-btn {
-  background: var(--ink);
-  color: var(--bg);
+  background: #0071e3;
+  color: #ffffff;
   border: none;
   border-radius: 8px;
   padding: 10px 18px;
@@ -1300,7 +1340,7 @@ textarea { min-height: 120px; }
 
 .modal-save {
   width: 100%;
-  background: var(--ink);
+  background: #0071e3;
   color: var(--bg);
   border: none;
   border-radius: 8px;
@@ -1311,7 +1351,7 @@ textarea { min-height: 120px; }
   cursor: pointer;
   transition: background 0.2s;
 }
-.modal-save:hover { background: var(--accent); }
+.modal-save:hover { background: #005bb5; }
 
 .modal-note {
   font-size: 0.7rem;
@@ -1594,10 +1634,10 @@ textarea { min-height: 120px; }
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--ink);
+  background: #0071e3;
   border: none;
   border-radius: 8px;
-  color: var(--bg);
+  color: #ffffff;
   padding: 11px 16px;
   font-size: 0.78rem;
   font-family: 'Poppins', sans-serif;
@@ -2017,7 +2057,7 @@ textarea { min-height: 120px; }
     <path d="M357.34,40.01c-3.13,0-6.16.92-9.1,2.76s-5.64,4.35-8.1,7.53c-2.28,2.94-4.24,6.34-5.92,10.15l10.08-59.39c.08-.16-.04-.41-.35-.73-.31-.33-.67-.41-1.06-.24l-18.2,9.31c-.31.08-.39.37-.23.86.16.49.39.7.7.61,3.21-1.63,5.3-2.04,6.28-1.23.98.82,1.15,3.18.53,7.1l-10.8,61.48c-.63,3.76.22,6.74,2.52,8.94,2.31,2.2,5.77,3.31,10.39,3.31,2.82,0,5.91-.7,9.28-2.08,3.36-1.39,6.65-3.43,9.86-6.12,3.21-2.69,6.03-6.06,8.45-10.11,2.43-4.04,4.11-8.72,5.05-14.02.86-5.31.43-9.65-1.29-13.04-1.72-3.39-4.42-5.08-8.1-5.08ZM355.11,61.93c-.78,5.31-2.06,9.84-3.82,13.59-1.76,3.76-3.76,6.61-5.99,8.57-2.23,1.96-4.52,2.94-6.87,2.94s-4.23-.94-5.64-2.82c-1.41-1.88-1.88-4.24-1.41-7.1,1.02-5.71,2.48-10.74,4.4-15.07,1.92-4.33,4.17-7.72,6.75-10.17,2.58-2.45,5.28-3.67,8.1-3.67,1.64,0,2.86.61,3.64,1.84.78,1.23,1.25,2.88,1.41,4.96.16,2.08-.04,4.39-.59,6.92Z"/></g>
   <g fill="#0071e3"><path  d="M377.18,78.04c-1.14-1.18-2.72-1.78-4.76-1.78s-3.66.59-4.87,1.78c-1.21,1.18-1.82,2.8-1.82,4.84,0,2.21.61,3.92,1.82,5.14,1.21,1.23,2.84,1.84,4.87,1.84,4.3,0,6.46-2.33,6.46-6.98,0-2.04-.57-3.65-1.7-4.84Z"/></g>
 </svg></div>
-    <div class="login-title">Narrativa que posiciona.</div>
+    <div class="login-title">Sem ideia. Sem tempo. Qualquer nicho.</div><div class="login-subtitle" style="margin-top:6px;font-family:'Poppins',sans-serif;font-size:0.72rem;color:var(--muted);text-align:center;letter-spacing:0.3px;">Carrosséis com posicionamento e autoridade.</div>
     <!-- Magic Link form state -->
     <div id="ml-form-state" style="display:flex;flex-direction:column;gap:10px">
       <p class="login-subtitle">Digite seu email para receber um link de acesso. Funciona para contas novas e existentes.</p>
@@ -2188,6 +2228,29 @@ textarea { min-height: 120px; }
         </div>
       </div>
 
+      <!-- Atribuição de cores por papel -->
+      <div>
+        <div class="modal-label" style="margin-bottom:8px">Atribuição de Cores nos Cards</div>
+        <div class="color-role-row" id="color-role-row">
+          <div class="color-role-item">
+            <span class="color-role-label">Cover / CTA</span>
+            <div class="color-role-swatches" data-role="cover"></div>
+          </div>
+          <div class="color-role-item">
+            <span class="color-role-label">Fundo Texto</span>
+            <div class="color-role-swatches" data-role="text"></div>
+          </div>
+          <div class="color-role-item">
+            <span class="color-role-label">Destaque / Barra</span>
+            <div class="color-role-swatches" data-role="accent"></div>
+          </div>
+          <div class="color-role-item">
+            <span class="color-role-label">Fundo Escuro</span>
+            <div class="color-role-swatches" data-role="dark"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Fontes lado a lado -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div>
@@ -2254,14 +2317,14 @@ textarea { min-height: 120px; }
             <div style="font-size:0.68rem;color:var(--muted);margin-bottom:4px;font-family:'Roboto',sans-serif">Títulos</div>
             <div style="display:flex;gap:6px">
               <input class="modal-input" id="custom-font-display" type="text" placeholder="ex: Nunito" style="padding:7px 10px;font-size:0.78rem;flex:1"/>
-              <button onclick="applyCustomFont('display')" style="background:var(--ink);color:var(--bg);border:none;border-radius:6px;padding:7px 12px;font-size:0.72rem;font-family:'Roboto',sans-serif;cursor:pointer;white-space:nowrap;transition:opacity 0.15s" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">Aplicar</button>
+              <button onclick="applyCustomFont('display')" style="background:#0071e3;color:#ffffff;border:none;border-radius:6px;padding:7px 12px;font-size:0.72rem;font-family:'Roboto',sans-serif;cursor:pointer;white-space:nowrap;transition:opacity 0.15s" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">Aplicar</button>
             </div>
           </div>
           <div>
             <div style="font-size:0.68rem;color:var(--muted);margin-bottom:4px;font-family:'Roboto',sans-serif">Corpo</div>
             <div style="display:flex;gap:6px">
               <input class="modal-input" id="custom-font-body" type="text" placeholder="ex: Lato" style="padding:7px 10px;font-size:0.78rem;flex:1"/>
-              <button onclick="applyCustomFont('body')" style="background:var(--ink);color:var(--bg);border:none;border-radius:6px;padding:7px 12px;font-size:0.72rem;font-family:'Roboto',sans-serif;cursor:pointer;white-space:nowrap;transition:opacity 0.15s" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">Aplicar</button>
+              <button onclick="applyCustomFont('body')" style="background:#0071e3;color:#ffffff;border:none;border-radius:6px;padding:7px 12px;font-size:0.72rem;font-family:'Roboto',sans-serif;cursor:pointer;white-space:nowrap;transition:opacity 0.15s" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">Aplicar</button>
             </div>
           </div>
         </div>
@@ -2303,7 +2366,7 @@ textarea { min-height: 120px; }
           </div>
           <div>
             <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Frase central</div>
-            <input class="modal-input" id="brand-tagline" type="text" placeholder="Narrativa que posiciona." style="margin-bottom:0;padding:8px 10px;"/>
+            <input class="modal-input" id="brand-tagline" type="text" placeholder="Carrosséis com posicionamento e autoridade." style="margin-bottom:0;padding:8px 10px;"/>
           </div>
           <div>
             <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Ano</div>
@@ -2403,7 +2466,8 @@ function saveConfig() {
 const BRAND_DEFAULTS = {
   primary: '#0071e3', accent: '#5ba3f5', dark: '#000000', light: '#f5f5f7',
   fontDisplay: "'Fraunces', serif", fontBody: "'Syne', sans-serif",
-  handle: '@bystorylab', tagline: 'Narrativa que posiciona.', year: new Date().getFullYear().toString()
+  handle: '@bystorylab', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
+  colorRoles: { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark' }
 };
 
 function getBrand() {
@@ -2421,6 +2485,8 @@ function getBrand() {
       localStorage.setItem('storylab_brand', JSON.stringify(migrated));
       return migrated;
     }
+    // Ensure colorRoles always present
+    if (!stored.colorRoles) stored.colorRoles = { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark' };
     return stored;
   } catch { return {...BRAND_DEFAULTS}; }
 }
@@ -2437,6 +2503,14 @@ function applyBrandToCards() {
   root.style.setProperty('--brand-font-display', b.fontDisplay);
   root.style.setProperty('--brand-font-body', b.fontBody);
 
+  // Resolve color roles — map role key to actual hex
+  const palette = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light };
+  const roles = b.colorRoles || { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark' };
+  const coverColor  = palette[roles.cover]  || b.primary;
+  const textBg      = palette[roles.text]   || b.light;
+  const accentColor = palette[roles.accent] || b.accent;
+  const darkColor   = palette[roles.dark]   || b.dark;
+
   // Helper: lighten a hex color slightly for backgrounds
   function hex2rgba(hex, alpha) {
     const r = parseInt(hex.slice(1,3),16);
@@ -2445,88 +2519,90 @@ function applyBrandToCards() {
     return `rgba(${r},${g},${b2},${alpha})`;
   }
 
-
   // ── Color contrast helper ──
   function isLightColor(hex) {
     if (!hex || hex.length < 7) return true;
     const r = parseInt(hex.slice(1,3),16);
     const g = parseInt(hex.slice(3,5),16);
     const b2 = parseInt(hex.slice(5,7),16);
-    // Perceived luminance formula
     const lum = (0.299*r + 0.587*g + 0.114*b2) / 255;
     return lum > 0.55;
   }
-  const textOnLight = b.dark;     // dark text on light bg
-  const textOnDark  = '#ffffff';  // white text on dark bg
-  const textOnPrimary = isLightColor(b.primary) ? b.dark : '#ffffff';
-  const textOnAccent  = isLightColor(b.accent)  ? b.dark : '#ffffff';
+  const textOnCover  = isLightColor(coverColor)  ? b.dark : '#ffffff';
+  const textOnTextBg = isLightColor(textBg)       ? b.dark : '#ffffff';
+  const textOnAccent = isLightColor(accentColor)  ? b.dark : '#ffffff';
+  const textOnDark   = isLightColor(darkColor)    ? b.dark : '#ffffff';
 
   let s = document.getElementById('brand-dynamic-style');
   if (!s) { s = document.createElement('style'); s.id = 'brand-dynamic-style'; document.head.appendChild(s); }
 
   s.textContent = `
-    /* ── COVER: usa cor primária como fundo ── */
+    /* ── COVER: usa cor de papel "cover" ── */
     .theme-clareza-cover,
     .theme-impacto-cover,
     .theme-autori-cover,
-    .theme-ritmo-cover   { background: ${b.primary} !important; color: ${textOnPrimary} !important; }
+    .theme-ritmo-cover   { background: ${coverColor} !important; color: ${textOnCover} !important; }
 
-    /* ── TEXT cards: usa cor clara como fundo ── */
+    /* ── TEXT cards: usa cor de papel "text" ── */
     .theme-clareza-text,
-    .theme-ritmo-text    { background: ${b.light} !important; color: ${isLightColor(b.light) ? textOnLight : textOnDark} !important; }
+    .theme-ritmo-text,
     .theme-impacto-text,
-    .theme-autori-text   { background: ${b.dark} !important; color: #fff !important; }
+    .theme-autori-text   { background: ${textBg} !important; color: ${textOnTextBg} !important; }
 
-    /* ── IMG-TOP: usa cor clara ou escura como fundo ── */
+    /* ── IMG-TOP ── */
     .theme-clareza-imgtop,
-    .theme-ritmo-imgtop  { background: ${b.light} !important; color: ${isLightColor(b.light) ? textOnLight : textOnDark} !important; }
+    .theme-ritmo-imgtop,
     .theme-impacto-imgtop,
-    .theme-autori-imgtop { background: ${b.dark} !important; color: #fff !important; }
+    .theme-autori-imgtop { background: ${textBg} !important; color: ${textOnTextBg} !important; }
     .theme-clareza-imgtop .li-img,
-    .theme-ritmo-imgtop .li-img  { background: ${hex2rgba(b.dark, 0.08)} !important; }
+    .theme-ritmo-imgtop .li-img,
     .theme-impacto-imgtop .li-img,
-    .theme-autori-imgtop .li-img { background: ${hex2rgba(b.primary, 0.15)} !important; }
+    .theme-autori-imgtop .li-img { background: ${hex2rgba(darkColor, 0.08)} !important; }
 
-    /* ── BGIMG: fundo escuro (a imagem preenche) ── */
+    /* ── BGIMG: fundo escuro ── */
     .theme-clareza-bgimg,
     .theme-impacto-bgimg,
     .theme-autori-bgimg,
-    .theme-ritmo-bgimg   { background: ${b.dark} !important; }
+    .theme-ritmo-bgimg   { background: ${darkColor} !important; }
 
-    /* ── STATEMENT: alterna claro/escuro por template ── */
+    /* ── STATEMENT ── */
     .theme-clareza-statement,
-    .theme-ritmo-statement   { background: ${b.light} !important; color: ${isLightColor(b.light) ? textOnLight : textOnDark} !important; }
+    .theme-ritmo-statement,
     .theme-impacto-statement,
-    .theme-autori-statement  { background: ${b.dark} !important; color: #fff !important; }
+    .theme-autori-statement  { background: ${textBg} !important; color: ${textOnTextBg} !important; }
 
-    /* ── DATA: usa cor de destaque ── */
+    /* ── DATA: usa cor de papel "accent" ── */
     .theme-clareza-data,
     .theme-impacto-data,
     .theme-autori-data,
-    .theme-ritmo-data    { background: ${b.accent} !important; color: ${textOnAccent} !important; }
+    .theme-ritmo-data    { background: ${accentColor} !important; color: ${textOnAccent} !important; }
     .theme-clareza-data .ld-bottom,
     .theme-impacto-data .ld-bottom,
     .theme-autori-data .ld-bottom,
     .theme-ritmo-data .ld-bottom { border-color: ${hex2rgba(textOnAccent, 0.2)} !important; color: ${hex2rgba(textOnAccent, 0.55)} !important; }
 
-    /* ── CTA: usa cor escura como fundo ── */
+    /* ── CTA: usa cor de papel "cover" (mesmo impacto do cover) ── */
     .theme-clareza-cta,
     .theme-impacto-cta,
     .theme-autori-cta,
-    .theme-ritmo-cta     { background: ${b.dark} !important; color: #fff !important; }
+    .theme-ritmo-cta     { background: ${coverColor} !important; color: ${textOnCover} !important; }
 
     /* ── DETALHES GLOBAIS ── */
-    .lc-bar              { background: ${b.accent} !important; opacity: 1 !important; }
-    .lt-divider          { background: ${b.primary} !important; opacity: 1 !important; }
-    .lstat-small         { border-color: ${b.primary} !important; }
-    .lcta-pill.primary   { background: ${b.primary} !important; color: ${textOnPrimary} !important; }
-    .lcta-pill.secondary { background: ${hex2rgba(b.primary, 0.12)} !important; color: ${isLightColor(b.primary) ? hex2rgba(b.primary, 0.9) : 'rgba(255,255,255,0.7)'} !important; }
+    .lc-bar              { background: ${accentColor} !important; opacity: 1 !important; }
+    .lt-divider          { background: ${accentColor} !important; opacity: 1 !important; }
+    .lstat-small         { border-color: ${accentColor} !important; }
+    .lcta-pill.primary   { background: ${coverColor} !important; color: ${textOnCover} !important; }
+    .lcta-pill.secondary { background: ${hex2rgba(darkColor, 0.12)} !important; color: ${isLightColor(darkColor) ? hex2rgba(darkColor, 0.9) : 'rgba(255,255,255,0.7)'} !important; }
 
-    /* ── TIPOGRAFIA TÍTULOS usa cor primária nos cards claros ── */
+    /* ── TIPOGRAFIA ── */
     .theme-clareza-text .lt-quote,
     .theme-ritmo-text .lt-quote,
+    .theme-impacto-text .lt-quote,
+    .theme-autori-text .lt-quote,
     .theme-clareza-statement .lstat-big,
-    .theme-ritmo-statement .lstat-big { color: ${isLightColor(b.light) ? b.primary : '#ffffff'} !important; }
+    .theme-ritmo-statement .lstat-big,
+    .theme-impacto-statement .lstat-big,
+    .theme-autori-statement .lstat-big { color: ${accentColor} !important; }
 
     /* ── FONTES ── */
     .lc-headline, .lt-quote, .lstat-big, .li-title,
@@ -2569,15 +2645,16 @@ function openBrand() {
   document.getElementById('brand-tagline').value = b.tagline || '';
   document.getElementById('brand-year').value = b.year || new Date().getFullYear();
   updateBrandPreview();
+  renderColorRoleSwatches();
   document.getElementById('brand-modal').style.display = 'flex';
 
   // sync color pickers ↔ hex inputs
   ['primary','accent','dark','light'].forEach(key => {
     const pick = document.getElementById('brand-'+key);
     const hex  = document.getElementById('brand-'+key+'-hex');
-    pick.addEventListener('input', () => { hex.value = pick.value; updateBrandPreview(); });
+    pick.addEventListener('input', () => { hex.value = pick.value; updateBrandPreview(); renderColorRoleSwatches(); });
     hex.addEventListener('input', () => {
-      if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) { pick.value = hex.value; updateBrandPreview(); }
+      if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) { pick.value = hex.value; updateBrandPreview(); renderColorRoleSwatches(); }
     });
   });
   document.getElementById('brand-font-display').addEventListener('change', updateBrandPreview);
@@ -2636,16 +2713,65 @@ function saveBrand() {
     handle:   document.getElementById('brand-handle').value.trim(),
     tagline:  document.getElementById('brand-tagline').value.trim(),
     year:     document.getElementById('brand-year').value.trim(),
+    colorRoles: getColorRolesFromUI(),
   };
   localStorage.setItem('storylab_brand', JSON.stringify(b));
   applyBrandToCards();
   document.getElementById('brand-modal').style.display = 'none';
-  // re-render cards if we're on step 5
   if (S.step === 5 && S.renderCards.length) {
     const tplCls = {1:'tpl-clareza',2:'tpl-impacto',3:'tpl-autoridade',4:'tpl-ritmo'}[S.selectedTemplate];
     renderFinal(tplCls);
   }
 }
+
+function getColorRolesFromUI() {
+  const roles = {};
+  document.querySelectorAll('.color-role-swatches').forEach(container => {
+    const role = container.dataset.role;
+    const active = container.querySelector('.color-role-swatch.active');
+    roles[role] = active ? active.dataset.key : { cover:'primary', text:'light', accent:'accent', dark:'dark' }[role];
+  });
+  return roles;
+}
+
+function renderColorRoleSwatches() {
+  const b = getBrand();
+  const palette = [
+    { key: 'primary', color: b.primary },
+    { key: 'accent',  color: b.accent  },
+    { key: 'dark',    color: b.dark    },
+    { key: 'light',   color: b.light   },
+  ];
+  const roles = b.colorRoles || { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark' };
+
+  document.querySelectorAll('.color-role-swatches').forEach(container => {
+    const role = container.dataset.role;
+    const currentKey = roles[role] || role;
+    container.innerHTML = '';
+    palette.forEach(({ key, color }) => {
+      const sw = document.createElement('div');
+      sw.className = 'color-role-swatch' + (key === currentKey ? ' active' : '');
+      sw.dataset.key = key;
+      sw.style.background = color;
+      sw.style.border = key === currentKey ? '2px solid var(--ink)' : '2px solid transparent';
+      // Add light border for very light colors
+      if (color.toLowerCase() === '#ffffff' || color.toLowerCase() === '#f5f5f7' || color.toLowerCase() === '#f5f2eb') {
+        sw.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.12)';
+      }
+      sw.title = key;
+      sw.onclick = () => {
+        container.querySelectorAll('.color-role-swatch').forEach(s => {
+          s.classList.remove('active');
+          s.style.border = '2px solid transparent';
+        });
+        sw.classList.add('active');
+        sw.style.border = '2px solid var(--ink)';
+      };
+      container.appendChild(sw);
+    });
+  });
+}
+
 
 function resetBrand() {
   localStorage.removeItem('storylab_brand');
@@ -2898,7 +3024,7 @@ Retorne APENAS JSON válido (sem markdown):
     initSidebar();
   } catch(e) {
     S.imageAnalyzed = false;
-    showError('Erro ao analisar imagem: ' + e.message);
+    showError('Erro ao analisar imagem: ' + e.message, handlePrimary);
   }
 }
 
@@ -2985,16 +3111,40 @@ function showLoading(msg) {
   document.getElementById('canvas').innerHTML = `<div class="loading-wrap"><div class="loader"></div><div class="loading-label">${msg}</div></div>`;
 }
 
-function showError(msg) {
+function showError(msg, retryFn) {
   const isRateLimit = msg === 'rate_limit_final' || msg.includes('rate_limit') || msg.includes('Limite');
+  const isOverloaded = msg === 'overloaded_final' || msg.includes('overloaded') || msg.includes('sobrecarregado');
+  let icon, title, sub, btnHtml;
+
+  if (isRateLimit) {
+    icon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg>`;
+    title = 'Limite de requisições';
+    sub = 'A API atingiu o limite de tokens por minuto. Aguarde cerca de 60 segundos e tente novamente.';
+    btnHtml = `<button onclick="handlePrimary()" style="margin-top:8px;background:#0071e3;color:#ffffff;border:none;border-radius:8px;padding:12px 24px;font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer">↺ Tentar novamente</button>`;
+  } else if (isOverloaded) {
+    icon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>`;
+    title = 'Serviço sobrecarregado';
+    sub = 'Serviço temporariamente sobrecarregado. Aguarde alguns instantes e tente novamente.';
+    const retryId = 'retry-overloaded-' + Date.now();
+    btnHtml = `<button id="${retryId}" style="margin-top:8px;background:#0071e3;color:#ffffff;border:none;border-radius:8px;padding:12px 24px;font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer">↺ Tentar novamente</button>`;
+    setTimeout(() => {
+      const btn = document.getElementById(retryId);
+      if (btn && retryFn) btn.onclick = retryFn;
+      else if (btn) btn.onclick = handlePrimary;
+    }, 0);
+  } else {
+    icon = '!';
+    title = 'Erro ao processar';
+    sub = msg;
+    btnHtml = '';
+  }
+
   document.getElementById('canvas').innerHTML = `
     <div class="empty-state">
-      <div class="empty-glyph" style="color:var(--accent)">${isRateLimit ? '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg>' : '!'}</div>
-      <div class="empty-title">${isRateLimit ? 'Limite de requisições' : 'Erro ao processar'}</div>
-      <div class="empty-sub" style="max-width:320px;text-align:center">${isRateLimit
-        ? 'A API atingiu o limite de tokens por minuto. Aguarde cerca de 60 segundos e clique em tentar novamente.'
-        : msg}</div>
-      ${isRateLimit ? `<button onclick="handlePrimary()" style="margin-top:8px;background:var(--ink);color:var(--bg);border:none;border-radius:8px;padding:12px 24px;font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer">↺ Tentar novamente</button>` : ''}
+      <div class="empty-glyph" style="color:var(--accent)">${icon}</div>
+      <div class="empty-title">${title}</div>
+      <div class="empty-sub" style="max-width:320px;text-align:center">${sub}</div>
+      ${btnHtml}
     </div>`;
 }
 
@@ -3157,7 +3307,7 @@ Retorne APENAS este JSON válido (sem markdown):
       if (data.fontes?.length) S.sources = data.fontes;
       S.step = 1; initSidebar(); renderTriagem();
       runDeepAnalysis(true); autoSave();
-    } catch(e) { showError(e.message); }
+    } catch(e) { showError(e.message, handlePrimary); }
 
   } else {
     const isUrlMode = S.isUrl && S.urlExtracted;
@@ -3234,7 +3384,7 @@ Retorne APENAS este JSON (sem markdown):
         initSidebar(); renderTriagem();
       }
 
-    } catch(e) { showError(e.message); }
+    } catch(e) { showError(e.message, handlePrimary); }
   }
 
 function showLoadingEvidencias() {
@@ -3441,7 +3591,7 @@ IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
     const data = extractJSON(await callClaude(prompt, 1200));
     S.headlines = data.headlines; S.headlineAngle = data.angulo_selecionado;
     S.selectedHeadline = null; S.step = 2; initSidebar(); renderHeadlines(); autoSave();
-  } catch(e) { showError(e.message); }
+  } catch(e) { showError(e.message, handlePrimary); }
   document.getElementById('primary-btn').disabled = false;
 }
 
@@ -3525,7 +3675,7 @@ Retorne APENAS este JSON (sem markdown):
     S.espinhaSources = proofSources;
 
     S.step = 3; initSidebar(); renderEspinha(); autoSave();
-  } catch(e) { showError(e.message); }
+  } catch(e) { showError(e.message, handlePrimary); }
   document.getElementById('primary-btn').disabled = false;
 }
 
@@ -3639,7 +3789,7 @@ IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
     S.renderCards = data.cards;
     S.renderAnalysis = {tema:data.tema,funil:data.funil,objetivo:data.objetivo,razao_viral:data.razao_viral};
     S.step = 5; initSidebar(); renderFinal(tplCls[S.selectedTemplate]); autoSave();
-  } catch(e) { showError(e.message); }
+  } catch(e) { showError(e.message, handlePrimary); }
   document.getElementById('primary-btn').disabled = false;
 }
 
@@ -4564,6 +4714,9 @@ async function callClaude(prompt, maxTokens, retries = 4) {
       }
       throw new Error('rate_limit_final');
     }
+    if (res.status === 529 || data.error === 'overloaded') {
+      throw new Error('overloaded_final');
+    }
     if (!res.ok || !data.content) throw new Error(data.error?.message || JSON.stringify(data));
     return data.content.map(i => i.text||'').join('\n').replace(/```json|```/g,'').trim();
   }
@@ -4594,6 +4747,9 @@ async function callClaudeWithSearch(prompt, maxTokens, retries = 4) {
         continue;
       }
       throw new Error('rate_limit_final');
+    }
+    if (res.status === 529 || data.error === 'overloaded') {
+      throw new Error('overloaded_final');
     }
     if (!res.ok || !data.content) throw new Error(data.error?.message || JSON.stringify(data));
     return data.content.map(i => i.type==='text'?i.text:'').filter(Boolean).join('\n').replace(/```json|```/g,'').trim();
