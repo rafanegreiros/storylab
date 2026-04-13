@@ -1497,6 +1497,13 @@ textarea { min-height: 120px; }
 }
 .login-btn:hover { opacity: 0.8; }
 .login-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.login-subtitle {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.6;
+  text-align: center;
+  margin-bottom: 4px;
+}
 .login-error {
   font-family: 'Roboto', sans-serif;
   font-size: 0.8rem;
@@ -2011,20 +2018,24 @@ textarea { min-height: 120px; }
   <g fill="#0071e3"><path  d="M377.18,78.04c-1.14-1.18-2.72-1.78-4.76-1.78s-3.66.59-4.87,1.78c-1.21,1.18-1.82,2.8-1.82,4.84,0,2.21.61,3.92,1.82,5.14,1.21,1.23,2.84,1.84,4.87,1.84,4.3,0,6.46-2.33,6.46-6.98,0-2.04-.57-3.65-1.7-4.84Z"/></g>
 </svg></div>
     <div class="login-title">Narrativa que posiciona.</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <input class="login-input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()"/>
-      <div style="position:relative;display:flex;align-items:center">
-        <input class="login-input" id="login-password" type="password" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:44px;width:100%"/>
-        <button type="button" onclick="togglePasswordVisibility()" id="eye-btn" style="position:absolute;right:12px;background:none;border:none;cursor:pointer;color:var(--muted);display:flex;align-items:center;padding:0;transition:color 0.15s" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      </div>
+    <!-- Magic Link form state -->
+    <div id="ml-form-state" style="display:flex;flex-direction:column;gap:10px">
+      <p class="login-subtitle">Digite seu email para receber um link de acesso. Funciona para contas novas e existentes.</p>
+      <input class="login-input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')doMagicLink()"/>
+      <div class="login-error" id="login-error" style="min-height:16px;margin-bottom:-4px"></div>
+      <button class="login-btn" id="login-btn" onclick="doMagicLink()">Enviar link de acesso</button>
     </div>
-    <div class="login-error" id="login-error" style="min-height:16px;margin-bottom:-4px"></div>
-    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <div class="login-divider">ou</div>
-    <button class="login-btn" style="background:transparent;color:var(--ink);border:1px solid var(--border);font-weight:400" onclick="showSignup()">Criar conta</button>
-    <div id="signup-fields" style="display:none;flex-direction:column;gap:10px">
-      <input class="login-input" id="signup-name" type="text" placeholder="Seu nome"/>
-      <button class="login-btn" onclick="doSignup()">Criar conta</button>
+    <!-- Sent confirmation state -->
+    <div id="ml-sent-state" style="display:none;flex-direction:column;align-items:center;gap:16px;text-align:center">
+      <div style="width:52px;height:52px;border-radius:50%;background:rgba(0,113,227,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0071e3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+      </div>
+      <div>
+        <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1rem;margin-bottom:6px">Verifique seu email</div>
+        <p style="font-size:0.8rem;color:var(--muted);line-height:1.6">Enviamos um link de acesso para<br><strong id="ml-sent-email" style="color:var(--ink)"></strong></p>
+      </div>
+      <p style="font-size:0.72rem;color:var(--muted);line-height:1.6">Clique no link para entrar. O link expira em 1 hora.</p>
+      <button class="login-btn" style="background:transparent;color:var(--muted);border:1px solid var(--border);font-size:0.78rem;padding:10px" onclick="resetMagicLinkForm()">Usar outro email</button>
     </div>
   </div>
 </div>
@@ -3298,17 +3309,6 @@ document.addEventListener('click', e => {
 });
 
 
-function togglePasswordVisibility() {
-  const input = document.getElementById('login-password');
-  const btn = document.getElementById('eye-btn');
-  if (input.type === 'password') {
-    input.type = 'text';
-    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>';
-  } else {
-    input.type = 'password';
-    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
-  }
-}
 
 
 async function applyCustomFont(type) {
@@ -4711,41 +4711,36 @@ function hideLoginScreen() {
   document.querySelector('header') && (document.querySelector('header').style.visibility = 'visible');
 }
 
-async function doLogin() {
+async function doMagicLink() {
   const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
   const errEl = document.getElementById('login-error');
   const btn = document.getElementById('login-btn');
   errEl.textContent = '';
-  if (!email || !password) { errEl.textContent = 'Preencha email e senha.'; return; }
-  btn.disabled = true; btn.textContent = 'Entrando...';
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (!email) { errEl.textContent = 'Por favor, informe seu email.'; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'Email inválido.'; return; }
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo }
+  });
   if (error) {
-    errEl.textContent = error.message === 'Invalid login credentials' 
-      ? 'Email ou senha incorretos.' : error.message;
-    btn.disabled = false; btn.textContent = 'Entrar';
+    errEl.textContent = error.message || 'Erro ao enviar o link.';
+    btn.disabled = false; btn.textContent = 'Enviar link de acesso';
+  } else {
+    document.getElementById('ml-sent-email').textContent = email;
+    document.getElementById('ml-form-state').style.display = 'none';
+    document.getElementById('ml-sent-state').style.display = 'flex';
   }
 }
 
-function showSignup() {
-  const sf = document.getElementById('signup-fields');
-  sf.style.display = sf.style.display === 'none' ? 'flex' : 'none';
-}
-
-async function doSignup() {
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const name = document.getElementById('signup-name').value.trim();
-  const errEl = document.getElementById('login-error');
-  errEl.textContent = '';
-  if (!email || !password) { errEl.textContent = 'Preencha email e senha.'; return; }
-  if (password.length < 6) { errEl.textContent = 'Senha deve ter pelo menos 6 caracteres.'; return; }
-  const { error } = await supabaseClient.auth.signUp({ 
-    email, password,
-    options: { data: { name } }
-  });
-  if (error) { errEl.textContent = error.message; }
-  else { errEl.style.color = '#2d7a4f'; errEl.textContent = 'Conta criada! Fazendo login...'; }
+function resetMagicLinkForm() {
+  document.getElementById('ml-sent-state').style.display = 'none';
+  document.getElementById('ml-form-state').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-error').textContent = '';
+  const btn = document.getElementById('login-btn');
+  btn.disabled = false; btn.textContent = 'Enviar link de acesso';
 }
 
 function getAuthToken() {
