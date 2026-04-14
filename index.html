@@ -314,6 +314,72 @@ textarea { min-height: 120px; }
 .secondary-btn:hover { border-color: var(--ink); color: var(--ink); }
 
 
+/* ── CARD COLOR EDITOR PANEL ── */
+#card-color-panel {
+  position: fixed;
+  z-index: 9999;
+  background: var(--bg2, #111113);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.28);
+  width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: all;
+}
+.ccp-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.ccp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ccp-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  width: 42px;
+  flex-shrink: 0;
+}
+.ccp-swatches {
+  display: flex;
+  gap: 7px;
+  flex-wrap: nowrap;
+}
+.ccp-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: transform 0.1s, border-color 0.12s;
+  flex-shrink: 0;
+}
+.ccp-swatch:hover { transform: scale(1.15); }
+.ccp-swatch.active { border-color: #ffffff; transform: scale(1.08); box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
+
+@media (max-width: 600px) {
+  #card-color-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 20px 32px;
+  }
+}
+
 /* ── COLOR ROLE SELECTOR ── */
 .color-role-row {
   display: flex;
@@ -3969,87 +4035,84 @@ function openCardColorPanel(cardEl, num) {
 
   const b = getBrand();
   const palette = [
-    { key: 'primary', color: b.primary, label: 'Primária' },
-    { key: 'accent',  color: b.accent,  label: 'Destaque' },
-    { key: 'dark',    color: b.dark,    label: 'Escura'   },
-    { key: 'light',   color: b.light,   label: 'Clara'    },
-    { key: 'cta',     color: b.cta || b.primary, label: 'Coringa' },
+    { key: 'primary', color: b.primary,          label: 'Primária' },
+    { key: 'accent',  color: b.accent,            label: 'Destaque' },
+    { key: 'dark',    color: b.dark,              label: 'Escura'   },
+    { key: 'light',   color: b.light,             label: 'Clara'    },
+    { key: 'cta',     color: b.cta || '#ff5c35',  label: 'Coringa'  },
   ];
 
-  const overrides = S.cardOverrides?.[num] || {};
+  const overrides = (S.cardOverrides && S.cardOverrides[num]) ? S.cardOverrides[num] : {};
 
-  function swatchesHtml(field) {
-    const currentKey = overrides[field] || null;
+  function swatchRow(field) {
     return palette.map(p => {
-      const isActive = currentKey === p.key;
+      const isActive = overrides[field] === p.key;
       const hex = p.color.toLowerCase();
-      const needsBorder = hex.startsWith('#f') || hex === '#ffffff' || hex === '#eeeeee';
-      return `<div class="card-color-swatch${isActive ? ' active' : ''}"
+      const lightColor = hex.startsWith('#f') || hex === '#ffffff' || hex === '#eeeeee';
+      return `<div class="ccp-swatch${isActive ? ' active' : ''}"
         data-field="${field}" data-key="${p.key}"
-        style="background:${p.color};border:2px solid ${isActive ? 'var(--ink)' : 'transparent'};${needsBorder ? 'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);' : ''}"
+        style="background:${p.color};${lightColor ? 'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.18);' : ''}${isActive ? 'border-color:#ffffff;' : ''}"
         title="${p.label}"></div>`;
     }).join('');
   }
 
-  // Create panel and append to body (fixed positioning)
   const panel = document.createElement('div');
   panel.id = 'card-color-panel';
-  panel.className = 'card-color-panel visible';
   panel.innerHTML = `
-    <div class="card-color-panel-title">
-      <span>Card ${num}</span>
-      <button class="card-color-reset" onclick="resetCardOverride(${num})">Resetar</button>
+    <div class="ccp-title">Card ${num}</div>
+    <div class="ccp-row">
+      <span class="ccp-label">Fundo</span>
+      <div class="ccp-swatches">${swatchRow('bg')}</div>
     </div>
-    <div class="card-color-row">
-      <span class="card-color-row-label">Fundo</span>
-      <div class="card-color-swatches">${swatchesHtml('bg')}</div>
+    <div class="ccp-row">
+      <span class="ccp-label">Título</span>
+      <div class="ccp-swatches">${swatchRow('title')}</div>
     </div>
-    <div class="card-color-row">
-      <span class="card-color-row-label">Título</span>
-      <div class="card-color-swatches">${swatchesHtml('title')}</div>
-    </div>
-    <div class="card-color-row">
-      <span class="card-color-row-label">Texto</span>
-      <div class="card-color-swatches">${swatchesHtml('body')}</div>
+    <div class="ccp-row">
+      <span class="ccp-label">Texto</span>
+      <div class="ccp-swatches">${swatchRow('body')}</div>
     </div>`;
 
-  // Use fixed positioning relative to viewport
-  panel.style.position = 'fixed';
-  panel.style.zIndex = '9999';
+  // Append to body with fixed positioning
   document.body.appendChild(panel);
 
-  // Position below card, aligned to left edge
-  const rect = cardEl.getBoundingClientRect();
-  const panelW = 220;
-  let left = rect.left;
-  let top  = rect.bottom + 8;
-  // Keep within viewport
-  if (left + panelW > window.innerWidth - 8) left = window.innerWidth - panelW - 8;
-  if (top + 160 > window.innerHeight) top = rect.top - 168;
-  panel.style.left = left + 'px';
-  panel.style.top  = top  + 'px';
+  // Position: below card on desktop, bottom sheet on mobile
+  if (window.innerWidth > 600) {
+    const rect = cardEl.getBoundingClientRect();
+    const pw = 230;
+    let left = rect.left;
+    let top  = rect.bottom + 10;
+    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    if (top + 180 > window.innerHeight) top = rect.top - 188;
+    panel.style.left = left + 'px';
+    panel.style.top  = top  + 'px';
+  }
+  // mobile: CSS handles bottom sheet via media query
 
   // Swatch click handler
-  panel.querySelectorAll('.card-color-swatch').forEach(sw => {
+  panel.querySelectorAll('.ccp-swatch').forEach(sw => {
     sw.onclick = (e) => {
       e.stopPropagation();
       const field = sw.dataset.field;
       const key   = sw.dataset.key;
       if (!S.cardOverrides) S.cardOverrides = {};
       if (!S.cardOverrides[num]) S.cardOverrides[num] = {};
-      S.cardOverrides[num][field] = key;
+
+      // Toggle off if already active
+      if (S.cardOverrides[num][field] === key) {
+        delete S.cardOverrides[num][field];
+        if (Object.keys(S.cardOverrides[num]).length === 0) delete S.cardOverrides[num];
+      } else {
+        S.cardOverrides[num][field] = key;
+      }
+
       applyCardOverrides();
       openCardColorPanel(cardEl, num);
     };
   });
 }
-
-function resetCardOverride(num) {
-  if (S.cardOverrides) delete S.cardOverrides[num];
-  applyCardOverrides();
-  const panel = document.getElementById('card-color-panel');
-  if (panel) panel.classList.remove('visible');
 }
+
 
 function applyCardOverrides() {
   if (!S.cardOverrides) return;
