@@ -1169,7 +1169,7 @@ textarea { min-height: 120px; }
 
 /* text hierarchy with brand colors */
 .layout-text .lt-quote { color: inherit; }
-.theme-clareza-text .lt-quote { color: var(--brand-primary); }
+/* .theme-clareza-text .lt-quote — color now controlled by colorRoles titleColor */
 .theme-clareza-text .lt-divider { background: var(--brand-primary) !important; opacity: 1; }
 .theme-ritmo-text .lt-divider { background: var(--brand-primary) !important; opacity: 1; }
 .layout-statement .lstat-small { border-color: var(--brand-primary) !important; }
@@ -1489,7 +1489,7 @@ textarea { min-height: 120px; }
 }
 .login-logo {
   display: flex; justify-content: center;
-  margin-bottom: 8px;
+  margin-bottom: 28px;
   color: var(--ink);
 }
 /* Login screen — dark logo on light bg, white on dark bg */
@@ -1505,7 +1505,7 @@ textarea { min-height: 120px; }
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin-top: -8px;
+  margin-top: 0;
   margin-bottom: 4px;
 }
 .login-tagline-main {
@@ -2638,17 +2638,19 @@ function applyBrandToCards() {
     .lcta-pill.primary   { background: ${coverColor} !important; color: ${textOnCover} !important; }
     .lcta-pill.secondary { background: ${hex2rgba(darkColor, 0.12)} !important; color: ${isLightColor(darkColor) ? hex2rgba(darkColor, 0.9) : 'rgba(255,255,255,0.7)'} !important; }
 
-    /* ── TIPOGRAFIA: títulos usam titleColor, corpo usa bodyColor ── */
+    /* ── TIPOGRAFIA: cor e fonte dos títulos ── */
     .lc-headline, .lt-quote, .lstat-big, .li-title,
-    .lbg-title, .lcta-headline, .ld-num-big { color: ${titleColor} !important; }
+    .lbg-title, .lcta-headline, .ld-num-big {
+      color: ${titleColor} !important;
+      font-family: ${b.fontDisplay} !important;
+    }
+    /* ── TIPOGRAFIA: cor e fonte do corpo ── */
     .lt-body, .li-text, .lbg-body, .lc-sub,
-    .lstat-small, .lbg-label { color: ${bodyColor} !important; }
-
-    /* ── FONTES ── */
-    .lc-headline, .lt-quote, .lstat-big, .li-title,
-    .lbg-title, .lcta-headline, .ld-num-big { font-family: ${b.fontDisplay} !important; }
-    .lt-body, .li-text, .lbg-body, .lcta-body,
-    .lc-sub, .lstat-small, .lbg-label { font-family: ${b.fontBody} !important; }
+    .lstat-small, .lbg-label {
+      color: ${bodyColor} !important;
+      font-family: ${b.fontBody} !important;
+    }
+    .lcta-body { font-family: ${b.fontBody} !important; }
   `;
 }
 
@@ -4708,7 +4710,7 @@ function applyBrandInline(clone) {
   // Text colors for light cards
   const cls = clone.className;
   if (cls.includes('clareza-text') || cls.includes('ritmo-text')) {
-    clone.querySelectorAll('.lt-quote,.lstat-big').forEach(el => { el.style.color = b.primary; });
+    const inlineRoles = b.colorRoles || {}; const inlinePalette = {primary:b.primary,accent:b.accent,dark:b.dark,light:b.light}; const inlineTitleColor = inlinePalette[inlineRoles.titleColor] || b.primary; clone.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => { el.style.color = inlineTitleColor; });
   }
 }
 
