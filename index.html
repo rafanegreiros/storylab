@@ -2710,38 +2710,54 @@ function updateBrandPreview() {
   const accent  = document.getElementById('brand-accent').value;
   const dark    = document.getElementById('brand-dark').value;
   const light   = document.getElementById('brand-light').value;
+  const palette = { primary, accent, dark, light };
 
-  // Cover card — primary bg
+  function isLight(hex) {
+    if (!hex || hex.length < 7) return true;
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b2 = parseInt(hex.slice(5,7),16);
+    return (0.299*r + 0.587*g + 0.114*b2) / 255 > 0.55;
+  }
+
+  // Read live colorRoles from swatches UI
+  const roles = getColorRolesFromUI();
+  const coverColor  = palette[roles.cover]      || primary;
+  const textBg      = palette[roles.text]       || light;
+  const accentColor = palette[roles.accent]     || accent;
+  const darkColor   = palette[roles.dark]       || dark;
+  const titleColor  = palette[roles.titleColor] || primary;
+  const bodyColor   = palette[roles.bodyColor]  || dark;
+
+  // Cover card
   const cover = document.getElementById('prev-cover');
-  if (cover) { cover.style.background = primary; cover.style.color = '#fff'; }
+  if (cover) { cover.style.background = coverColor; cover.style.color = isLight(coverColor) ? dark : '#fff'; }
   const pt = document.getElementById('prev-title');
-  if (pt) { pt.style.fontFamily = fd; }
+  if (pt) { pt.style.fontFamily = fd; pt.style.color = titleColor; }
   const ps = document.getElementById('prev-sub');
   if (ps) { ps.style.fontFamily = fb; }
 
-  // Text card — light bg
+  // Text card
   const textCard = document.getElementById('prev-text');
-  if (textCard) { textCard.style.background = light; textCard.style.color = dark; }
+  if (textCard) { textCard.style.background = textBg; textCard.style.color = isLight(textBg) ? dark : '#fff'; }
   const divider = textCard?.querySelector('div');
-  if (divider) { divider.style.background = primary; }
+  if (divider) { divider.style.background = accentColor; }
   const pt2 = document.getElementById('prev-title2');
-  if (pt2) { pt2.style.fontFamily = fd; pt2.style.color = primary; }
+  if (pt2) { pt2.style.fontFamily = fd; pt2.style.color = titleColor; }
   const pb = document.getElementById('prev-body');
-  if (pb) { pb.style.fontFamily = fb; }
+  if (pb) { pb.style.fontFamily = fb; pb.style.color = bodyColor; }
 
-  // Data card — accent bg
+  // Accent/data card
   const accentCard = document.getElementById('prev-accent');
-  if (accentCard) { accentCard.style.background = accent; accentCard.style.color = dark; }
+  if (accentCard) { accentCard.style.background = accentColor; accentCard.style.color = isLight(accentColor) ? dark : '#fff'; }
   const pbig = document.getElementById('prev-big');
   if (pbig) { pbig.style.fontFamily = fd; }
 
-  // CTA card — dark bg
+  // CTA card
   const ctaCard = document.getElementById('prev-cta');
-  if (ctaCard) { ctaCard.style.background = dark; ctaCard.style.color = '#fff'; }
+  if (ctaCard) { ctaCard.style.background = coverColor; ctaCard.style.color = isLight(coverColor) ? dark : '#fff'; }
   const ctaTitle = document.getElementById('prev-cta-title');
-  if (ctaTitle) { ctaTitle.style.fontFamily = fd; }
+  if (ctaTitle) { ctaTitle.style.fontFamily = fd; ctaTitle.style.color = titleColor; }
   const pill = document.getElementById('prev-pill');
-  if (pill) { pill.style.background = primary; pill.style.color = '#fff'; }
+  if (pill) { pill.style.background = darkColor; pill.style.color = isLight(darkColor) ? dark : '#fff'; }
 }
 
 function saveBrand() {
@@ -2819,6 +2835,7 @@ function renderColorRoleSwatches() {
         });
         sw.classList.add('active');
         sw.style.border = '2px solid var(--ink)';
+        updateBrandPreview();
       };
       container.appendChild(sw);
     });
@@ -3904,6 +3921,7 @@ function renderFinal(tplCls) {
   // attach inline editors after DOM update
   setTimeout(applyEditablesToCards, 50);
   setTimeout(attachCardTracking, 60);
+  setTimeout(applyCardOverrides, 80);
   // generate post description + first comment
   setTimeout(generatePostContent, 800);
 }
@@ -3912,9 +3930,143 @@ function attachCardTracking() {
   document.querySelectorAll('.c-card').forEach(card => {
     const num = parseInt(card.getAttribute('data-card-num') || '1');
     card.addEventListener('mouseenter', () => { S.activeCardNum = num; });
-    card.addEventListener('click', () => { S.activeCardNum = num; });
+    card.addEventListener('click', (e) => {
+      S.activeCardNum = num;
+      // Don't open panel if clicking on editable text or image
+      if (e.target.closest('.editable') || e.target.closest('.img-placeholder') || e.target.closest('.card-color-panel')) return;
+      openCardColorPanel(card, num);
+    });
+  });
+
+  // Close panel when clicking outside
+  document.addEventListener('click', (e) => {
+    const panel = document.getElementById('card-color-panel');
+    if (panel && !panel.contains(e.target) && !e.target.closest('.c-card')) {
+      panel.classList.remove('visible');
+    }
+  }, { capture: true });
+}
+
+// ── CARD COLOR PANEL ──
+function openCardColorPanel(cardEl, num) {
+  let panel = document.getElementById('card-color-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'card-color-panel';
+    panel.className = 'card-color-panel';
+    document.querySelector('.carousel-scroll')?.parentElement?.appendChild(panel);
+  }
+
+  const b = getBrand();
+  const palette = [
+    { key: 'primary', color: b.primary, label: 'Primária' },
+    { key: 'accent',  color: b.accent,  label: 'Destaque' },
+    { key: 'dark',    color: b.dark,    label: 'Escura'   },
+    { key: 'light',   color: b.light,   label: 'Clara'    },
+  ];
+
+  const overrides = S.cardOverrides?.[num] || {};
+  const roles = b.colorRoles || {};
+  const palette2hex = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light };
+
+  function swatchesHtml(field) {
+    const currentKey = overrides[field] || null;
+    return palette.map(p => {
+      const isActive = currentKey === p.key;
+      const lightHex = ['#ffffff','#f5f5f7','#f5f2eb','#fffdf8','#f0f5e8'];
+      const needsBorder = lightHex.includes(p.color.toLowerCase());
+      return `<div class="card-color-swatch${isActive ? ' active' : ''}"
+        data-field="${field}" data-key="${p.key}"
+        style="background:${p.color};${needsBorder ? 'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);' : ''}${isActive ? 'border-color:var(--ink);' : ''}"
+        title="${p.label}"></div>`;
+    }).join('');
+  }
+
+  panel.innerHTML = `
+    <div class="card-color-panel-title">
+      <span>Card ${num}</span>
+      <button class="card-color-reset" onclick="resetCardOverride(${num})">Resetar card</button>
+    </div>
+    <div class="card-color-row">
+      <span class="card-color-row-label">Fundo</span>
+      <div class="card-color-swatches" id="ccp-bg">${swatchesHtml('bg')}</div>
+    </div>
+    <div class="card-color-row">
+      <span class="card-color-row-label">Título</span>
+      <div class="card-color-swatches" id="ccp-title">${swatchesHtml('title')}</div>
+    </div>
+    <div class="card-color-row">
+      <span class="card-color-row-label">Texto</span>
+      <div class="card-color-swatches" id="ccp-body">${swatchesHtml('body')}</div>
+    </div>`;
+
+  // Position panel near card
+  const rect = cardEl.getBoundingClientRect();
+  const scrollEl = document.querySelector('.carousel-scroll');
+  const scrollRect = scrollEl?.getBoundingClientRect() || { top: 0, left: 0 };
+  panel.style.top  = (rect.bottom - scrollRect.top + 8) + 'px';
+  panel.style.left = Math.max(0, rect.left - scrollRect.left) + 'px';
+  panel.classList.add('visible');
+
+  // Swatch click handler
+  panel.querySelectorAll('.card-color-swatch').forEach(sw => {
+    sw.onclick = (e) => {
+      e.stopPropagation();
+      const field = sw.dataset.field;
+      const key   = sw.dataset.key;
+      if (!S.cardOverrides) S.cardOverrides = {};
+      if (!S.cardOverrides[num]) S.cardOverrides[num] = {};
+      S.cardOverrides[num][field] = key;
+      applyCardOverrides();
+      // Re-render swatches to show new active state
+      openCardColorPanel(cardEl, num);
+    };
   });
 }
+
+function resetCardOverride(num) {
+  if (S.cardOverrides) delete S.cardOverrides[num];
+  applyCardOverrides();
+  const panel = document.getElementById('card-color-panel');
+  if (panel) panel.classList.remove('visible');
+}
+
+function applyCardOverrides() {
+  if (!S.cardOverrides) return;
+  const b = getBrand();
+  const palette = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light };
+
+  function isLight(hex) {
+    if (!hex || hex.length < 7) return true;
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), bv = parseInt(hex.slice(5,7),16);
+    return (0.299*r + 0.587*g + 0.114*bv) / 255 > 0.55;
+  }
+
+  Object.entries(S.cardOverrides).forEach(([num, overrides]) => {
+    const cardEl = document.querySelector(`.c-card[data-card-num="${num}"]`);
+    if (!cardEl) return;
+
+    if (overrides.bg) {
+      const bgColor = palette[overrides.bg];
+      cardEl.style.setProperty('background', bgColor, 'important');
+      // Auto text color for readability if no manual overrides
+      if (!overrides.title && !overrides.body) {
+        const autoColor = isLight(bgColor) ? b.dark : '#ffffff';
+        cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => el.style.setProperty('color', autoColor, 'important'));
+        cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body').forEach(el => el.style.setProperty('color', autoColor, 'important'));
+      }
+    }
+    if (overrides.title) {
+      const c = palette[overrides.title];
+      cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => el.style.setProperty('color', c, 'important'));
+    }
+    if (overrides.body) {
+      const c = palette[overrides.body];
+      cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body').forEach(el => el.style.setProperty('color', c, 'important'));
+    }
+  });
+}
+
 
 
 // ── GERAR DESCRIÇÃO DO POST + PRIMEIRO COMENTÁRIO ──
