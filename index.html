@@ -5121,25 +5121,36 @@ function initTheme() {
 const BACKEND_URL = 'https://storylab-backend-production.up.railway.app';
 const supabaseClient = window.supabase.createClient(
   'https://fgwjpisxuttaafgxjuhr.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnd2pwaXN4dXR0YWFmZ3hqdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE3MzIsImV4cCI6MjA5MTIzNzczMn0.Hb6vfs2ciBGWyWobjKiXVI91nTuYDmfJ0E4ROTZ_pgU'
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnd2pwaXN4dXR0YWFmZ3hqdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE3MzIsImV4cCI6MjA5MTIzNzczMn0.Hb6vfs2ciBGWyWobjKiXVI91nTuYDmfJ0E4ROTZ_pgU',
+  { auth: { detectSessionInUrl: true, persistSession: true } }
 );
 
 let currentSession = null;
 
 async function initAuth() {
+  // Listen for auth state changes FIRST — captures magic link token from URL hash
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    currentSession = session;
+    if (session) {
+      hideLoginScreen();
+    } else {
+      showLoginScreen();
+    }
+  });
+
+  // Then check for existing session (handles page refresh)
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     currentSession = session;
     hideLoginScreen();
   } else {
-    showLoginScreen();
+    // Only show login if there's no hash token being processed
+    const hasAuthHash = window.location.hash.includes('access_token') || window.location.hash.includes('error_code');
+    if (!hasAuthHash) {
+      showLoginScreen();
+    }
+    // If there's a hash, onAuthStateChange will fire shortly and handle it
   }
-  // Listen for auth changes
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
-    currentSession = session;
-    if (session) hideLoginScreen();
-    else showLoginScreen();
-  });
 }
 
 function showLoginScreen() {
