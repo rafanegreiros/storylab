@@ -1498,6 +1498,36 @@ textarea { min-height: 120px; }
 [data-theme="light"] #login-screen .logo-type { fill: #000000; }
 /* Login screen bg adapts to theme */
 #login-screen { background: var(--bg); }
+
+/* ── LOGIN TAGLINE ── */
+.login-tagline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: -8px;
+  margin-bottom: 4px;
+}
+.login-tagline-main {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-align: center;
+  white-space: nowrap;
+}
+.login-tagline-sub {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 300;
+  font-size: 0.62rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
 .login-title {
   font-family: 'Poppins', sans-serif;
   font-weight: 300;
@@ -1523,7 +1553,7 @@ textarea { min-height: 120px; }
 .login-input:focus { border-color: #0071e3; }
 .login-btn {
   width: 100%;
-  background: #000000;
+  background: #0071e3;
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -2057,7 +2087,10 @@ textarea { min-height: 120px; }
     <path d="M357.34,40.01c-3.13,0-6.16.92-9.1,2.76s-5.64,4.35-8.1,7.53c-2.28,2.94-4.24,6.34-5.92,10.15l10.08-59.39c.08-.16-.04-.41-.35-.73-.31-.33-.67-.41-1.06-.24l-18.2,9.31c-.31.08-.39.37-.23.86.16.49.39.7.7.61,3.21-1.63,5.3-2.04,6.28-1.23.98.82,1.15,3.18.53,7.1l-10.8,61.48c-.63,3.76.22,6.74,2.52,8.94,2.31,2.2,5.77,3.31,10.39,3.31,2.82,0,5.91-.7,9.28-2.08,3.36-1.39,6.65-3.43,9.86-6.12,3.21-2.69,6.03-6.06,8.45-10.11,2.43-4.04,4.11-8.72,5.05-14.02.86-5.31.43-9.65-1.29-13.04-1.72-3.39-4.42-5.08-8.1-5.08ZM355.11,61.93c-.78,5.31-2.06,9.84-3.82,13.59-1.76,3.76-3.76,6.61-5.99,8.57-2.23,1.96-4.52,2.94-6.87,2.94s-4.23-.94-5.64-2.82c-1.41-1.88-1.88-4.24-1.41-7.1,1.02-5.71,2.48-10.74,4.4-15.07,1.92-4.33,4.17-7.72,6.75-10.17,2.58-2.45,5.28-3.67,8.1-3.67,1.64,0,2.86.61,3.64,1.84.78,1.23,1.25,2.88,1.41,4.96.16,2.08-.04,4.39-.59,6.92Z"/></g>
   <g fill="#0071e3"><path  d="M377.18,78.04c-1.14-1.18-2.72-1.78-4.76-1.78s-3.66.59-4.87,1.78c-1.21,1.18-1.82,2.8-1.82,4.84,0,2.21.61,3.92,1.82,5.14,1.21,1.23,2.84,1.84,4.87,1.84,4.3,0,6.46-2.33,6.46-6.98,0-2.04-.57-3.65-1.7-4.84Z"/></g>
 </svg></div>
-    <div class="login-title">Sem ideia. Sem tempo. Qualquer nicho.</div><div class="login-subtitle" style="margin-top:6px;font-family:'Poppins',sans-serif;font-size:0.72rem;color:var(--muted);text-align:center;letter-spacing:0.3px;">Carrosséis com posicionamento e autoridade.</div>
+    <div class="login-tagline">
+  <div class="login-tagline-main">SEM IDEIA &nbsp;·&nbsp; SEM TEMPO &nbsp;·&nbsp; QUALQUER NICHO</div>
+  <div class="login-tagline-sub">CARROSSÉIS COM POSICIONAMENTO E AUTORIDADE</div>
+</div>
     <!-- Magic Link form state -->
     <div id="ml-form-state" style="display:flex;flex-direction:column;gap:10px">
       <p class="login-subtitle">Digite seu email para receber um link de acesso. Funciona para contas novas e existentes.</p>
@@ -2247,6 +2280,14 @@ textarea { min-height: 120px; }
           <div class="color-role-item">
             <span class="color-role-label">Fundo Escuro</span>
             <div class="color-role-swatches" data-role="dark"></div>
+          </div>
+          <div class="color-role-item">
+            <span class="color-role-label">Cor dos Títulos</span>
+            <div class="color-role-swatches" data-role="titleColor"></div>
+          </div>
+          <div class="color-role-item">
+            <span class="color-role-label">Cor do Texto</span>
+            <div class="color-role-swatches" data-role="bodyColor"></div>
           </div>
         </div>
       </div>
@@ -2465,9 +2506,9 @@ function saveConfig() {
 // ── BRAND / IDENTITY ──
 const BRAND_DEFAULTS = {
   primary: '#0071e3', accent: '#5ba3f5', dark: '#000000', light: '#f5f5f7',
-  fontDisplay: "'Fraunces', serif", fontBody: "'Syne', sans-serif",
+  fontDisplay: "'Poppins', sans-serif", fontBody: "'Roboto', sans-serif",
   handle: '@bystorylab', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
-  colorRoles: { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark' }
+  colorRoles: { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark', titleColor: 'primary', bodyColor: 'dark' }
 };
 
 function getBrand() {
@@ -2486,7 +2527,8 @@ function getBrand() {
       return migrated;
     }
     // Ensure colorRoles always present
-    if (!stored.colorRoles) stored.colorRoles = { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark' };
+    if (!stored.colorRoles) stored.colorRoles = { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark', titleColor: 'primary', bodyColor: 'dark' };
+    else { if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'primary'; if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark'; }
     return stored;
   } catch { return {...BRAND_DEFAULTS}; }
 }
@@ -2505,11 +2547,13 @@ function applyBrandToCards() {
 
   // Resolve color roles — map role key to actual hex
   const palette = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light };
-  const roles = b.colorRoles || { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark' };
-  const coverColor  = palette[roles.cover]  || b.primary;
-  const textBg      = palette[roles.text]   || b.light;
-  const accentColor = palette[roles.accent] || b.accent;
-  const darkColor   = palette[roles.dark]   || b.dark;
+  const roles = b.colorRoles || { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark', titleColor: 'primary', bodyColor: 'dark' };
+  const coverColor  = palette[roles.cover]      || b.primary;
+  const textBg      = palette[roles.text]       || b.light;
+  const accentColor = palette[roles.accent]     || b.accent;
+  const darkColor   = palette[roles.dark]       || b.dark;
+  const titleColor  = palette[roles.titleColor] || b.primary;
+  const bodyColor   = palette[roles.bodyColor]  || b.dark;
 
   // Helper: lighten a hex color slightly for backgrounds
   function hex2rgba(hex, alpha) {
@@ -2594,15 +2638,11 @@ function applyBrandToCards() {
     .lcta-pill.primary   { background: ${coverColor} !important; color: ${textOnCover} !important; }
     .lcta-pill.secondary { background: ${hex2rgba(darkColor, 0.12)} !important; color: ${isLightColor(darkColor) ? hex2rgba(darkColor, 0.9) : 'rgba(255,255,255,0.7)'} !important; }
 
-    /* ── TIPOGRAFIA ── */
-    .theme-clareza-text .lt-quote,
-    .theme-ritmo-text .lt-quote,
-    .theme-impacto-text .lt-quote,
-    .theme-autori-text .lt-quote,
-    .theme-clareza-statement .lstat-big,
-    .theme-ritmo-statement .lstat-big,
-    .theme-impacto-statement .lstat-big,
-    .theme-autori-statement .lstat-big { color: ${accentColor} !important; }
+    /* ── TIPOGRAFIA: títulos usam titleColor, corpo usa bodyColor ── */
+    .lc-headline, .lt-quote, .lstat-big, .li-title,
+    .lbg-title, .lcta-headline, .ld-num-big { color: ${titleColor} !important; }
+    .lt-body, .li-text, .lbg-body, .lc-sub,
+    .lstat-small, .lbg-label { color: ${bodyColor} !important; }
 
     /* ── FONTES ── */
     .lc-headline, .lt-quote, .lstat-big, .li-title,
@@ -2729,36 +2769,47 @@ function getColorRolesFromUI() {
   document.querySelectorAll('.color-role-swatches').forEach(container => {
     const role = container.dataset.role;
     const active = container.querySelector('.color-role-swatch.active');
-    roles[role] = active ? active.dataset.key : { cover:'primary', text:'light', accent:'accent', dark:'dark' }[role];
+    roles[role] = active ? active.dataset.key : { cover:'primary', text:'light', accent:'accent', dark:'dark', titleColor:'primary', bodyColor:'dark' }[role];
   });
   return roles;
 }
 
 function renderColorRoleSwatches() {
+  // Read live picker values if modal is open, otherwise fall back to saved brand
+  const pickPrimary = document.getElementById('brand-primary');
+  const livePalette = pickPrimary ? {
+    primary: document.getElementById('brand-primary').value,
+    accent:  document.getElementById('brand-accent').value,
+    dark:    document.getElementById('brand-dark').value,
+    light:   document.getElementById('brand-light').value,
+  } : null;
   const b = getBrand();
   const palette = [
-    { key: 'primary', color: b.primary },
-    { key: 'accent',  color: b.accent  },
-    { key: 'dark',    color: b.dark    },
-    { key: 'light',   color: b.light   },
+    { key: 'primary', color: (livePalette || b).primary },
+    { key: 'accent',  color: (livePalette || b).accent  },
+    { key: 'dark',    color: (livePalette || b).dark    },
+    { key: 'light',   color: (livePalette || b).light   },
   ];
-  const roles = b.colorRoles || { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark' };
+  const defaultRoles = { cover:'primary', text:'light', accent:'accent', dark:'dark', titleColor:'primary', bodyColor:'dark' };
+  const roles = b.colorRoles || defaultRoles;
 
   document.querySelectorAll('.color-role-swatches').forEach(container => {
     const role = container.dataset.role;
-    const currentKey = roles[role] || role;
+    const currentKey = roles[role] || defaultRoles[role] || 'primary';
     container.innerHTML = '';
     palette.forEach(({ key, color }) => {
       const sw = document.createElement('div');
-      sw.className = 'color-role-swatch' + (key === currentKey ? ' active' : '');
+      const isActive = key === currentKey;
+      sw.className = 'color-role-swatch' + (isActive ? ' active' : '');
       sw.dataset.key = key;
       sw.style.background = color;
-      sw.style.border = key === currentKey ? '2px solid var(--ink)' : '2px solid transparent';
-      // Add light border for very light colors
-      if (color.toLowerCase() === '#ffffff' || color.toLowerCase() === '#f5f5f7' || color.toLowerCase() === '#f5f2eb') {
-        sw.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.12)';
+      sw.style.border = isActive ? '2px solid var(--ink)' : '2px solid transparent';
+      // Subtle inset border for very light swatches so they're visible
+      const hex = color.toLowerCase().replace(/\s/g,'');
+      if (['#ffffff','#f5f5f7','#f5f2eb','#fffdf8','#f0f5e8'].includes(hex) || color.startsWith('#f')) {
+        sw.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.15)';
       }
-      sw.title = key;
+      sw.title = { primary:'Primária', accent:'Destaque', dark:'Escura', light:'Clara' }[key] || key;
       sw.onclick = () => {
         container.querySelectorAll('.color-role-swatch').forEach(s => {
           s.classList.remove('active');
