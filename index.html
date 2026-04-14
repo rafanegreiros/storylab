@@ -2258,6 +2258,13 @@ textarea { min-height: 120px; }
               <input type="text" id="brand-light-hex" value="#f5f5f7" class="modal-input hex-input" placeholder="#f5f5f7" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
             </div>
           </div>
+          <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;grid-column:1/-1;border:1.5px dashed var(--border);">
+            <input type="color" id="brand-cta" value="#ff5c35" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Coringa · Botão CTA</div>
+              <input type="text" id="brand-cta-hex" value="#ff5c35" class="modal-input hex-input" placeholder="#ff5c35" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2505,7 +2512,7 @@ function saveConfig() {
 
 // ── BRAND / IDENTITY ──
 const BRAND_DEFAULTS = {
-  primary: '#0071e3', accent: '#5ba3f5', dark: '#000000', light: '#f5f5f7',
+  primary: '#0071e3', accent: '#5ba3f5', dark: '#000000', light: '#f5f5f7', cta: '#ff5c35',
   fontDisplay: "'Poppins', sans-serif", fontBody: "'Roboto', sans-serif",
   handle: '@bystorylab', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
   colorRoles: { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark', titleColor: 'primary', bodyColor: 'dark' }
@@ -2529,6 +2536,8 @@ function getBrand() {
     // Ensure colorRoles always present
     if (!stored.colorRoles) stored.colorRoles = { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark', titleColor: 'primary', bodyColor: 'dark' };
     else { if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'primary'; if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark'; }
+    if (!stored.cta) stored.cta = '#ff5c35';
+    else { if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'primary'; if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark'; }
     return stored;
   } catch { return {...BRAND_DEFAULTS}; }
 }
@@ -2546,7 +2555,7 @@ function applyBrandToCards() {
   root.style.setProperty('--brand-font-body', b.fontBody);
 
   // Resolve color roles — map role key to actual hex
-  const palette = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light };
+  const palette = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light, cta: b.cta || b.primary };
   const roles = b.colorRoles || { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark', titleColor: 'primary', bodyColor: 'dark' };
   const coverColor  = palette[roles.cover]      || b.primary;
   const textBg      = palette[roles.text]       || b.light;
@@ -2635,7 +2644,7 @@ function applyBrandToCards() {
     .lc-bar              { background: ${accentColor} !important; opacity: 1 !important; }
     .lt-divider          { background: ${accentColor} !important; opacity: 1 !important; }
     .lstat-small         { border-color: ${accentColor} !important; }
-    .lcta-pill.primary   { background: ${coverColor} !important; color: ${textOnCover} !important; }
+    .lcta-pill.primary   { background: ${palette['cta'] || coverColor} !important; color: ${isLightColor(palette['cta'] || coverColor) ? b.dark : '#ffffff'} !important; }
     .lcta-pill.secondary { background: ${hex2rgba(darkColor, 0.12)} !important; color: ${isLightColor(darkColor) ? hex2rgba(darkColor, 0.9) : 'rgba(255,255,255,0.7)'} !important; }
 
     /* ── TIPOGRAFIA: cor e fonte dos títulos ── */
@@ -2681,6 +2690,7 @@ function openBrand() {
   document.getElementById('brand-dark-hex').value = b.dark;
   document.getElementById('brand-light').value = b.light;
   document.getElementById('brand-light-hex').value = b.light;
+  if (document.getElementById('brand-cta')) { document.getElementById('brand-cta').value = b.cta || '#ff5c35'; document.getElementById('brand-cta-hex').value = b.cta || '#ff5c35'; }
   document.getElementById('brand-font-display').value = b.fontDisplay;
   document.getElementById('brand-font-body').value = b.fontBody;
   document.getElementById('brand-handle').value = b.handle || '';
@@ -2691,7 +2701,7 @@ function openBrand() {
   document.getElementById('brand-modal').style.display = 'flex';
 
   // sync color pickers ↔ hex inputs
-  ['primary','accent','dark','light'].forEach(key => {
+  ['primary','accent','dark','light','cta'].forEach(key => {
     const pick = document.getElementById('brand-'+key);
     const hex  = document.getElementById('brand-'+key+'-hex');
     pick.addEventListener('input', () => { hex.value = pick.value; updateBrandPreview(); renderColorRoleSwatches(); });
@@ -2757,7 +2767,8 @@ function updateBrandPreview() {
   const ctaTitle = document.getElementById('prev-cta-title');
   if (ctaTitle) { ctaTitle.style.fontFamily = fd; ctaTitle.style.color = titleColor; }
   const pill = document.getElementById('prev-pill');
-  if (pill) { pill.style.background = darkColor; pill.style.color = isLight(darkColor) ? dark : '#fff'; }
+  const ctaColorHex = document.getElementById('brand-cta')?.value || b?.cta || '#ff5c35';
+  if (pill) { pill.style.background = ctaColorHex; pill.style.color = isLight(ctaColorHex) ? dark : '#fff'; }
 }
 
 function saveBrand() {
@@ -2772,6 +2783,7 @@ function saveBrand() {
     tagline:  document.getElementById('brand-tagline').value.trim(),
     year:     document.getElementById('brand-year').value.trim(),
     colorRoles: getColorRolesFromUI(),
+    cta: document.getElementById('brand-cta')?.value || '#ff5c35',
   };
   localStorage.setItem('storylab_brand', JSON.stringify(b));
   applyBrandToCards();
@@ -2802,13 +2814,15 @@ function renderColorRoleSwatches() {
     light:   document.getElementById('brand-light').value,
   } : null;
   const b = getBrand();
+  const liveCta = document.getElementById('brand-cta')?.value;
   const palette = [
     { key: 'primary', color: (livePalette || b).primary },
     { key: 'accent',  color: (livePalette || b).accent  },
     { key: 'dark',    color: (livePalette || b).dark    },
     { key: 'light',   color: (livePalette || b).light   },
+    { key: 'cta',     color: liveCta || b.cta || '#ff5c35' },
   ];
-  const defaultRoles = { cover:'primary', text:'light', accent:'accent', dark:'dark', titleColor:'primary', bodyColor:'dark' };
+  const defaultRoles = { cover:'primary', text:'light', accent:'accent', dark:'dark', titleColor:'primary', bodyColor:'dark', cta:'cta' };
   const roles = b.colorRoles || defaultRoles;
 
   document.querySelectorAll('.color-role-swatches').forEach(container => {
@@ -3949,13 +3963,9 @@ function attachCardTracking() {
 
 // ── CARD COLOR PANEL ──
 function openCardColorPanel(cardEl, num) {
-  let panel = document.getElementById('card-color-panel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'card-color-panel';
-    panel.className = 'card-color-panel';
-    document.querySelector('.carousel-scroll')?.parentElement?.appendChild(panel);
-  }
+  // Remove existing panel
+  const existing = document.getElementById('card-color-panel');
+  if (existing) existing.remove();
 
   const b = getBrand();
   const palette = [
@@ -3963,50 +3973,61 @@ function openCardColorPanel(cardEl, num) {
     { key: 'accent',  color: b.accent,  label: 'Destaque' },
     { key: 'dark',    color: b.dark,    label: 'Escura'   },
     { key: 'light',   color: b.light,   label: 'Clara'    },
+    { key: 'cta',     color: b.cta || b.primary, label: 'Coringa' },
   ];
 
   const overrides = S.cardOverrides?.[num] || {};
-  const roles = b.colorRoles || {};
-  const palette2hex = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light };
 
   function swatchesHtml(field) {
     const currentKey = overrides[field] || null;
     return palette.map(p => {
       const isActive = currentKey === p.key;
-      const lightHex = ['#ffffff','#f5f5f7','#f5f2eb','#fffdf8','#f0f5e8'];
-      const needsBorder = lightHex.includes(p.color.toLowerCase());
+      const hex = p.color.toLowerCase();
+      const needsBorder = hex.startsWith('#f') || hex === '#ffffff' || hex === '#eeeeee';
       return `<div class="card-color-swatch${isActive ? ' active' : ''}"
         data-field="${field}" data-key="${p.key}"
-        style="background:${p.color};${needsBorder ? 'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);' : ''}${isActive ? 'border-color:var(--ink);' : ''}"
+        style="background:${p.color};border:2px solid ${isActive ? 'var(--ink)' : 'transparent'};${needsBorder ? 'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);' : ''}"
         title="${p.label}"></div>`;
     }).join('');
   }
 
+  // Create panel and append to body (fixed positioning)
+  const panel = document.createElement('div');
+  panel.id = 'card-color-panel';
+  panel.className = 'card-color-panel visible';
   panel.innerHTML = `
     <div class="card-color-panel-title">
       <span>Card ${num}</span>
-      <button class="card-color-reset" onclick="resetCardOverride(${num})">Resetar card</button>
+      <button class="card-color-reset" onclick="resetCardOverride(${num})">Resetar</button>
     </div>
     <div class="card-color-row">
       <span class="card-color-row-label">Fundo</span>
-      <div class="card-color-swatches" id="ccp-bg">${swatchesHtml('bg')}</div>
+      <div class="card-color-swatches">${swatchesHtml('bg')}</div>
     </div>
     <div class="card-color-row">
       <span class="card-color-row-label">Título</span>
-      <div class="card-color-swatches" id="ccp-title">${swatchesHtml('title')}</div>
+      <div class="card-color-swatches">${swatchesHtml('title')}</div>
     </div>
     <div class="card-color-row">
       <span class="card-color-row-label">Texto</span>
-      <div class="card-color-swatches" id="ccp-body">${swatchesHtml('body')}</div>
+      <div class="card-color-swatches">${swatchesHtml('body')}</div>
     </div>`;
 
-  // Position panel near card
+  // Use fixed positioning relative to viewport
+  panel.style.position = 'fixed';
+  panel.style.zIndex = '9999';
+  document.body.appendChild(panel);
+
+  // Position below card, aligned to left edge
   const rect = cardEl.getBoundingClientRect();
-  const scrollEl = document.querySelector('.carousel-scroll');
-  const scrollRect = scrollEl?.getBoundingClientRect() || { top: 0, left: 0 };
-  panel.style.top  = (rect.bottom - scrollRect.top + 8) + 'px';
-  panel.style.left = Math.max(0, rect.left - scrollRect.left) + 'px';
-  panel.classList.add('visible');
+  const panelW = 220;
+  let left = rect.left;
+  let top  = rect.bottom + 8;
+  // Keep within viewport
+  if (left + panelW > window.innerWidth - 8) left = window.innerWidth - panelW - 8;
+  if (top + 160 > window.innerHeight) top = rect.top - 168;
+  panel.style.left = left + 'px';
+  panel.style.top  = top  + 'px';
 
   // Swatch click handler
   panel.querySelectorAll('.card-color-swatch').forEach(sw => {
@@ -4018,7 +4039,6 @@ function openCardColorPanel(cardEl, num) {
       if (!S.cardOverrides[num]) S.cardOverrides[num] = {};
       S.cardOverrides[num][field] = key;
       applyCardOverrides();
-      // Re-render swatches to show new active state
       openCardColorPanel(cardEl, num);
     };
   });
@@ -4034,7 +4054,7 @@ function resetCardOverride(num) {
 function applyCardOverrides() {
   if (!S.cardOverrides) return;
   const b = getBrand();
-  const palette = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light };
+  const palette = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light, cta: b.cta || b.primary };
 
   function isLight(hex) {
     if (!hex || hex.length < 7) return true;
