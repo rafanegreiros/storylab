@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Storylab v3 — Agente de Carrosséis</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 450"><path fill="%230071e3" d="M386.28,58.79C348.69,19.64,296.24,0,228.89,0S107.76,19.64,67.62,58.79C27.45,98.01,7.39,151.39,7.39,218.93c0,72.99,20.05,129.73,60.23,170.26,40.14,40.56,93.88,60.81,161.27,60.81,142.44,0,213.72-77.02,213.72-231.07,0-67.54-18.83-120.92-56.32-160.14Z"/></svg>">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.383.0/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Poppins:wght@300;400;700&family=Roboto:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;0,900;1,300;1,600&family=Syne:wght@400;600;700;800&family=Syne+Mono&display=swap" rel="stylesheet">
@@ -3389,6 +3391,9 @@ function renderStepCanvas() {
 }
 
 function resetAll() {
+  // Close card color panel if open
+  const ccp = document.getElementById('card-color-panel');
+  if (ccp) ccp.remove();
   activeSessionId = null; // new carousel = new session
   Object.assign(S, {
     step:0, inputMode:'text', insumo:'', insumoFinal:'', isUrl:false, urlExtracted:false,
@@ -3944,6 +3949,7 @@ IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
 }
 
 function renderFinal(tplCls) {
+  const _ccp = document.getElementById('card-color-panel'); if (_ccp) _ccp.remove();
   const a = S.renderAnalysis; const cards = S.renderCards;
   const cardsHtml = cards.map((c,i) => renderCard(c,i+1,cards.length,tplCls)).join('');
   const codeText = cards.map(c => `texto ${c.num} - ${c.titulo}${c.corpo?' '+c.corpo:''}`).join('\n');
@@ -4059,7 +4065,10 @@ function openCardColorPanel(cardEl, num) {
   const panel = document.createElement('div');
   panel.id = 'card-color-panel';
   panel.innerHTML = `
-    <div class="ccp-title">Card ${num}</div>
+    <div class="ccp-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Card ${num}</span>
+      <button onclick="document.getElementById('card-color-panel').remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0;display:flex;align-items:center;line-height:1;font-size:1rem;" title="Fechar">×</button>
+    </div>
     <div class="ccp-row">
       <span class="ccp-label">Fundo</span>
       <div class="ccp-swatches">${swatchRow('bg')}</div>
