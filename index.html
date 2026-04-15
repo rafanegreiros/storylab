@@ -206,7 +206,6 @@ header {
 
 .sidebar-body {
   padding: 20px 28px;
-  flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -282,6 +281,7 @@ textarea { min-height: 120px; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-top: auto;
 }
 
 .primary-btn {
@@ -325,7 +325,7 @@ textarea { min-height: 120px; }
   border-radius: 12px;
   padding: 14px 18px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.28);
-  width: 260px;
+  width: 295px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -379,7 +379,7 @@ textarea { min-height: 120px; }
     bottom: 0; left: 0; right: 0;
     width: 100%;
     border-radius: 16px 16px 0 0;
-    padding: 20px 20px 32px;
+    padding: 20px 24px 32px;
   }
 }
 
@@ -4074,7 +4074,7 @@ function openCardColorPanel(cardEl, num) {
   // Position: below card on desktop, bottom sheet on mobile
   if (window.innerWidth > 600) {
     const rect = cardEl.getBoundingClientRect();
-    const pw = 260;
+    const pw = 295;
     let left = rect.left;
     let top  = rect.bottom + 10;
     if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
