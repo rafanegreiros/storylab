@@ -323,9 +323,9 @@ textarea { min-height: 120px; }
   background: var(--bg2, #111113);
   border: 1.5px solid var(--border);
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 14px 18px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.28);
-  width: 230px;
+  width: 260px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -370,7 +370,8 @@ textarea { min-height: 120px; }
   flex-shrink: 0;
 }
 .ccp-swatch:hover { transform: scale(1.15); }
-.ccp-swatch.active { border-color: #ffffff; transform: scale(1.08); box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
+.ccp-swatch.active { border-color: #ffffff !important; transform: scale(1.08); box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
+.ccp-free { display: flex; align-items: center; justify-content: center; }
 
 @media (max-width: 600px) {
   #card-color-panel {
@@ -2326,38 +2327,9 @@ textarea { min-height: 120px; }
               <input type="text" id="brand-light-hex" value="#eaeaec" class="modal-input hex-input" placeholder="#eaeaec" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;grid-column:1/-1;border:1.5px dashed var(--border);">
-            <input type="color" id="brand-cta" value="#e3fe03" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Coringa · Botão CTA</div>
-              <input type="text" id="brand-cta-hex" value="#e3fe03" class="modal-input hex-input" placeholder="#e3fe03" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
-            </div>
-          </div>
         </div>
       </div>
 
-      <!-- Atribuição de cores por papel -->
-      <div>
-        <div class="modal-label" style="margin-bottom:8px">Atribuição de Cores nos Cards</div>
-        <div class="color-role-row" id="color-role-row">
-          <div class="color-role-item">
-            <span class="color-role-label">Fundo Cards</span>
-            <div class="color-role-swatches" data-role="text"></div>
-          </div>
-          <div class="color-role-item">
-            <span class="color-role-label">Botão CTA</span>
-            <div class="color-role-swatches" data-role="ctaRole"></div>
-          </div>
-          <div class="color-role-item">
-            <span class="color-role-label">Cor dos Títulos</span>
-            <div class="color-role-swatches" data-role="titleColor"></div>
-          </div>
-          <div class="color-role-item">
-            <span class="color-role-label">Cor do Texto</span>
-            <div class="color-role-swatches" data-role="bodyColor"></div>
-          </div>
-        </div>
-      </div>
 
       <!-- Fontes lado a lado -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -4046,17 +4018,29 @@ function openCardColorPanel(cardEl, num) {
   ];
 
   const overrides = (S.cardOverrides && S.cardOverrides[num]) ? S.cardOverrides[num] : {};
+  // Detect if this is a CTA card by checking its theme class
+  const isCTACard = cardEl.querySelector('.layout-cta') !== null;
 
   function swatchRow(field) {
-    return palette.map(p => {
+    const freeColor = overrides['free_' + field] || '#aaaaaa';
+    const isFreeActive = overrides[field] === 'free';
+    const swatches = palette.map(p => {
       const isActive = overrides[field] === p.key;
       const hex = p.color.toLowerCase();
-      const lightColor = hex.startsWith('#f') || hex === '#ffffff' || hex === '#eeeeee';
+      const lightColor = hex.startsWith('#f') || hex === '#ffffff' || hex === '#eeeeee' || hex.startsWith('#e');
       return `<div class="ccp-swatch${isActive ? ' active' : ''}"
         data-field="${field}" data-key="${p.key}"
-        style="background:${p.color};${lightColor ? 'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.18);' : ''}${isActive ? 'border-color:#ffffff;' : ''}"
+        style="background:${p.color};border:2px solid ${isActive ? '#ffffff' : 'transparent'};${lightColor ? 'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.18);' : ''}"
         title="${p.label}"></div>`;
     }).join('');
+    const freeSwatch = `<label class="ccp-swatch ccp-free${isFreeActive ? ' active' : ''}"
+      style="background:${freeColor};border:2px solid ${isFreeActive ? '#ffffff' : 'rgba(255,255,255,0.2)'};cursor:pointer;position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1);"
+      title="Cor livre">
+      <input type="color" value="${freeColor}" data-field="${field}"
+        style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:none;padding:0;"
+        oninput="handleFreeColor(this,${num})"/>
+    </label>`;
+    return swatches + freeSwatch;
   }
 
   const panel = document.createElement('div');
@@ -4077,7 +4061,12 @@ function openCardColorPanel(cardEl, num) {
     <div class="ccp-row">
       <span class="ccp-label">Texto</span>
       <div class="ccp-swatches">${swatchRow('body')}</div>
-    </div>`;
+    </div>
+    ${isCTACard ? `
+    <div class="ccp-row">
+      <span class="ccp-label">Botão</span>
+      <div class="ccp-swatches">${swatchRow('ctaBtn')}</div>
+    </div>` : ''}`;
 
   // Append to body with fixed positioning
   document.body.appendChild(panel);
@@ -4085,7 +4074,7 @@ function openCardColorPanel(cardEl, num) {
   // Position: below card on desktop, bottom sheet on mobile
   if (window.innerWidth > 600) {
     const rect = cardEl.getBoundingClientRect();
-    const pw = 230;
+    const pw = 260;
     let left = rect.left;
     let top  = rect.bottom + 10;
     if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
@@ -4119,6 +4108,19 @@ function openCardColorPanel(cardEl, num) {
 }
 
 
+function handleFreeColor(input, num) {
+  const field = input.dataset.field;
+  const color = input.value;
+  if (!S.cardOverrides) S.cardOverrides = {};
+  if (!S.cardOverrides[num]) S.cardOverrides[num] = {};
+  S.cardOverrides[num][field] = 'free';
+  S.cardOverrides[num]['free_' + field] = color;
+  applyCardOverrides();
+  // Update the label background live
+  const label = input.closest('.ccp-free');
+  if (label) { label.style.background = color; label.classList.add('active'); label.style.border = '2px solid #ffffff'; }
+}
+
 function applyCardOverrides() {
   if (!S.cardOverrides) return;
   const b = getBrand();
@@ -4130,28 +4132,33 @@ function applyCardOverrides() {
     return (0.299*r + 0.587*g + 0.114*bv) / 255 > 0.55;
   }
 
+  function resolveColor(overrides, field) {
+    if (!overrides[field]) return null;
+    if (overrides[field] === 'free') return overrides['free_' + field] || null;
+    return palette[overrides[field]] || null;
+  }
+
   Object.entries(S.cardOverrides).forEach(([num, overrides]) => {
     const cardEl = document.querySelector(`.c-card[data-card-num="${num}"]`);
     if (!cardEl) return;
 
-    if (overrides.bg) {
-      const bgColor = palette[overrides.bg];
+    const bgColor = resolveColor(overrides, 'bg');
+    if (bgColor) {
       cardEl.style.setProperty('background', bgColor, 'important');
-      // Auto text color for readability if no manual overrides
       if (!overrides.title && !overrides.body) {
         const autoColor = isLight(bgColor) ? b.dark : '#ffffff';
         cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => el.style.setProperty('color', autoColor, 'important'));
         cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body').forEach(el => el.style.setProperty('color', autoColor, 'important'));
       }
     }
-    if (overrides.title) {
-      const c = palette[overrides.title];
-      cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => el.style.setProperty('color', c, 'important'));
-    }
-    if (overrides.body) {
-      const c = palette[overrides.body];
-      cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body').forEach(el => el.style.setProperty('color', c, 'important'));
-    }
+    const titleColor2 = resolveColor(overrides, 'title');
+    if (titleColor2) cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => el.style.setProperty('color', titleColor2, 'important'));
+
+    const bodyColor2 = resolveColor(overrides, 'body');
+    if (bodyColor2) cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body').forEach(el => el.style.setProperty('color', bodyColor2, 'important'));
+
+    const ctaBtnColor = resolveColor(overrides, 'ctaBtn');
+    if (ctaBtnColor) cardEl.querySelectorAll('.lcta-pill.primary').forEach(el => el.style.setProperty('background', ctaBtnColor, 'important'));
   });
 }
 
