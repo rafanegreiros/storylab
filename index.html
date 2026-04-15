@@ -175,6 +175,7 @@ header {
   display: grid;
   grid-template-columns: 360px 1fr;
   min-height: calc(100vh - 57px);
+  align-items: start;
 }
 
 /* ── SIDEBAR ── */
@@ -183,10 +184,6 @@ header {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  height: calc(100vh - 57px);
-  position: sticky;
-  top: 57px;
-  overflow: hidden;
 }
 
 .sidebar-header {
@@ -210,12 +207,9 @@ header {
 
 .sidebar-body {
   padding: 20px 28px;
-  flex: 1;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  min-height: 0;
 }
 
 .field-label {
@@ -283,11 +277,9 @@ textarea { min-height: 120px; }
 
 .sidebar-footer {
   padding: 20px 28px 28px;
-  border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  flex-shrink: 0;
 }
 
 .primary-btn {
