@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Storylab v3 — Agente de Carrosséis</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NTAgNDUwIj48cGF0aCBmaWxsPSIjMDA3MWUzIiBkPSJNMzg2LjI4LDU4Ljc5QzM0OC42OSwxOS42NCwyOTYuMjQsMCwyMjguODksMFMxMDcuNzYsMTkuNjQsNjcuNjIsNTguNzlDMjcuNDUsOTguMDEsNy4zOSwxNTEuMzksNy4zOSwyMTguOTNjMCw3Mi45OSwyMC4wNSwxMjkuNzMsNjAuMjMsMTcwLjI2LDQwLjE0LDQwLjU2LDkzLjg4LDYwLjgxLDE2MS4yNyw2MC44MSwxNDIuNDQsMCwyMTMuNzItNzcuMDIsMjEzLjcyLTIzMS4wNywwLTY3LjU0LTE4LjgzLTEyMC45Mi01Ni4zMi0xNjAuMTRaIi8+PC9zdmc+">
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.383.0/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Poppins:wght@300;400;700&family=Roboto:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;0,900;1,300;1,600&family=Syne:wght@400;600;700;800&family=Syne+Mono&display=swap" rel="stylesheet">
@@ -315,72 +313,6 @@ textarea { min-height: 120px; }
 }
 .secondary-btn:hover { border-color: var(--ink); color: var(--ink); }
 
-
-/* ── CARD COLOR EDITOR PANEL ── */
-#card-color-panel {
-  position: fixed;
-  z-index: 9999;
-  background: var(--bg2, #111113);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.28);
-  width: 230px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  pointer-events: all;
-}
-.ccp-title {
-  font-family: 'Poppins', sans-serif;
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border);
-}
-.ccp-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.ccp-label {
-  font-family: 'Poppins', sans-serif;
-  font-size: 0.58rem;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--muted);
-  width: 42px;
-  flex-shrink: 0;
-}
-.ccp-swatches {
-  display: flex;
-  gap: 7px;
-  flex-wrap: nowrap;
-}
-.ccp-swatch {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 2.5px solid transparent;
-  transition: transform 0.1s, border-color 0.12s;
-  flex-shrink: 0;
-}
-.ccp-swatch:hover { transform: scale(1.15); }
-.ccp-swatch.active { border-color: #ffffff; transform: scale(1.08); box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
-
-@media (max-width: 600px) {
-  #card-color-panel {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    width: 100%;
-    border-radius: 16px 16px 0 0;
-    padding: 20px 20px 32px;
-  }
-}
 
 /* ── COLOR ROLE SELECTOR ── */
 .color-role-row {
@@ -2306,31 +2238,24 @@ textarea { min-height: 120px; }
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;">
-            <input type="color" id="brand-accent" value="#5ba3f5" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
+            <input type="color" id="brand-accent" value="#2de300" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
             <div style="flex:1;min-width:0">
               <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Destaque</div>
-              <input type="text" id="brand-accent-hex" value="#5ba3f5" class="modal-input hex-input" placeholder="#5ba3f5" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
+              <input type="text" id="brand-accent-hex" value="#2de300" class="modal-input hex-input" placeholder="#2de300" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;">
-            <input type="color" id="brand-dark" value="#000000" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
+            <input type="color" id="brand-dark" value="#2f2d2d" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
             <div style="flex:1;min-width:0">
               <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Escura</div>
-              <input type="text" id="brand-dark-hex" value="#000000" class="modal-input hex-input" placeholder="#000000" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
+              <input type="text" id="brand-dark-hex" value="#2f2d2d" class="modal-input hex-input" placeholder="#2f2d2d" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;">
-            <input type="color" id="brand-light" value="#f5f5f7" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
+            <input type="color" id="brand-light" value="#eaeaec" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
             <div style="flex:1;min-width:0">
               <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Clara</div>
-              <input type="text" id="brand-light-hex" value="#f5f5f7" class="modal-input hex-input" placeholder="#f5f5f7" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;grid-column:1/-1;border:1.5px dashed var(--border);">
-            <input type="color" id="brand-cta" value="#ff5c35" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Coringa · Botão CTA</div>
-              <input type="text" id="brand-cta-hex" value="#ff5c35" class="modal-input hex-input" placeholder="#ff5c35" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
+              <input type="text" id="brand-light-hex" value="#eaeaec" class="modal-input hex-input" placeholder="#eaeaec" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
             </div>
           </div>
         </div>
@@ -2341,20 +2266,8 @@ textarea { min-height: 120px; }
         <div class="modal-label" style="margin-bottom:8px">Atribuição de Cores nos Cards</div>
         <div class="color-role-row" id="color-role-row">
           <div class="color-role-item">
-            <span class="color-role-label">Cover / CTA</span>
-            <div class="color-role-swatches" data-role="cover"></div>
-          </div>
-          <div class="color-role-item">
-            <span class="color-role-label">Fundo Texto</span>
+            <span class="color-role-label">Fundo Cards</span>
             <div class="color-role-swatches" data-role="text"></div>
-          </div>
-          <div class="color-role-item">
-            <span class="color-role-label">Destaque / Barra</span>
-            <div class="color-role-swatches" data-role="accent"></div>
-          </div>
-          <div class="color-role-item">
-            <span class="color-role-label">Fundo Escuro</span>
-            <div class="color-role-swatches" data-role="dark"></div>
           </div>
           <div class="color-role-item">
             <span class="color-role-label">Cor dos Títulos</span>
@@ -2580,10 +2493,10 @@ function saveConfig() {
 
 // ── BRAND / IDENTITY ──
 const BRAND_DEFAULTS = {
-  primary: '#0071e3', accent: '#5ba3f5', dark: '#000000', light: '#f5f5f7', cta: '#ff5c35',
+  primary: '#0071e3', accent: '#2de300', dark: '#2f2d2d', light: '#eaeaec', cta: '#e3fe03',
   fontDisplay: "'Poppins', sans-serif", fontBody: "'Roboto', sans-serif",
   handle: '@bystorylab', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
-  colorRoles: { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark', titleColor: 'primary', bodyColor: 'dark' }
+  colorRoles: { text: 'light', titleColor: 'primary', bodyColor: 'dark' }
 };
 
 function getBrand() {
@@ -2604,8 +2517,6 @@ function getBrand() {
     // Ensure colorRoles always present
     if (!stored.colorRoles) stored.colorRoles = { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark', titleColor: 'primary', bodyColor: 'dark' };
     else { if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'primary'; if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark'; }
-    if (!stored.cta) stored.cta = '#ff5c35';
-    else { if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'primary'; if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark'; }
     return stored;
   } catch { return {...BRAND_DEFAULTS}; }
 }
@@ -2622,13 +2533,14 @@ function applyBrandToCards() {
   root.style.setProperty('--brand-font-display', b.fontDisplay);
   root.style.setProperty('--brand-font-body', b.fontBody);
 
-  // Resolve color roles — map role key to actual hex
+  // Resolve color roles — simplified
   const palette = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light, cta: b.cta || b.primary };
-  const roles = b.colorRoles || { cover: 'primary', text: 'light', accent: 'accent', dark: 'dark', titleColor: 'primary', bodyColor: 'dark' };
-  const coverColor  = palette[roles.cover]      || b.primary;
-  const textBg      = palette[roles.text]       || b.light;
-  const accentColor = palette[roles.accent]     || b.accent;
-  const darkColor   = palette[roles.dark]       || b.dark;
+  const roles = b.colorRoles || { text: 'light', titleColor: 'primary', bodyColor: 'dark' };
+  const coverColor  = b.primary;   // cover/CTA always uses primary
+  const textBg      = palette[roles.text] || b.light;
+  const accentColor = b.accent;    // barra always uses accent
+  const darkColor   = b.dark;      // bgimg always uses dark
+  const ctaColor    = b.cta || b.primary;
   const titleColor  = palette[roles.titleColor] || b.primary;
   const bodyColor   = palette[roles.bodyColor]  || b.dark;
 
@@ -2712,8 +2624,8 @@ function applyBrandToCards() {
     .lc-bar              { background: ${accentColor} !important; opacity: 1 !important; }
     .lt-divider          { background: ${accentColor} !important; opacity: 1 !important; }
     .lstat-small         { border-color: ${accentColor} !important; }
-    .lcta-pill.primary   { background: ${palette['cta'] || coverColor} !important; color: ${isLightColor(palette['cta'] || coverColor) ? b.dark : '#ffffff'} !important; }
-    .lcta-pill.secondary { background: ${hex2rgba(darkColor, 0.12)} !important; color: ${isLightColor(darkColor) ? hex2rgba(darkColor, 0.9) : 'rgba(255,255,255,0.7)'} !important; }
+    .lcta-pill.primary   { background: ${ctaColor} !important; color: ${isLightColor(ctaColor) ? b.dark : '#ffffff'} !important; }
+    .lcta-pill.secondary { background: ${hex2rgba(ctaColor, 0.15)} !important; color: ${isLightColor(coverColor) ? hex2rgba(ctaColor, 0.85) : hex2rgba(ctaColor, 0.9)} !important; }
 
     /* ── TIPOGRAFIA: cor e fonte dos títulos ── */
     .lc-headline, .lt-quote, .lstat-big, .li-title,
@@ -2758,7 +2670,6 @@ function openBrand() {
   document.getElementById('brand-dark-hex').value = b.dark;
   document.getElementById('brand-light').value = b.light;
   document.getElementById('brand-light-hex').value = b.light;
-  if (document.getElementById('brand-cta')) { document.getElementById('brand-cta').value = b.cta || '#ff5c35'; document.getElementById('brand-cta-hex').value = b.cta || '#ff5c35'; }
   document.getElementById('brand-font-display').value = b.fontDisplay;
   document.getElementById('brand-font-body').value = b.fontBody;
   document.getElementById('brand-handle').value = b.handle || '';
@@ -2769,7 +2680,7 @@ function openBrand() {
   document.getElementById('brand-modal').style.display = 'flex';
 
   // sync color pickers ↔ hex inputs
-  ['primary','accent','dark','light','cta'].forEach(key => {
+  ['primary','accent','dark','light'].forEach(key => {
     const pick = document.getElementById('brand-'+key);
     const hex  = document.getElementById('brand-'+key+'-hex');
     pick.addEventListener('input', () => { hex.value = pick.value; updateBrandPreview(); renderColorRoleSwatches(); });
@@ -2788,55 +2699,38 @@ function updateBrandPreview() {
   const accent  = document.getElementById('brand-accent').value;
   const dark    = document.getElementById('brand-dark').value;
   const light   = document.getElementById('brand-light').value;
-  const palette = { primary, accent, dark, light };
 
-  function isLight(hex) {
-    if (!hex || hex.length < 7) return true;
-    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b2 = parseInt(hex.slice(5,7),16);
-    return (0.299*r + 0.587*g + 0.114*b2) / 255 > 0.55;
-  }
-
-  // Read live colorRoles from swatches UI
-  const roles = getColorRolesFromUI();
-  const coverColor  = palette[roles.cover]      || primary;
-  const textBg      = palette[roles.text]       || light;
-  const accentColor = palette[roles.accent]     || accent;
-  const darkColor   = palette[roles.dark]       || dark;
-  const titleColor  = palette[roles.titleColor] || primary;
-  const bodyColor   = palette[roles.bodyColor]  || dark;
-
-  // Cover card
+  // Cover card — primary bg
   const cover = document.getElementById('prev-cover');
-  if (cover) { cover.style.background = coverColor; cover.style.color = isLight(coverColor) ? dark : '#fff'; }
+  if (cover) { cover.style.background = primary; cover.style.color = '#fff'; }
   const pt = document.getElementById('prev-title');
-  if (pt) { pt.style.fontFamily = fd; pt.style.color = titleColor; }
+  if (pt) { pt.style.fontFamily = fd; }
   const ps = document.getElementById('prev-sub');
   if (ps) { ps.style.fontFamily = fb; }
 
-  // Text card
+  // Text card — light bg
   const textCard = document.getElementById('prev-text');
-  if (textCard) { textCard.style.background = textBg; textCard.style.color = isLight(textBg) ? dark : '#fff'; }
+  if (textCard) { textCard.style.background = light; textCard.style.color = dark; }
   const divider = textCard?.querySelector('div');
-  if (divider) { divider.style.background = accentColor; }
+  if (divider) { divider.style.background = primary; }
   const pt2 = document.getElementById('prev-title2');
-  if (pt2) { pt2.style.fontFamily = fd; pt2.style.color = titleColor; }
+  if (pt2) { pt2.style.fontFamily = fd; pt2.style.color = primary; }
   const pb = document.getElementById('prev-body');
-  if (pb) { pb.style.fontFamily = fb; pb.style.color = bodyColor; }
+  if (pb) { pb.style.fontFamily = fb; }
 
-  // Accent/data card
+  // Data card — accent bg
   const accentCard = document.getElementById('prev-accent');
-  if (accentCard) { accentCard.style.background = accentColor; accentCard.style.color = isLight(accentColor) ? dark : '#fff'; }
+  if (accentCard) { accentCard.style.background = accent; accentCard.style.color = dark; }
   const pbig = document.getElementById('prev-big');
   if (pbig) { pbig.style.fontFamily = fd; }
 
-  // CTA card
+  // CTA card — dark bg
   const ctaCard = document.getElementById('prev-cta');
-  if (ctaCard) { ctaCard.style.background = coverColor; ctaCard.style.color = isLight(coverColor) ? dark : '#fff'; }
+  if (ctaCard) { ctaCard.style.background = dark; ctaCard.style.color = '#fff'; }
   const ctaTitle = document.getElementById('prev-cta-title');
-  if (ctaTitle) { ctaTitle.style.fontFamily = fd; ctaTitle.style.color = titleColor; }
+  if (ctaTitle) { ctaTitle.style.fontFamily = fd; }
   const pill = document.getElementById('prev-pill');
-  const ctaColorHex = document.getElementById('brand-cta')?.value || b?.cta || '#ff5c35';
-  if (pill) { pill.style.background = ctaColorHex; pill.style.color = isLight(ctaColorHex) ? dark : '#fff'; }
+  if (pill) { pill.style.background = primary; pill.style.color = '#fff'; }
 }
 
 function saveBrand() {
@@ -2851,7 +2745,6 @@ function saveBrand() {
     tagline:  document.getElementById('brand-tagline').value.trim(),
     year:     document.getElementById('brand-year').value.trim(),
     colorRoles: getColorRolesFromUI(),
-    cta: document.getElementById('brand-cta')?.value || '#ff5c35',
   };
   localStorage.setItem('storylab_brand', JSON.stringify(b));
   applyBrandToCards();
@@ -2867,7 +2760,7 @@ function getColorRolesFromUI() {
   document.querySelectorAll('.color-role-swatches').forEach(container => {
     const role = container.dataset.role;
     const active = container.querySelector('.color-role-swatch.active');
-    roles[role] = active ? active.dataset.key : { cover:'primary', text:'light', accent:'accent', dark:'dark', titleColor:'primary', bodyColor:'dark' }[role];
+    roles[role] = active ? active.dataset.key : { text:'light', titleColor:'primary', bodyColor:'dark' }[role] || null;
   });
   return roles;
 }
@@ -2882,15 +2775,13 @@ function renderColorRoleSwatches() {
     light:   document.getElementById('brand-light').value,
   } : null;
   const b = getBrand();
-  const liveCta = document.getElementById('brand-cta')?.value;
   const palette = [
     { key: 'primary', color: (livePalette || b).primary },
     { key: 'accent',  color: (livePalette || b).accent  },
     { key: 'dark',    color: (livePalette || b).dark    },
     { key: 'light',   color: (livePalette || b).light   },
-    { key: 'cta',     color: liveCta || b.cta || '#ff5c35' },
   ];
-  const defaultRoles = { cover:'primary', text:'light', accent:'accent', dark:'dark', titleColor:'primary', bodyColor:'dark', cta:'cta' };
+  const defaultRoles = { cover:'primary', text:'light', accent:'accent', dark:'dark', titleColor:'primary', bodyColor:'dark' };
   const roles = b.colorRoles || defaultRoles;
 
   document.querySelectorAll('.color-role-swatches').forEach(container => {
@@ -2917,7 +2808,6 @@ function renderColorRoleSwatches() {
         });
         sw.classList.add('active');
         sw.style.border = '2px solid var(--ink)';
-        updateBrandPreview();
       };
       container.appendChild(sw);
     });
@@ -3391,9 +3281,6 @@ function renderStepCanvas() {
 }
 
 function resetAll() {
-  // Close card color panel if open
-  const ccp = document.getElementById('card-color-panel');
-  if (ccp) ccp.remove();
   activeSessionId = null; // new carousel = new session
   Object.assign(S, {
     step:0, inputMode:'text', insumo:'', insumoFinal:'', isUrl:false, urlExtracted:false,
@@ -3949,7 +3836,6 @@ IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
 }
 
 function renderFinal(tplCls) {
-  const _ccp = document.getElementById('card-color-panel'); if (_ccp) _ccp.remove();
   const a = S.renderAnalysis; const cards = S.renderCards;
   const cardsHtml = cards.map((c,i) => renderCard(c,i+1,cards.length,tplCls)).join('');
   const codeText = cards.map(c => `texto ${c.num} - ${c.titulo}${c.corpo?' '+c.corpo:''}`).join('\n');
@@ -4007,7 +3893,6 @@ function renderFinal(tplCls) {
   // attach inline editors after DOM update
   setTimeout(applyEditablesToCards, 50);
   setTimeout(attachCardTracking, 60);
-  setTimeout(applyCardOverrides, 80);
   // generate post description + first comment
   setTimeout(generatePostContent, 800);
 }
@@ -4016,148 +3901,9 @@ function attachCardTracking() {
   document.querySelectorAll('.c-card').forEach(card => {
     const num = parseInt(card.getAttribute('data-card-num') || '1');
     card.addEventListener('mouseenter', () => { S.activeCardNum = num; });
-    card.addEventListener('click', (e) => {
-      S.activeCardNum = num;
-      // Don't open panel if clicking on editable text or image
-      if (e.target.closest('.editable') || e.target.closest('.img-placeholder') || e.target.closest('.card-color-panel')) return;
-      openCardColorPanel(card, num);
-    });
-  });
-
-  // Close panel when clicking outside
-  document.addEventListener('click', (e) => {
-    const panel = document.getElementById('card-color-panel');
-    if (panel && !panel.contains(e.target) && !e.target.closest('.c-card')) {
-      panel.classList.remove('visible');
-    }
-  }, { capture: true });
-}
-
-// ── CARD COLOR PANEL ──
-function openCardColorPanel(cardEl, num) {
-  // Remove existing panel
-  const existing = document.getElementById('card-color-panel');
-  if (existing) existing.remove();
-
-  const b = getBrand();
-  const palette = [
-    { key: 'primary', color: b.primary,          label: 'Primária' },
-    { key: 'accent',  color: b.accent,            label: 'Destaque' },
-    { key: 'dark',    color: b.dark,              label: 'Escura'   },
-    { key: 'light',   color: b.light,             label: 'Clara'    },
-    { key: 'cta',     color: b.cta || '#ff5c35',  label: 'Coringa'  },
-  ];
-
-  const overrides = (S.cardOverrides && S.cardOverrides[num]) ? S.cardOverrides[num] : {};
-
-  function swatchRow(field) {
-    return palette.map(p => {
-      const isActive = overrides[field] === p.key;
-      const hex = p.color.toLowerCase();
-      const lightColor = hex.startsWith('#f') || hex === '#ffffff' || hex === '#eeeeee';
-      return `<div class="ccp-swatch${isActive ? ' active' : ''}"
-        data-field="${field}" data-key="${p.key}"
-        style="background:${p.color};${lightColor ? 'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.18);' : ''}${isActive ? 'border-color:#ffffff;' : ''}"
-        title="${p.label}"></div>`;
-    }).join('');
-  }
-
-  const panel = document.createElement('div');
-  panel.id = 'card-color-panel';
-  panel.innerHTML = `
-    <div class="ccp-title" style="display:flex;align-items:center;justify-content:space-between;">
-      <span>Card ${num}</span>
-      <button onclick="document.getElementById('card-color-panel').remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0;display:flex;align-items:center;line-height:1;font-size:1rem;" title="Fechar">×</button>
-    </div>
-    <div class="ccp-row">
-      <span class="ccp-label">Fundo</span>
-      <div class="ccp-swatches">${swatchRow('bg')}</div>
-    </div>
-    <div class="ccp-row">
-      <span class="ccp-label">Título</span>
-      <div class="ccp-swatches">${swatchRow('title')}</div>
-    </div>
-    <div class="ccp-row">
-      <span class="ccp-label">Texto</span>
-      <div class="ccp-swatches">${swatchRow('body')}</div>
-    </div>`;
-
-  // Append to body with fixed positioning
-  document.body.appendChild(panel);
-
-  // Position: below card on desktop, bottom sheet on mobile
-  if (window.innerWidth > 600) {
-    const rect = cardEl.getBoundingClientRect();
-    const pw = 230;
-    let left = rect.left;
-    let top  = rect.bottom + 10;
-    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
-    if (top + 180 > window.innerHeight) top = rect.top - 188;
-    panel.style.left = left + 'px';
-    panel.style.top  = top  + 'px';
-  }
-  // mobile: CSS handles bottom sheet via media query
-
-  // Swatch click handler
-  panel.querySelectorAll('.ccp-swatch').forEach(sw => {
-    sw.onclick = (e) => {
-      e.stopPropagation();
-      const field = sw.dataset.field;
-      const key   = sw.dataset.key;
-      if (!S.cardOverrides) S.cardOverrides = {};
-      if (!S.cardOverrides[num]) S.cardOverrides[num] = {};
-
-      // Toggle off if already active
-      if (S.cardOverrides[num][field] === key) {
-        delete S.cardOverrides[num][field];
-        if (Object.keys(S.cardOverrides[num]).length === 0) delete S.cardOverrides[num];
-      } else {
-        S.cardOverrides[num][field] = key;
-      }
-
-      applyCardOverrides();
-      openCardColorPanel(cardEl, num);
-    };
+    card.addEventListener('click', () => { S.activeCardNum = num; });
   });
 }
-
-
-function applyCardOverrides() {
-  if (!S.cardOverrides) return;
-  const b = getBrand();
-  const palette = { primary: b.primary, accent: b.accent, dark: b.dark, light: b.light, cta: b.cta || b.primary };
-
-  function isLight(hex) {
-    if (!hex || hex.length < 7) return true;
-    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), bv = parseInt(hex.slice(5,7),16);
-    return (0.299*r + 0.587*g + 0.114*bv) / 255 > 0.55;
-  }
-
-  Object.entries(S.cardOverrides).forEach(([num, overrides]) => {
-    const cardEl = document.querySelector(`.c-card[data-card-num="${num}"]`);
-    if (!cardEl) return;
-
-    if (overrides.bg) {
-      const bgColor = palette[overrides.bg];
-      cardEl.style.setProperty('background', bgColor, 'important');
-      // Auto text color for readability if no manual overrides
-      if (!overrides.title && !overrides.body) {
-        const autoColor = isLight(bgColor) ? b.dark : '#ffffff';
-        cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => el.style.setProperty('color', autoColor, 'important'));
-        cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body').forEach(el => el.style.setProperty('color', autoColor, 'important'));
-      }
-    }
-    if (overrides.title) {
-      const c = palette[overrides.title];
-      cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => el.style.setProperty('color', c, 'important'));
-    }
-    if (overrides.body) {
-      const c = palette[overrides.body];
-      cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body').forEach(el => el.style.setProperty('color', c, 'important'));
-    }
-  });
-}
-
 
 
 // ── GERAR DESCRIÇÃO DO POST + PRIMEIRO COMENTÁRIO ──
@@ -4697,7 +4443,7 @@ function renderCard(card, num, total, tplCls) {
         ${cardImg ? `<div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to top,rgba(0,0,0,0.88) 0%,rgba(0,0,0,0.5) 50%,rgba(0,0,0,0.15) 100%);pointer-events:none"></div>` : ''}
         <div style="position:relative;z-index:3;display:flex;flex-direction:column;justify-content:space-between;height:100%;padding:22px">
           <div class="lcta-top">
-            ${!cardImg ? `<div class="card-img-upload" onclick="triggerCardImageUpload(${num})" style="position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);border:1.5px dashed rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:4" title="Adicionar foto"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg></div>` : ''}
+            <div class="card-img-upload" onclick="triggerCardImageUpload(${num})" style="position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);border:1.5px dashed rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:4" title="${cardImg ? 'Trocar imagem' : 'Adicionar foto'}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg></div>
             <div class="lcta-label">próximo passo</div>
             <div class="lcta-headline editable" data-editable="titulo" data-card-num="${num}">${card.titulo}</div>
             <div class="lcta-body editable" data-editable="corpo" data-card-num="${num}">${card.corpo||''}</div>
@@ -5130,36 +4876,25 @@ function initTheme() {
 const BACKEND_URL = 'https://storylab-backend-production.up.railway.app';
 const supabaseClient = window.supabase.createClient(
   'https://fgwjpisxuttaafgxjuhr.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnd2pwaXN4dXR0YWFmZ3hqdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE3MzIsImV4cCI6MjA5MTIzNzczMn0.Hb6vfs2ciBGWyWobjKiXVI91nTuYDmfJ0E4ROTZ_pgU',
-  { auth: { detectSessionInUrl: true, persistSession: true } }
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnd2pwaXN4dXR0YWFmZ3hqdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE3MzIsImV4cCI6MjA5MTIzNzczMn0.Hb6vfs2ciBGWyWobjKiXVI91nTuYDmfJ0E4ROTZ_pgU'
 );
 
 let currentSession = null;
 
 async function initAuth() {
-  // Listen for auth state changes FIRST — captures magic link token from URL hash
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
-    currentSession = session;
-    if (session) {
-      hideLoginScreen();
-    } else {
-      showLoginScreen();
-    }
-  });
-
-  // Then check for existing session (handles page refresh)
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     currentSession = session;
     hideLoginScreen();
   } else {
-    // Only show login if there's no hash token being processed
-    const hasAuthHash = window.location.hash.includes('access_token') || window.location.hash.includes('error_code');
-    if (!hasAuthHash) {
-      showLoginScreen();
-    }
-    // If there's a hash, onAuthStateChange will fire shortly and handle it
+    showLoginScreen();
   }
+  // Listen for auth changes
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    currentSession = session;
+    if (session) hideLoginScreen();
+    else showLoginScreen();
+  });
 }
 
 function showLoginScreen() {
