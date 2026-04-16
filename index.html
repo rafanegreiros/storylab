@@ -439,6 +439,25 @@ textarea { min-height: 120px; }
 /* ── THREAD themes ── */
 .theme-thread { background: #ffffff; color: #111; }
 .theme-thread-end { background: #0a0a0a; color: #fff; }
+
+/* ── TEMPLATE PREVIEW WIREFRAMES ── */
+.tpl-preview {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+  margin-bottom: 8px; pointer-events: none; height: 88px;
+}
+.tpl-preview-card { border-radius: 2px; overflow: hidden; position: relative; height: 100%; }
+.tpc-dark { background: #111; }
+.tpc-light { background: #e8e8e4; }
+.tpc-accent { background: #0071e3; }
+.tpc-white { background: #fff; border: 0.5px solid #ddd; }
+.tpc-orange { background: #e05a00; }
+.tpc-line { background: #fff; border-radius: 1px; display: block; }
+.tpc-line.dark { background: #222; }
+.tpc-line.accent { background: var(--brand-accent, #2de300); }
+.tpc-line.orange { background: #e05a00; }
+.tpc-line.muted { background: rgba(0,0,0,0.2); }
+.tpc-line.wmuted { background: rgba(255,255,255,0.3); }
+
 /* ── CANVAS ── */
 .canvas {
   padding: 40px;
@@ -4303,6 +4322,16 @@ const THEME_MAP = {
 };
 
 function imgEditorHtml(num, cardImg, slotW, slotH, isDark) {
+  if (!cardImg) {
+    // No image yet — show upload placeholder
+    const strokeCol = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.3)';
+    return `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1;" onclick="triggerCardImageUpload(${num})">
+      <div style="text-align:center;">
+        <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='${strokeCol}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2' ry='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
+        <div style="font-family:'Poppins',sans-serif;font-size:0.55rem;color:${strokeCol};margin-top:4px;letter-spacing:1px;text-transform:uppercase">Adicionar imagem</div>
+      </div>
+    </div>`;
+  }
   const src = `data:${cardImg.mime};base64,${cardImg.data}`;
   return `
     <div class="img-editor-wrap" data-card="${num}" style="position:absolute;inset:0;overflow:hidden;cursor:grab;z-index:1;">
