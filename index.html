@@ -4129,9 +4129,9 @@ function scrollCarousel(dir) {
 
 function switchTemplate() {
   // Go back to template choice without losing generated content
+  // S.cardImages is intentionally preserved so images survive template switch
   S.step = 4;
   S.selectedTemplate = null;
-  S.cardImages = {};
   initSidebar();
   renderTemplateChoice();
 }
@@ -4728,6 +4728,7 @@ function triggerCardImageUpload(num) {
       renderFinal(tplCls);
       // Auto-fit image after render
       setTimeout(() => autoFitImage(num), 80);
+      saveImagesToStorage(activeSessionId);
     };
     reader.readAsDataURL(file);
   };
@@ -4742,6 +4743,7 @@ function applyImageToCard(num, dataB64, mime) {
   renderFinal(tplCls);
   setTimeout(() => autoFitImage(num), 80);
   showPasteToast(num);
+  saveImagesToStorage(activeSessionId);
 }
 
 function setCardImageFromUrl(num, url) {
@@ -4811,6 +4813,7 @@ function removeCardImage(num) {
   delete S.cardImages[num];
   const tplCls = {1:'tpl-clareza',2:'tpl-impacto',3:'tpl-autoridade',4:'tpl-ritmo',5:'tpl-imersivo',6:'tpl-foco',7:'tpl-storylab',8:'tpl-thread'}[S.selectedTemplate];
   renderFinal(tplCls);
+  saveImagesToStorage(activeSessionId);
 }
 
 // Auto-fit: scale image to cover its slot entirely
@@ -5876,6 +5879,35 @@ function getSessionSnapshot() {
   };
 }
 
+// ─── Image persistence helpers ───────────────────────────────────────────────
+// Images are base64 and too heavy for Supabase — we keep them in localStorage
+// keyed by session ID so they survive page reloads and history restores.
+
+function saveImagesToStorage(sessionId) {
+  if (!sessionId) return;
+  try {
+    const imgs = S.cardImages || {};
+    if (Object.keys(imgs).length === 0) {
+      localStorage.removeItem('storylab_images_' + sessionId);
+    } else {
+      localStorage.setItem('storylab_images_' + sessionId, JSON.stringify(imgs));
+    }
+  } catch(e) {
+    console.warn('saveImagesToStorage failed:', e.message);
+  }
+}
+
+function loadImagesFromStorage(sessionId) {
+  if (!sessionId) return {};
+  try {
+    const raw = localStorage.getItem('storylab_images_' + sessionId);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) {
+    return {};
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function autoSave() {
   if (!currentSession) return;
   if (S.step < 1 || !S.triagem) return; // only after triagem
@@ -5904,6 +5936,8 @@ async function autoSave() {
       }
 
       showSaveIndicator();
+      // Persist images locally (too heavy for Supabase payload)
+      saveImagesToStorage(activeSessionId);
     } catch(e) {
       console.warn('AutoSave failed:', e.message);
     }
@@ -6091,6 +6125,8 @@ function restoreSnap(snap, sessionId) {
     localStorage.setItem('storylab_brand', JSON.stringify(snap.brand));
     applyBrandToCards();
   }
+  // Restore images from localStorage (not stored in Supabase)
+  S.cardImages = loadImagesFromStorage(sessionId || activeSessionId);
 }
 
 function renderStep(step) {
