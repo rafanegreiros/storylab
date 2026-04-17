@@ -461,98 +461,86 @@ textarea { min-height: 120px; }
 
 /* ── TEMPLATE COVER CARDS ── */
 .template-grid {
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 12px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.2) transparent;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
 }
-.template-grid::-webkit-scrollbar { height: 4px; }
-.template-grid::-webkit-scrollbar-track { background: transparent; }
-.template-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
 .tpl-card {
   position: relative;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  flex-shrink: 0;
-  width: 160px;
   aspect-ratio: 4 / 5;
-  transition: transform 0.25s ease, width 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
   padding: 0 !important;
   background: #111 !important;
 }
 .tpl-card:hover {
-  transform: scale(1.06);
-  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+  transform: scale(1.03);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4);
   z-index: 10;
 }
 .tpl-card.selected { outline: 3px solid #fff; outline-offset: -3px; }
-.tpl-card.selected .tpl-check {
-  display: flex;
-}
+.tpl-card.selected .tpl-check { display: flex; }
 .tpl-check {
   display: none;
-  position: absolute; top: 8px; right: 8px;
-  width: 20px; height: 20px; border-radius: 50%;
+  position: absolute; top: 12px; right: 12px;
+  width: 24px; height: 24px; border-radius: 50%;
   background: #0071e3;
-  color: #fff; font-size: 0.6rem; font-weight: 700;
+  color: #fff; font-size: 0.65rem; font-weight: 700;
   align-items: center; justify-content: center;
   z-index: 3;
 }
 .tpl-cover {
-  position: absolute;
-  inset: 0;
+  position: absolute; inset: 0;
   background-size: cover;
   background-position: center;
   transition: transform 0.4s ease;
 }
-.tpl-card:hover .tpl-cover { transform: scale(1.08); }
+.tpl-card:hover .tpl-cover { transform: scale(1.06); }
 .tpl-card::after {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 45%, rgba(0,0,0,0.08) 100%);
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.08) 100%);
   pointer-events: none; z-index: 1;
 }
 .tpl-card-content {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  padding: 10px 12px 12px;
+  padding: 18px 20px 22px;
   z-index: 2;
 }
 .tpl-num {
   font-family: 'Poppins', sans-serif;
-  font-size: 0.48rem; font-weight: 600;
-  letter-spacing: 1.5px; text-transform: uppercase;
+  font-size: 0.55rem; font-weight: 600;
+  letter-spacing: 2px; text-transform: uppercase;
   color: rgba(255,255,255,0.45);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 .tpl-name {
   font-family: 'Poppins', sans-serif;
-  font-size: 0.95rem; font-weight: 800;
-  color: #ffffff; line-height: 1.1;
+  font-size: 1.6rem; font-weight: 800;
+  color: #ffffff; line-height: 1.05;
   margin-bottom: 0;
 }
 .tpl-desc {
-  font-size: 0.6rem; font-weight: 600;
+  font-size: 0.75rem; font-weight: 600;
   color: rgba(255,255,255,0.75);
-  line-height: 1.4; margin-top: 6px;
+  line-height: 1.5; margin-top: 10px;
   display: none;
 }
 .tpl-card:hover .tpl-desc { display: block; }
 .tpl-blocks {
   display: none;
-  margin-top: 7px;
+  margin-top: 10px;
 }
 .tpl-card:hover .tpl-blocks {
   display: inline-flex;
   align-items: center;
-  border: 1.5px solid rgba(255,255,255,0.4);
+  border: 1.5px solid rgba(255,255,255,0.45);
   border-radius: 100px;
-  padding: 4px 10px;
-  font-size: 0.52rem; font-weight: 600;
+  padding: 5px 14px;
+  font-size: 0.58rem; font-weight: 600;
   color: rgba(255,255,255,0.7);
   font-family: 'Poppins', sans-serif;
   letter-spacing: 1px; text-transform: uppercase;
@@ -4060,7 +4048,7 @@ function renderTemplateChoice() {
       <div style="font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Escolha o Template</div>
       <div style="font-size:0.8rem;color:var(--muted)">Passe o mouse para ver a descrição — clique para selecionar.</div>
     </div>
-    <div class="template-grid"
+    <div class="template-grid">
       ${tpls.map(tpl=>`
         <div class="tpl-card ${S.selectedTemplate===tpl.num?'selected':''}" onclick="selectTemplate(${tpl.num})">
           ${coverCard(tpl.num)}
