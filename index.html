@@ -4156,7 +4156,7 @@ function openCardColorPanel(cardEl, num) {
 
   const overrides = (S.cardOverrides && S.cardOverrides[num]) ? S.cardOverrides[num] : {};
   // Detect if this is a CTA card by checking its theme class
-  const isCTACard = cardEl.querySelector('.layout-cta') !== null;
+  const isCTACard = cardEl.querySelector('.layout-cta, .lft-cta-btn, .lft-pill') !== null;
 
   function swatchRow(field) {
     const freeColor = overrides['free_' + field] || '#aaaaaa';
@@ -4201,8 +4201,12 @@ function openCardColorPanel(cardEl, num) {
     </div>
     ${isCTACard ? `
     <div class="ccp-row">
-      <span class="ccp-label">Botão</span>
+      <span class="ccp-label">Fundo botão</span>
       <div class="ccp-swatches">${swatchRow('ctaBtn')}</div>
+    </div>
+    <div class="ccp-row">
+      <span class="ccp-label">Texto botão</span>
+      <div class="ccp-swatches">${swatchRow('ctaBtnText')}</div>
     </div>` : ''}`;
 
   // Append to body with fixed positioning
@@ -4284,18 +4288,32 @@ function applyCardOverrides() {
       cardEl.style.setProperty('background', bgColor, 'important');
       if (!overrides.title && !overrides.body) {
         const autoColor = isLight(bgColor) ? b.dark : '#ffffff';
-        cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => el.style.setProperty('color', autoColor, 'important'));
-        cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body').forEach(el => el.style.setProperty('color', autoColor, 'important'));
+        cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big,.lft-title,.lst-title,.lsit-title,.lss-title,.lth-title,.lte-brand,.lcf-headline').forEach(el => el.style.setProperty('color', autoColor, 'important'));
+        cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body,.lft-body,.lst-body,.lsit-body,.lsit-bold,.lss-body,.lth-body,.lth-bold,.lcf-sub').forEach(el => el.style.setProperty('color', autoColor, 'important'));
       }
     }
     const titleColor2 = resolveColor(overrides, 'title');
-    if (titleColor2) cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => el.style.setProperty('color', titleColor2, 'important'));
+    if (titleColor2) cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big,.lft-title,.lst-title,.lsit-title,.lss-title,.lth-title,.lte-brand,.lcf-headline').forEach(el => el.style.setProperty('color', titleColor2, 'important'));
 
     const bodyColor2 = resolveColor(overrides, 'body');
-    if (bodyColor2) cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body').forEach(el => el.style.setProperty('color', bodyColor2, 'important'));
+    if (bodyColor2) cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body,.lft-body,.lst-body,.lsit-body,.lsit-bold,.lss-body,.lth-body,.lth-bold,.lcf-sub').forEach(el => el.style.setProperty('color', bodyColor2, 'important'));
 
     const ctaBtnColor = resolveColor(overrides, 'ctaBtn');
-    if (ctaBtnColor) cardEl.querySelectorAll('.lcta-pill.primary').forEach(el => el.style.setProperty('background', ctaBtnColor, 'important'));
+    if (ctaBtnColor) {
+      cardEl.querySelectorAll('.lcta-pill.primary, .lft-cta-btn').forEach(el => el.style.setProperty('background', ctaBtnColor, 'important'));
+    }
+
+    const ctaBtnTextColor = resolveColor(overrides, 'ctaBtnText');
+    if (ctaBtnTextColor) {
+      cardEl.querySelectorAll('.lcta-pill.primary, .lft-cta-btn').forEach(el => el.style.setProperty('color', ctaBtnTextColor, 'important'));
+    }
+
+    // Default: if no ctaBtn override, use accent color on foco-cta button
+    if (!ctaBtnColor) {
+      cardEl.querySelectorAll('.lft-cta-btn').forEach(el => {
+        if (!el.style.background) el.style.setProperty('background', b.accent, 'important');
+      });
+    }
   });
 }
 
@@ -5334,7 +5352,7 @@ function getCardBgColor(card) {
 function applyBrandInline(clone) {
   // Apply brand fonts and colors directly as inline styles to avoid dynamic CSS issues
   const b = getBrand();
-  const displayEls = clone.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big');
+  const displayEls = clone.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big,.lft-title,.lst-title,.lsit-title,.lss-title,.lth-title,.lte-brand,.lcf-headline');
   displayEls.forEach(el => { el.style.fontFamily = b.fontDisplay; });
   const bodyEls = clone.querySelectorAll('.lt-body,.li-text,.lbg-body,.lcta-body,.lc-sub,.lstat-small,.lbg-label');
   bodyEls.forEach(el => { el.style.fontFamily = b.fontBody; });
@@ -5345,7 +5363,7 @@ function applyBrandInline(clone) {
   // Text colors for light cards
   const cls = clone.className;
   if (cls.includes('clareza-text') || cls.includes('ritmo-text')) {
-    const inlineRoles = b.colorRoles || {}; const inlinePalette = {primary:b.primary,accent:b.accent,dark:b.dark,light:b.light}; const inlineTitleColor = inlinePalette[inlineRoles.titleColor] || b.primary; clone.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big').forEach(el => { el.style.color = inlineTitleColor; });
+    const inlineRoles = b.colorRoles || {}; const inlinePalette = {primary:b.primary,accent:b.accent,dark:b.dark,light:b.light}; const inlineTitleColor = inlinePalette[inlineRoles.titleColor] || b.primary; clone.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big,.lft-title,.lst-title,.lsit-title,.lss-title,.lth-title,.lte-brand,.lcf-headline').forEach(el => { el.style.color = inlineTitleColor; });
   }
 }
 
