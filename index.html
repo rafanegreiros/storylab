@@ -2628,7 +2628,7 @@ const BRAND_DEFAULTS = {
   primary: '#0071e3', accent: '#2de300', dark: '#2f2d2d', light: '#eaeaec', cta: '#e3fe03',
   fontDisplay: "'Poppins', sans-serif", fontBody: "'Roboto', sans-serif",
   handle: '@bystorylab', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
-  colorRoles: { text: 'light', ctaRole: 'cta', titleColor: 'primary', bodyColor: 'dark' }
+  colorRoles: { text: 'light', ctaRole: 'cta', titleColor: 'dark', bodyColor: 'dark' }
 };
 
 function getBrand() {
@@ -2649,12 +2649,12 @@ function getBrand() {
     // Ensure colorRoles always present
     if (!stored.colorRoles) stored.colorRoles = { text: 'light', ctaRole: 'cta', titleColor: 'primary', bodyColor: 'dark' };
     else {
-      if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'primary';
+      if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'dark';
       if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark';
       if (!stored.colorRoles.ctaRole) stored.colorRoles.ctaRole = 'cta';
     }
     if (!stored.cta) stored.cta = '#e3fe03';
-    else { if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'primary'; if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark'; }
+    else { if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'dark'; if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark'; }
     return stored;
   } catch { return {...BRAND_DEFAULTS}; }
 }
@@ -2765,15 +2765,36 @@ function applyBrandToCards() {
     .lcta-pill.primary   { background: ${ctaColor} !important; color: ${isLightColor(ctaColor) ? b.dark : '#ffffff'} !important; }
     .lcta-pill.secondary { background: ${hex2rgba(ctaColor, 0.18)} !important; color: ${hex2rgba(ctaColor, 0.9)} !important; }
 
-    /* ── TIPOGRAFIA: cor e fonte dos títulos ── */
-    .lc-headline, .lt-quote, .lstat-big, .li-title,
-    .lbg-title, .lcta-headline, .ld-num-big {
+    /* ── TIPOGRAFIA: cor e fonte dos títulos (só cards claros) ── */
+    .theme-clareza-text .lc-headline,
+    .theme-clareza-imgtop .li-title,
+    .theme-autori-text .lc-headline,
+    .theme-ritmo-text .lc-headline,
+    .theme-impacto-imgtop .li-title,
+    .lt-quote, .lstat-big, .li-title,
+    .lbg-title, .lcta-headline, .ld-num-big,
+    .theme-sl-text .lst-title,
+    .theme-sl-imgtext .lsit-title,
+    .theme-sl-imgtext-light .lsit-title,
+    .theme-sl-text-accent .lst-title,
+    .theme-thread .lth-title {
       color: ${titleColor} !important;
+      font-family: ${b.fontDisplay} !important;
+    }
+    /* ── TIPOGRAFIA: fonte (sem cor) nos títulos de cards escuros — eles têm cor own ── */
+    .lc-headline {
       font-family: ${b.fontDisplay} !important;
     }
     /* ── TIPOGRAFIA: cor e fonte do corpo ── */
     .lt-body, .li-text, .lbg-body, .lc-sub,
-    .lstat-small, .lbg-label {
+    .lstat-small, .lbg-label,
+    .theme-sl-text .lst-body,
+    .theme-sl-imgtext .lsit-body,
+    .theme-sl-imgtext-light .lsit-body,
+    .theme-sl-imgtext .lsit-bold,
+    .theme-sl-text-accent .lst-body,
+    .theme-thread .lth-body,
+    .theme-thread .lth-bold {
       color: ${bodyColor} !important;
       font-family: ${b.fontBody} !important;
     }
@@ -2917,7 +2938,7 @@ function getColorRolesFromUI() {
   document.querySelectorAll('.color-role-swatches').forEach(container => {
     const role = container.dataset.role;
     const active = container.querySelector('.color-role-swatch.active');
-    roles[role] = active ? active.dataset.key : { text:'light', ctaRole:'cta', titleColor:'primary', bodyColor:'dark' }[role] || null;
+    roles[role] = active ? active.dataset.key : { text:'light', ctaRole:'cta', titleColor:'dark', bodyColor:'dark' }[role] || null;
   });
   return roles;
 }
@@ -2940,7 +2961,7 @@ function renderColorRoleSwatches() {
     { key: 'light',   color: (livePalette || b).light   },
     { key: 'cta',     color: liveCta || b.cta || '#ff5c35' },
   ];
-  const defaultRoles = { text:'light', ctaRole:'cta', titleColor:'primary', bodyColor:'dark' };
+  const defaultRoles = { text:'light', ctaRole:'cta', titleColor:'dark', bodyColor:'dark' };
   const roles = b.colorRoles || defaultRoles;
 
   document.querySelectorAll('.color-role-swatches').forEach(container => {
@@ -4300,19 +4321,15 @@ function applyCardOverrides() {
 
     const ctaBtnColor = resolveColor(overrides, 'ctaBtn');
     if (ctaBtnColor) {
-      cardEl.querySelectorAll('.lcta-pill.primary, .lft-cta-btn').forEach(el => el.style.setProperty('background', ctaBtnColor, 'important'));
+      // Apply to ALL button variants — primary pill, secondary pill, foco-cta btn
+      cardEl.querySelectorAll('.lcta-pill.primary, .lcta-pill.secondary, .lft-cta-btn').forEach(el => el.style.setProperty('background', ctaBtnColor, 'important'));
     }
 
     const ctaBtnTextColor = resolveColor(overrides, 'ctaBtnText');
     if (ctaBtnTextColor) {
-      cardEl.querySelectorAll('.lcta-pill.primary, .lft-cta-btn').forEach(el => el.style.setProperty('color', ctaBtnTextColor, 'important'));
-    }
-
-    // Default: if no ctaBtn override, use accent color on foco-cta button
-    if (!ctaBtnColor) {
-      cardEl.querySelectorAll('.lft-cta-btn').forEach(el => {
-        if (!el.style.background) el.style.setProperty('background', b.accent, 'important');
-      });
+      cardEl.querySelectorAll('.lcta-pill.primary, .lcta-pill.secondary, .lft-cta-btn').forEach(el => el.style.setProperty('color', ctaBtnTextColor, 'important'));
+      // Also update the span text inside pills
+      cardEl.querySelectorAll('.lcta-pill.secondary span').forEach(el => el.style.setProperty('color', ctaBtnTextColor, 'important'));
     }
   });
 }
@@ -4932,7 +4949,7 @@ function renderCard(card, num, total, tplCls) {
   } else if (layoutType === 'imersivo-rect') {
     inner = `
       <div style="position:absolute;inset:0;padding:44px 20px 18px;display:flex;flex-direction:column;gap:8px;">
-        <div style="font-family:var(--brand-font-display);font-weight:900;font-size:1.4rem;line-height:1.1;color:var(--brand-primary);flex-shrink:0;" class="editable" data-editable="titulo" data-card-num="${num}">${card.titulo}</div>
+        <div style="font-family:var(--brand-font-display);font-weight:900;font-size:1.4rem;line-height:1.1;color:var(--brand-dark, #2f2d2d);flex-shrink:0;" class="editable" data-editable="titulo" data-card-num="${num}">${card.titulo}</div>
         <div style="flex:1;border-radius:10px;overflow:hidden;position:relative;min-height:0;">${imgEditorHtml(num, cardImg, 0, 0, false)}</div>
         <div style="font-size:0.78rem;line-height:1.6;color:var(--brand-dark);opacity:0.8;" class="editable" data-editable="corpo" data-card-num="${num}">${card.corpo||''}</div>
       </div>`;
@@ -5050,7 +5067,7 @@ function renderCard(card, num, total, tplCls) {
   } else if (layoutType === 'sl-text-accent') {
     inner = `
       <div style="position:absolute;inset:0;padding:44px 22px 18px;display:flex;flex-direction:column;gap:10px;">
-        <div style="font-family:var(--brand-font-display);font-weight:900;font-size:1.45rem;line-height:1.1;color:var(--brand-primary);" class="editable" data-editable="titulo" data-card-num="${num}">${card.titulo}</div>
+        <div style="font-family:var(--brand-font-display);font-weight:900;font-size:1.45rem;line-height:1.1;color:var(--brand-dark, #2f2d2d);" class="editable" data-editable="titulo" data-card-num="${num}">${card.titulo}</div>
         <div style="font-size:0.82rem;line-height:1.65;color:var(--brand-dark);opacity:0.75;" class="editable" data-editable="corpo" data-card-num="${num}">${card.corpo||''}</div>
       </div>`;
 
