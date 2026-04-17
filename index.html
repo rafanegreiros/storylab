@@ -2762,8 +2762,8 @@ function applyBrandToCards() {
     .lc-bar              { background: ${accentColor} !important; opacity: 1 !important; }
     .lt-divider          { background: ${accentColor} !important; opacity: 1 !important; }
     .lstat-small         { border-color: ${accentColor} !important; }
-    .lcta-pill.primary   { background: ${ctaColor} !important; color: ${isLightColor(ctaColor) ? b.dark : '#ffffff'} !important; }
-    .lcta-pill.secondary { background: ${hex2rgba(ctaColor, 0.18)} !important; color: ${hex2rgba(ctaColor, 0.9)} !important; }
+    .lcta-pill.primary   { background: ${b.accent} !important; color: ${isLightColor(b.accent) ? b.dark : '#ffffff'} !important; }
+    .lcta-pill.secondary { background: ${hex2rgba(b.accent, 0.12)} !important; color: ${b.accent} !important; }
 
     /* ── TIPOGRAFIA: cor e fonte dos títulos (só cards claros) ── */
     .theme-clareza-text .lc-headline,
@@ -2877,11 +2877,12 @@ function updateBrandPreview() {
   const titleColor  = palette[roles.titleColor] || primary;
   const bodyColor   = palette[roles.bodyColor]  || dark;
 
-  // Cover card
+  // Cover card — title always auto-contrasts against cover background
   const cover = document.getElementById('prev-cover');
   if (cover) { cover.style.background = coverColor; cover.style.color = isLight(coverColor) ? dark : '#fff'; }
   const pt = document.getElementById('prev-title');
-  if (pt) { pt.style.fontFamily = fd; pt.style.color = titleColor; }
+  const coverTitleColor = isLight(coverColor) ? dark : '#ffffff';
+  if (pt) { pt.style.fontFamily = fd; pt.style.color = coverTitleColor; }
   const ps = document.getElementById('prev-sub');
   if (ps) { ps.style.fontFamily = fb; }
 
@@ -2901,13 +2902,14 @@ function updateBrandPreview() {
   const pbig = document.getElementById('prev-big');
   if (pbig) { pbig.style.fontFamily = fd; }
 
-  // CTA card
+  // CTA card — title auto-contrasts, button uses accent
   const ctaCard = document.getElementById('prev-cta');
   if (ctaCard) { ctaCard.style.background = coverColor; ctaCard.style.color = isLight(coverColor) ? dark : '#fff'; }
   const ctaTitle = document.getElementById('prev-cta-title');
-  if (ctaTitle) { ctaTitle.style.fontFamily = fd; ctaTitle.style.color = titleColor; }
+  const ctaTitleColor = isLight(coverColor) ? dark : '#ffffff';
+  if (ctaTitle) { ctaTitle.style.fontFamily = fd; ctaTitle.style.color = ctaTitleColor; }
   const pill = document.getElementById('prev-pill');
-  if (pill) { pill.style.background = ctaColorPrev; pill.style.color = isLight(ctaColorPrev) ? dark : '#fff'; }
+  if (pill) { pill.style.background = accent; pill.style.color = isLight(accent) ? dark : '#fff'; }
 }
 
 function saveBrand() {
@@ -4168,11 +4170,10 @@ function openCardColorPanel(cardEl, num) {
 
   const b = getBrand();
   const palette = [
-    { key: 'primary', color: b.primary,          label: 'Primária' },
-    { key: 'accent',  color: b.accent,            label: 'Destaque' },
-    { key: 'dark',    color: b.dark,              label: 'Escura'   },
-    { key: 'light',   color: b.light,             label: 'Clara'    },
-    { key: 'cta',     color: b.cta || '#ff5c35',  label: 'Coringa'  },
+    { key: 'primary', color: b.primary, label: 'Primária' },
+    { key: 'accent',  color: b.accent,  label: 'Destaque' },
+    { key: 'dark',    color: b.dark,    label: 'Escura'   },
+    { key: 'light',   color: b.light,   label: 'Clara'    },
   ];
 
   const overrides = (S.cardOverrides && S.cardOverrides[num]) ? S.cardOverrides[num] : {};
