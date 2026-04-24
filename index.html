@@ -4362,11 +4362,27 @@ REGRAS CRÍTICAS:
 - TODOS os campos titulo e corpo devem ter conteúdo — nunca string vazia.
 ${prevNarrativa}
 
-IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
-{"tema":"${t.tema_central}","funil":"${t.funil_detectado}","objetivo":"engajamento|educação|conversão|viralização","razao_viral":"1 frase","cards":[{"num":1,"tipo":"capa","titulo":"","corpo":"","dica_imagem":""}]}`;
+EXEMPLO DE FORMATO (adapte o conteúdo para o tema real — todos os campos preenchidos):
+{"tema":"exemplo","funil":"awareness","objetivo":"engajamento","razao_viral":"quebra mito comum","cards":[
+  {"num":1,"tipo":"capa","titulo":"TITULO FORTE DA CAPA","corpo":"Subtítulo que amplia a tensão e desperta curiosidade do leitor.","dica_imagem":"foto do tema"},
+  {"num":2,"tipo":"texto","titulo":"O GRANDE PROBLEMA","corpo":"Descrição do problema central que o leitor enfrenta.","dica_imagem":""},
+  {"num":${n},"tipo":"cta","titulo":"TRANSFORMAÇÃO POSSÍVEL","corpo":"Chamada para ação específica. O que o leitor deve fazer agora.","dica_imagem":"foto do resultado"}
+]}
+
+REGRA FINAL: TODOS os ${n} cards devem aparecer no JSON. titulo e corpo NUNCA podem ser string vazia "". Responda SOMENTE com o JSON completo, sem texto antes ou depois.`;
   try {
-    const data = extractJSON(await callClaude(prompt, 2500));
-    S.renderCards = data.cards;
+    const data = extractJSON(await callClaude(prompt, 3500));
+    // Ensure no card has empty titulo or corpo
+    const fixedCards = (data.cards||[]).map((c, idx, arr) => {
+      const isFirst = idx === 0;
+      const isLast  = idx === arr.length - 1;
+      let titulo = (c.titulo||'').trim();
+      let corpo  = (c.corpo||'').trim();
+      if (!titulo) titulo = isFirst ? (h.l1+' / '+h.l2) : isLast ? (e.direcao||'Saiba mais') : e.hook;
+      if (!corpo)  corpo  = isFirst ? (e.hook||'') : isLast ? (e.aplicacao||e.direcao||'') : '';
+      return {...c, titulo, corpo};
+    });
+    S.renderCards = fixedCards;
     S.renderAnalysis = {tema:data.tema,funil:data.funil,objetivo:data.objetivo,razao_viral:data.razao_viral};
     S.step = 5; initSidebar(); renderFinal(tplCls[S.selectedTemplate]); autoSave();
   } catch(e) { showError(e.message, handlePrimary); }
@@ -5628,21 +5644,32 @@ async function exportCards() {
         animation:none;
       `;
 
-      // Force border-radius 0 and remove all borders on ALL descendants
-      clone.querySelectorAll('*').forEach(el => {
-        el.style.borderRadius = '0';
-        el.style.WebkitBorderRadius = '0';
-        // Only strip borders on the card wrapper itself, not internal UI elements
-      });
+      // Remove outer card border/outline only — preserve internal border-radius (avatars, pills, badges)
       clone.style.border = 'none';
       clone.style.outline = 'none';
+      // Force border-radius:50% inline on all avatar elements so html2canvas respects it
+      clone.querySelectorAll('.lcf-avatar,.lcf-avatar img,.lte-avatar,.lte-avatar img,.lth-avatar,.lth-avatar img,.li-avatar,.li-avatar img,.lsit-avatar,.lsit-avatar img,.lim-avatar,.lim-avatar img').forEach(el => {
+        el.style.setProperty('border-radius', '50%', 'important');
+        el.style.setProperty('overflow', 'hidden', 'important');
+      });
 
-      // Remove UI-only elements from clone
-      clone.querySelectorAll('.edit-hint,.card-edited-badge,.card-img-upload,.lbg-upload,.cif-clear,[contenteditable],.img-editor-controls,.img-editor-hint,.img-editor-btn')
-        .forEach(el => {
-          if (el.hasAttribute('contenteditable')) el.removeAttribute('contenteditable');
-          else el.remove();
-        });
+      // Remove ALL UI-only elements from clone (upload buttons, hints, badges, editor controls)
+      clone.querySelectorAll(
+        '.edit-hint,.card-edited-badge,.card-img-upload,.lbg-upload,.cif-clear,' +
+        '.img-editor-controls,.img-editor-hint,.img-editor-btn,.img-editor-hint-wrap,' +
+        '[data-ui-only],[title="Adicionar imagem"],[title="Trocar imagem"],[title="Remover imagem"]'
+      ).forEach(el => el.remove());
+
+      // Remove contenteditable attribute (keep text, remove edit mode)
+      clone.querySelectorAll('[contenteditable]').forEach(el => {
+        el.removeAttribute('contenteditable');
+      });
+
+      // Remove any floating corner-button divs (they use onclick=triggerCardImageUpload)
+      clone.querySelectorAll('[onclick*="triggerCardImageUpload"]').forEach(el => el.remove());
+
+      // Remove the upload hint text div
+      clone.querySelectorAll('.img-editor-hint').forEach(el => el.remove());
 
       // ── Apply images using stored transform state ──
       const ci = S.cardImages[i + 1];
@@ -5765,19 +5792,53 @@ function triggerDownload(blob, filename) {
 function getCardBgColor(card) {
   const b = getBrand();
   const cls = card.className;
-  // Try computed first
+  const num = parseInt(card.dataset.cardNum || card.querySelector('[data-card-num]')?.dataset?.cardNum || '0');
+
+  // 1. Check card overrides first (user-set bg color)
+  if (num && S.cardOverrides && S.cardOverrides[num]) {
+    const ov = S.cardOverrides[num];
+    const ovBg = ov.bg ? (ov.bg === 'free' ? ov.bgFree : (getBrand()[ov.bg] || ov.bg)) : null;
+    if (ovBg && ovBg !== 'rgba(0,0,0,0)' && ovBg !== 'transparent') return ovBg;
+  }
+
+  // 2. Try computed style (works when CSS vars are resolved)
   const comp = getComputedStyle(card).backgroundColor;
   const isReal = comp && comp !== 'rgba(0, 0, 0, 0)' && comp !== 'transparent';
   if (isReal) return comp;
-  // Fallback from brand + class
-  if (cls.includes('cover'))     return b.primary;
-  if (cls.includes('data'))      return b.accent;
-  if (cls.includes('cta') || cls.includes('bgimg')) return b.dark;
-  if (cls.includes('statement') || cls.includes('imgtop') || cls.includes('text')) {
-    if (cls.includes('clareza') || cls.includes('ritmo')) return b.light;
-    return b.dark;
+
+  // 3. Try the first child element (some templates set bg on inner wrapper)
+  const firstChild = card.firstElementChild;
+  if (firstChild) {
+    const childComp = getComputedStyle(firstChild).backgroundColor;
+    const childReal = childComp && childComp !== 'rgba(0, 0, 0, 0)' && childComp !== 'transparent';
+    if (childReal) return childComp;
   }
-  return b.light;
+
+  // 4. Theme-class fallback
+  const themeMap = {
+    'theme-dark': b.dark || '#1a1a1a',
+    'theme-light': b.light || '#f8f7f4',
+    'theme-sl-cover': '#1a1a1a', 'theme-sl-cover-cta': '#1a1a1a',
+    'theme-sl-text': b.light || '#f8f7f4', 'theme-sl-imgtext-light': b.light || '#f8f7f4',
+    'theme-sl-text-accent': b.accent || '#e8500a',
+    'theme-sl-statement': b.dark || '#1a1a1a', 'theme-sl-dark-img': b.dark || '#1a1a1a',
+    'theme-sl-dark-imgtext': b.dark || '#1a1a1a', 'theme-sl-imgtext': b.dark || '#1a1a1a',
+  };
+  for (const [themeClass, color] of Object.entries(themeMap)) {
+    if (cls.includes(themeClass)) return color;
+  }
+
+  // 5. Layout-based fallback
+  const layout = card.dataset.layout || '';
+  if (layout.includes('cover') || layout.includes('overlay') || layout.includes('cta') ||
+      layout.includes('bgimg') || layout.includes('dark') || layout.includes('foco')) return b.dark || '#1a1a1a';
+  if (layout.includes('text') || layout.includes('split') || layout.includes('img-top')) return b.light || '#f8f7f4';
+
+  // 6. Class-name fallback
+  if (cls.includes('cover') || cls.includes('dark')) return b.dark || '#1a1a1a';
+  if (cls.includes('data'))      return b.accent || '#e8500a';
+  if (cls.includes('light') || cls.includes('text')) return b.light || '#f8f7f4';
+  return b.light || '#f8f7f4';
 }
 
 function applyBrandInline(clone) {
