@@ -4325,12 +4325,7 @@ function renderTemplateChoice() {
 
 function selectTemplate(num) {
   S.selectedTemplate = num;
-  // Use data attribute or onclick content to match, not index
-  document.querySelectorAll('.tpl-card').forEach(el => {
-    const onclick = el.getAttribute('onclick') || '';
-    const m = onclick.match(/selectTemplate\((\d+)\)/);
-    el.classList.toggle('selected', m && parseInt(m[1]) === num);
-  });
+  document.querySelectorAll('.tpl-card').forEach((el,i) => el.classList.toggle('selected', i+1===num));
   initSidebar();
 }
 
@@ -5498,18 +5493,8 @@ function renderCard(card, num, total, tplCls) {
   } else if (layoutType === 'foco-dual') {
     // Two independent image slots: num=cardNum (slot A), num+100 (slot B virtual key)
     const cardImgB = S.cardImages[num + 100];
-    const slotA = cardImg
-      ? `<img src="data:${cardImg.mime};base64,${cardImg.data}" alt="img A" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"/>`
-      : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-direction:column;gap:4px;" onclick="triggerCardImageUpload(${num})">
-           <svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='1.5'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
-           <span style="font-size:0.5rem;color:rgba(255,255,255,0.3);font-family:'Poppins',sans-serif;letter-spacing:1px;text-transform:uppercase">A</span>
-         </div>`;
-    const slotB = cardImgB
-      ? `<img src="data:${cardImgB.mime};base64,${cardImgB.data}" alt="img B" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"/>`
-      : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-direction:column;gap:4px;" onclick="triggerCardImageUpload(${num + 100})">
-           <svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='1.5'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
-           <span style="font-size:0.5rem;color:rgba(255,255,255,0.3);font-family:'Poppins',sans-serif;letter-spacing:1px;text-transform:uppercase">B</span>
-         </div>`;
+    const slotA = imgEditorHtml(num, cardImg, 0, 0, true);
+    const slotB = imgEditorHtml(num + 100, cardImgB, 0, 0, true);
     inner = `
       <div class="layout-foco-dual">
         <div class="lfd-imgs">
@@ -5779,104 +5764,60 @@ async function exportCards() {
       // Remove the upload hint text div
       clone.querySelectorAll('.img-editor-hint').forEach(el => el.remove());
 
-      // ── Apply images using stored transform state ──
-      const ci = S.cardImages[i + 1];
-      const ciB = S.cardImages[(i + 1) + 100]; // Slot B for dual-image cards
-      if (ci) {
-        const src_url = `data:${ci.mime};base64,${ci.data}`;
+      // ── Collect image slot geometry from LIVE DOM BEFORE moving to offscreen ──
+      // After html2canvas, we composite images directly onto the canvas.
+      const cardRect = srcCard.getBoundingClientRect();
 
-        // Read slot geometry from LIVE DOM (srcCard is still rendered in the carousel)
-        const liveWrap = srcCard.querySelector('.img-editor-wrap');
-        const liveImg  = liveWrap?.querySelector('img');
-        const liveSlotEl = liveWrap?.parentElement || liveWrap; // the immediate container
-        const cardRect   = srcCard.getBoundingClientRect();
-        const slotRect   = liveSlotEl?.getBoundingClientRect();
-
-        // Slot dimensions relative to card top-left (screen pixels)
-        const sW = slotRect ? Math.round(slotRect.width)  : cardW;
-        const sH = slotRect ? Math.round(slotRect.height) : cardH;
-        const sT = slotRect ? Math.round(slotRect.top  - cardRect.top)  : 0;
-        const sL = slotRect ? Math.round(slotRect.left - cardRect.left) : 0;
-
-        // Natural image size
+      function readSlotDesc(liveSlotEl, ci) {
+        if (!liveSlotEl || !ci) return null;
+        const r = liveSlotEl.getBoundingClientRect();
+        const sW = Math.round(r.width);
+        const sH = Math.round(r.height);
+        const sL = Math.round(r.left - cardRect.left);
+        const sT = Math.round(r.top  - cardRect.top);
+        const liveImg = liveSlotEl.querySelector('img');
         const natW = liveImg?.naturalWidth  || 800;
         const natH = liveImg?.naturalHeight || 800;
-
-        // cover-fit scale so image fills the slot, then apply user scale
         const fitS = Math.max(sW / natW, sH / natH);
         const rW   = Math.round(natW * fitS * (ci.scale || 1));
         const rH   = Math.round(natH * fitS * (ci.scale || 1));
-
-        // Center within slot + user pan offset
-        const iL = Math.round((sW - rW) / 2) + (ci.x || 0);
-        const iT = Math.round((sH - rH) / 2) + (ci.y || 0);
-
-        // Find clone's wrap element
-        const cloneWrap = clone.querySelector('.img-editor-wrap');
-        if (cloneWrap) {
-          const slotParent = cloneWrap.parentElement; // the flex:1 or position:absolute container
-
-          // Strategy: replace img-editor-wrap with a fill div that positions image correctly.
-          // The image div must be relative to slotParent, NOT the card root.
-          // slotParent already has position:relative (or absolute), so top:0 = slot top.
-          const newWrap = document.createElement('div');
-          newWrap.style.cssText = `position:absolute;inset:0;overflow:hidden;z-index:1;`;
-
-          const newImg = document.createElement('img');
-          newImg.src = src_url;
-          newImg.style.cssText = `position:absolute;top:${iT}px;left:${iL}px;width:${rW}px;height:${rH}px;max-width:none;max-height:none;pointer-events:none;display:block;`;
-          newWrap.appendChild(newImg);
-          cloneWrap.parentNode.replaceChild(newWrap, cloneWrap);
-
-          // For flex:1 slot parents that collapse in offscreen: give them explicit px size
-          if (slotParent && slotParent !== clone) {
-            const ps = slotParent.style;
-            // Only override flex/height if no fixed height already set
-            if (!ps.height || ps.height === '' || ps.flex) {
-              slotParent.style.setProperty('height', sH + 'px', 'important');
-              slotParent.style.setProperty('flex', 'none', 'important');
-              slotParent.style.setProperty('position', 'relative', 'important');
-              slotParent.style.setProperty('overflow', 'hidden', 'important');
-            }
-          }
-        }
-
-        // li-img slot: also fix height so it doesn't collapse
-        const liSlot_clone = clone.querySelector('.li-img');
-        const liSlot_live  = srcCard.querySelector('.li-img');
-        if (liSlot_clone && liSlot_live) {
-          const liR = liSlot_live.getBoundingClientRect();
-          const liW = Math.round(liR.width);
-          const liH = Math.round(liR.height);
-          liSlot_clone.style.setProperty('width',  liW + 'px', 'important');
-          liSlot_clone.style.setProperty('height', liH + 'px', 'important');
-          liSlot_clone.style.setProperty('flex-shrink', '0', 'important');
-          liSlot_clone.style.setProperty('position', 'relative', 'important');
-          liSlot_clone.style.setProperty('overflow', 'hidden', 'important');
-        }
+        const iL   = Math.round((sW - rW) / 2) + (ci.x || 0);
+        const iT   = Math.round((sH - rH) / 2) + (ci.y || 0);
+        return { sW, sH, sL, sT, rW, rH, iL, iT,
+                 src: `data:${ci.mime};base64,${ci.data}` };
       }
 
-      // ── Handle slot B (foco-dual second image) ──
-      if (ciB) {
-        const srcB_url = `data:${ciB.mime};base64,${ciB.data}`;
-        const liveSlotB = srcCard.querySelectorAll('.lfd-slot')[1];
-        const cloneSlotB = clone.querySelectorAll('.lfd-slot')[1];
-        if (liveSlotB && cloneSlotB) {
-          const rB = liveSlotB.getBoundingClientRect();
-          const cR = srcCard.getBoundingClientRect();
-          const sW = Math.round(rB.width); const sH = Math.round(rB.height);
-          const liveImgB_el = liveSlotB.querySelector('img');
-          const natWB = liveImgB_el?.naturalWidth  || 800;
-          const natHB = liveImgB_el?.naturalHeight || 800;
-          const fitB = Math.max(sW / natWB, sH / natHB);
-          const rWB = Math.round(natWB * fitB * (ciB.scale || 1));
-          const rHB = Math.round(natHB * fitB * (ciB.scale || 1));
-          const iLB = Math.round((sW - rWB) / 2) + (ciB.x || 0);
-          const iTB = Math.round((sH - rHB) / 2) + (ciB.y || 0);
-          cloneSlotB.style.cssText = `position:relative;overflow:hidden;width:${sW}px;height:${sH}px;`;
-          cloneSlotB.innerHTML = `<img src="${srcB_url}" style="position:absolute;top:${iTB}px;left:${iLB}px;width:${rWB}px;height:${rHB}px;max-width:none;max-height:none;">`;
-        }
+      const ci  = S.cardImages[i + 1];
+      const ciB = S.cardImages[(i + 1) + 100];
+
+      // Slot A: any card with .img-editor-wrap
+      const liveWrap = srcCard.querySelector('.img-editor-wrap');
+      const slotDescA = ci ? readSlotDesc(liveWrap?.parentElement || liveWrap, ci) : null;
+
+      // Slot B: foco-dual second slot
+      const liveSlotB = srcCard.querySelectorAll('.lfd-slot')[1];
+      const slotDescB = ciB ? readSlotDesc(liveSlotB, ciB) : null;
+
+      // Fix li-img slot in clone so flex layouts don't collapse
+      const liSlot_clone = clone.querySelector('.li-img');
+      const liSlot_live  = srcCard.querySelector('.li-img');
+      if (liSlot_clone && liSlot_live) {
+        const liR = liSlot_live.getBoundingClientRect();
+        liSlot_clone.style.setProperty('width',  Math.round(liR.width)  + 'px', 'important');
+        liSlot_clone.style.setProperty('height', Math.round(liR.height) + 'px', 'important');
+        liSlot_clone.style.setProperty('flex-shrink', '0', 'important');
+        liSlot_clone.style.setProperty('position', 'relative', 'important');
+        liSlot_clone.style.setProperty('overflow', 'hidden', 'important');
       }
+
+      // Remove all img-editor-wrap from clone (images will be composited on canvas)
+      clone.querySelectorAll('.img-editor-wrap').forEach(w => {
+        const ph = document.createElement('div');
+        ph.style.cssText = 'position:absolute;inset:0;background:transparent;pointer-events:none;';
+        w.parentNode.replaceChild(ph, w);
+      });
+      // Clear lfd-slot images from clone too
+      clone.querySelectorAll('.lfd-slot img').forEach(img => img.remove());
 
       // Apply background from brand config directly as inline style
       const bg = getCardBgColor(srcCard);
@@ -5888,7 +5829,7 @@ async function exportCards() {
       offscreen.innerHTML = '';
       offscreen.appendChild(clone);
 
-      // Wait for fonts/images to render fully
+      // Wait for fonts to render fully
       await sleep(250);
 
       const scale = EXPORT_W / cardW;
@@ -5914,6 +5855,36 @@ async function exportCards() {
       const scaledH = Math.round(cardH * scale);
       const yOff = Math.max(0, Math.round((EXPORT_H - scaledH)/2));
       ctx.drawImage(raw, 0, yOff, EXPORT_W, scaledH);
+      // ── Composite images directly onto canvas ──
+      async function compositeSlot(desc) {
+        if (!desc) return;
+        await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const eScale = EXPORT_W / cardW;
+            const cx = Math.round((desc.sL + desc.iL) * eScale);
+            const cy = Math.round((desc.sT + desc.iT) * eScale + yOff);
+            const cW = Math.round(desc.rW * eScale);
+            const cH = Math.round(desc.rH * eScale);
+            const clipX = Math.round(desc.sL * eScale);
+            const clipY = Math.round(desc.sT * eScale + yOff);
+            const clipW = Math.round(desc.sW * eScale);
+            const clipH = Math.round(desc.sH * eScale);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(clipX, clipY, clipW, clipH);
+            ctx.clip();
+            ctx.drawImage(img, cx, cy, cW, cH);
+            ctx.restore();
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = desc.src;
+        });
+      }
+      await compositeSlot(slotDescA);
+      await compositeSlot(slotDescB);
+
 
       const blob = await new Promise(r => out.toBlob(r, 'image/png'));
       pngBlobs.push({ name:`${tema}-card${cardNum}.png`, blob });
