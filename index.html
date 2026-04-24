@@ -5717,7 +5717,8 @@ async function exportCards() {
 
   // Offscreen container — full styles applied, outside scroll clipping
   const offscreen = document.createElement('div');
-  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;';
+  // Must have explicit size so flex children inside cloned cards don't collapse
+  offscreen.style.cssText = `position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;width:${cardEls[0]?.offsetWidth||320}px;`;
   document.body.appendChild(offscreen);
 
   const pngBlobs = [];
@@ -5736,13 +5737,14 @@ async function exportCards() {
       const cardW = srcCard.offsetWidth;
       const cardH = srcCard.offsetHeight;
       clone.style.cssText = `
-        width:${cardW}px;
-        height:${cardH}px;
+        width:${cardW}px !important;
+        height:${cardH}px !important;
         border-radius:0 !important;
-        overflow:hidden;
-        position:relative;
-        flex-shrink:0;
-        animation:none;
+        overflow:hidden !important;
+        position:relative !important;
+        flex-shrink:0 !important;
+        animation:none !important;
+        display:block !important;
       `;
 
       // Remove outer card border/outline only — preserve internal border-radius (avatars, pills, badges)
@@ -5777,90 +5779,75 @@ async function exportCards() {
       const ciB = S.cardImages[(i + 1) + 100]; // Slot B for dual-image cards
       if (ci) {
         const src_url = `data:${ci.mime};base64,${ci.data}`;
-        const scale_factor = EXPORT_W / cardW; // e.g. 1080/320 = 3.375
 
-        // Find the live (pre-clone) img-editor-wrap to get its real rendered slot dimensions
+        // Read slot geometry from LIVE DOM (srcCard is still rendered in the carousel)
         const liveWrap = srcCard.querySelector('.img-editor-wrap');
         const liveImg  = liveWrap?.querySelector('img');
+        const liveSlotEl = liveWrap?.parentElement || liveWrap; // the immediate container
+        const cardRect   = srcCard.getBoundingClientRect();
+        const slotRect   = liveSlotEl?.getBoundingClientRect();
 
-        // Get the slot rect (the container the image lives inside) from live DOM
-        const slotEl = liveWrap?.parentElement || liveWrap;
-        const slotRect = slotEl?.getBoundingClientRect();
-        const cardRect = srcCard.getBoundingClientRect();
+        // Slot dimensions relative to card top-left (screen pixels)
+        const sW = slotRect ? Math.round(slotRect.width)  : cardW;
+        const sH = slotRect ? Math.round(slotRect.height) : cardH;
+        const sT = slotRect ? Math.round(slotRect.top  - cardRect.top)  : 0;
+        const sL = slotRect ? Math.round(slotRect.left - cardRect.left) : 0;
 
-        // Slot dimensions relative to card (in screen px)
-        const slotW_screen = slotRect ? slotRect.width  : cardW;
-        const slotH_screen = slotRect ? slotRect.height : cardH;
-        const slotTop_screen  = slotRect ? (slotRect.top  - cardRect.top)  : 0;
-        const slotLeft_screen = slotRect ? (slotRect.left - cardRect.left) : 0;
-
-        // Scale slot to export canvas dimensions
-        const slotW_exp  = Math.round(slotW_screen  * scale_factor);
-        const slotH_exp  = Math.round(slotH_screen  * scale_factor);
-        const slotTop_exp  = Math.round(slotTop_screen  * scale_factor);
-        const slotLeft_exp = Math.round(slotLeft_screen * scale_factor);
-
-        // Get natural image dimensions from live img element
+        // Natural image size
         const natW = liveImg?.naturalWidth  || 800;
         const natH = liveImg?.naturalHeight || 800;
 
-        // Compute the rendered size of the image at scale (ci.scale) to fit the SLOT
-        // Base fit: cover the slot
-        const fitScale = Math.max(slotW_exp / natW, slotH_exp / natH);
-        const rendW = Math.round(natW * fitScale * (ci.scale || 1));
-        const rendH = Math.round(natH * fitScale * (ci.scale || 1));
+        // cover-fit scale so image fills the slot, then apply user scale
+        const fitS = Math.max(sW / natW, sH / natH);
+        const rW   = Math.round(natW * fitS * (ci.scale || 1));
+        const rH   = Math.round(natH * fitS * (ci.scale || 1));
 
-        // User translation in export pixels (ci.x/y are in screen px, scale up)
-        const tx = Math.round((ci.x || 0) * scale_factor);
-        const ty = Math.round((ci.y || 0) * scale_factor);
+        // Center within slot + user pan offset
+        const iL = Math.round((sW - rW) / 2) + (ci.x || 0);
+        const iT = Math.round((sH - rH) / 2) + (ci.y || 0);
 
-        // Center position within slot + user translation
-        const imgLeft = slotLeft_exp + Math.round((slotW_exp - rendW) / 2) + tx;
-        const imgTop  = slotTop_exp  + Math.round((slotH_exp - rendH) / 2) + ty;
-
-        // Find clone's wrap and replace with canvas-drawn approach
+        // Find clone's wrap element
         const cloneWrap = clone.querySelector('.img-editor-wrap');
         if (cloneWrap) {
-          // Replace wrap with a plain div containing an absolutely positioned img
-          const newWrap = document.createElement('div');
-          newWrap.style.cssText = `position:absolute;top:${slotTop_screen}px;left:${slotLeft_screen}px;width:${slotW_screen}px;height:${slotH_screen}px;overflow:hidden;z-index:1;`;
+          const slotParent = cloneWrap.parentElement; // the flex:1 or position:absolute container
 
-          // Fit-scale for screen dimensions
-          const fitScaleScreen = Math.max(slotW_screen / natW, slotH_screen / natH);
-          const rendW_s = Math.round(natW * fitScaleScreen * (ci.scale || 1));
-          const rendH_s = Math.round(natH * fitScaleScreen * (ci.scale || 1));
-          const imgLeft_s = Math.round((slotW_screen - rendW_s) / 2) + (ci.x || 0);
-          const imgTop_s  = Math.round((slotH_screen - rendH_s) / 2) + (ci.y || 0);
+          // Strategy: replace img-editor-wrap with a fill div that positions image correctly.
+          // The image div must be relative to slotParent, NOT the card root.
+          // slotParent already has position:relative (or absolute), so top:0 = slot top.
+          const newWrap = document.createElement('div');
+          newWrap.style.cssText = `position:absolute;inset:0;overflow:hidden;z-index:1;`;
 
           const newImg = document.createElement('img');
           newImg.src = src_url;
-          newImg.style.cssText = `position:absolute;top:${imgTop_s}px;left:${imgLeft_s}px;width:${rendW_s}px;height:${rendH_s}px;max-width:none;max-height:none;pointer-events:none;`;
+          newImg.style.cssText = `position:absolute;top:${iT}px;left:${iL}px;width:${rW}px;height:${rH}px;max-width:none;max-height:none;pointer-events:none;display:block;`;
           newWrap.appendChild(newImg);
           cloneWrap.parentNode.replaceChild(newWrap, cloneWrap);
+
+          // For flex:1 slot parents that collapse in offscreen: give them explicit px size
+          if (slotParent && slotParent !== clone) {
+            const ps = slotParent.style;
+            // Only override flex/height if no fixed height already set
+            if (!ps.height || ps.height === '' || ps.flex) {
+              slotParent.style.setProperty('height', sH + 'px', 'important');
+              slotParent.style.setProperty('flex', 'none', 'important');
+              slotParent.style.setProperty('position', 'relative', 'important');
+              slotParent.style.setProperty('overflow', 'hidden', 'important');
+            }
+          }
         }
 
-        // Fix li-img container dimensions to match live slot
+        // li-img slot: also fix height so it doesn't collapse
         const liSlot_clone = clone.querySelector('.li-img');
         const liSlot_live  = srcCard.querySelector('.li-img');
         if (liSlot_clone && liSlot_live) {
           const liR = liSlot_live.getBoundingClientRect();
           const liW = Math.round(liR.width);
           const liH = Math.round(liR.height);
-          liSlot_clone.style.cssText = `position:relative;overflow:hidden;width:${liW}px;height:${liH}px;flex-shrink:0;border-radius:0;`;
-          // Reposition the newWrap inside li-img (not card-relative)
-          const newWrapInLi = liSlot_clone.querySelector('div[style*="overflow:hidden"]');
-          if (newWrapInLi) {
-            newWrapInLi.style.cssText = `position:absolute;top:0;left:0;width:${liW}px;height:${liH}px;overflow:hidden;z-index:1;`;
-            const imgInLi = newWrapInLi.querySelector('img');
-            if (imgInLi && liveImg) {
-              const fitS = Math.max(liW / natW, liH / natH);
-              const rW = Math.round(natW * fitS * (ci.scale || 1));
-              const rH = Math.round(natH * fitS * (ci.scale || 1));
-              const iL = Math.round((liW - rW) / 2) + (ci.x || 0);
-              const iT = Math.round((liH - rH) / 2) + (ci.y || 0);
-              imgInLi.style.cssText = `position:absolute;top:${iT}px;left:${iL}px;width:${rW}px;height:${rH}px;max-width:none;max-height:none;pointer-events:none;`;
-            }
-          }
+          liSlot_clone.style.setProperty('width',  liW + 'px', 'important');
+          liSlot_clone.style.setProperty('height', liH + 'px', 'important');
+          liSlot_clone.style.setProperty('flex-shrink', '0', 'important');
+          liSlot_clone.style.setProperty('position', 'relative', 'important');
+          liSlot_clone.style.setProperty('overflow', 'hidden', 'important');
         }
       }
 
