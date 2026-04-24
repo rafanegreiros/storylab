@@ -375,9 +375,13 @@ textarea { min-height: 120px; }
   #card-color-panel {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    width: 100%;
+    top: auto !important;
+    width: 100% !important;
     border-radius: 16px 16px 0 0;
     padding: 20px 24px 32px;
+    max-height: 70vh;
+    overflow-y: auto;
+    z-index: 10001;
   }
 }
 
@@ -972,7 +976,7 @@ textarea { min-height: 120px; }
 .layout-bgimg .lbg-placeholder-label { font-size: 0.62rem; opacity: 0.3; text-align: center; padding: 0 16px; }
 .layout-bgimg .lbg-overlay {
   position: absolute; inset: 0; z-index: 1;
-  background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%);
+  background: linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.12) 100%);
 }
 .layout-bgimg .lbg-content {
   position: relative; z-index: 2; padding: 20px 20px 22px; color: #fff;
@@ -2834,10 +2838,10 @@ function avatarHtml(b, initials) {
 
 // 11-point star badge with white checkmark (replaces plain blue circle)
 function verifiedBadgeSvg(size) {
-  const s = size || 16;
-  // Build 11-point star path: alternate outer/inner radii
+  const s = size || 17;
+  // Build 11-point star path: alternate outer/inner radii — reduced point tips, more breathing room
   const cx = 11, cy = 11, points = 11;
-  const outerR = 10, innerR = 6.2;
+  const outerR = 8.5, innerR = 6.0;
   let d = '';
   for (let i = 0; i < points * 2; i++) {
     const angle = (Math.PI / points) * i - Math.PI / 2;
@@ -2847,7 +2851,7 @@ function verifiedBadgeSvg(size) {
     d += (i === 0 ? 'M' : 'L') + x + ',' + y;
   }
   d += 'Z';
-  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" fill="none" style="flex-shrink:0;vertical-align:middle;"><path d="${d}" fill="#1d9bf0"/><path d="M7 11l2.8 2.8 5.2-5.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" fill="none" style="flex-shrink:0;vertical-align:middle;"><path d="${d}" fill="#1d9bf0"/><path d="M7.5 11l2.5 2.5 4.5-5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 
 function getBrand() {
@@ -4257,7 +4261,12 @@ function renderTemplateChoice() {
     return `<div class="tpl-preview">${cards.map(c=>`<div class="tpl-preview-card ${c.bg}">${c.inner||''}</div>`).join('')}</div>`;
   }
   const tpls = [
-    {num:1,name:'Clareza',desc:'Capa com avatar e handle do Instagram. Cards alternando bloco de texto com divisor e cards com imagem no topo. Estrutura de aula — cada card avança um passo da narrativa.',blocks:'10 cards',wf:wireframe([
+
+    {num:7,name:'Storylab',desc:'Capa e CTA com avatar e handle. Cards alternando fundo claro com título grande, fundo colorido com título em itálico e cards escuros com título em destaque e imagem integrada.',blocks:'10 cards',wf:wireframe([
+      {bg:'tpc-dark',inner:'<div style="background:#555;position:absolute;inset:0;opacity:.7"></div><div style="position:absolute;bottom:6px;left:4px;right:4px"><div class="tpc-line" style="height:3px;width:80%;font-style:italic"></div></div>'},
+      {bg:'tpc-light',inner:'<div style="padding:4px"><div class="tpc-line dark" style="height:3px;width:85%;margin-bottom:2px"></div><div class="tpc-line dark" style="height:2px;width:70%;opacity:.4"></div><div class="tpc-line dark" style="height:2px;width:80%;opacity:.4;margin-top:1px"></div></div>'},
+      {bg:'tpc-orange',inner:'<div style="padding:4px;display:flex;flex-direction:column;justify-content:center;height:100%;gap:2px"><div class="tpc-line" style="height:3px;width:90%"></div><div class="tpc-line" style="height:3px;width:75%"></div></div>'},
+    ])},    {num:1,name:'Clareza',desc:'Capa com avatar e handle do Instagram. Cards alternando bloco de texto com divisor e cards com imagem no topo. Estrutura de aula — cada card avança um passo da narrativa.',blocks:'10 cards',wf:wireframe([
       {bg:'tpc-accent',inner:'<div style="position:absolute;bottom:4px;left:4px;right:4px"><div class="tpc-line" style="height:2px;width:80%;margin-bottom:1px"></div><div class="tpc-line" style="height:3px;width:90%"></div></div>'},
       {bg:'tpc-light',inner:'<div style="padding:4px"><div class="tpc-line dark" style="height:2px;width:60%;margin-bottom:2px"></div><div class="tpc-line dark" style="height:2px;width:80%;opacity:.4;margin-bottom:1px"></div></div>'},
       {bg:'tpc-light',inner:'<div style="background:#aaa;height:55%;width:100%"></div><div style="padding:3px"><div class="tpc-line dark" style="height:2px;width:70%"></div></div>'},
@@ -4286,11 +4295,6 @@ function renderTemplateChoice() {
       {bg:'tpc-dark',inner:'<div style="background:#555;position:absolute;inset:0;opacity:.6"></div><div style="position:absolute;bottom:10px;left:4px;right:4px"><div class="tpc-line accent" style="height:3px;width:90%"></div><div class="tpc-line accent" style="height:3px;width:75%;margin-top:2px"></div></div>'},
       {bg:'tpc-dark',inner:'<div style="padding:4px;display:flex;flex-direction:column;gap:2px;justify-content:center;height:100%"><div class="tpc-line accent" style="height:4px;width:90%"></div><div class="tpc-line accent" style="height:4px;width:75%"></div><div class="tpc-line" style="height:2px;width:85%;opacity:.4;margin-top:2px"></div></div>'},
       {bg:'tpc-dark',inner:'<div style="padding:4px;display:flex;flex-direction:column;gap:4px;height:100%;justify-content:center"><div style="flex:1;background:#444;border-radius:3px;margin:2px 0"></div><div style="flex:1;background:#333;border-radius:3px;margin:2px 0"></div></div>'},
-    ])},
-    {num:7,name:'Storylab',desc:'Capa e CTA com avatar e handle. Cards alternando fundo claro com título grande, fundo colorido com título em itálico e cards escuros com título em destaque e imagem integrada.',blocks:'10 cards',wf:wireframe([
-      {bg:'tpc-dark',inner:'<div style="background:#555;position:absolute;inset:0;opacity:.7"></div><div style="position:absolute;bottom:6px;left:4px;right:4px"><div class="tpc-line" style="height:3px;width:80%;font-style:italic"></div></div>'},
-      {bg:'tpc-light',inner:'<div style="padding:4px"><div class="tpc-line dark" style="height:3px;width:85%;margin-bottom:2px"></div><div class="tpc-line dark" style="height:2px;width:70%;opacity:.4"></div><div class="tpc-line dark" style="height:2px;width:80%;opacity:.4;margin-top:1px"></div></div>'},
-      {bg:'tpc-orange',inner:'<div style="padding:4px;display:flex;flex-direction:column;justify-content:center;height:100%;gap:2px"><div class="tpc-line" style="height:3px;width:90%"></div><div class="tpc-line" style="height:3px;width:75%"></div></div>'},
     ])},
     {num:8,name:'Thread',desc:'Todos os cards têm avatar circular, nome, @handle e verificado no topo, separados por divisor — igual ao padrão do Twitter/X. Texto corrido com imagem retangular arredondada no meio. Último card é a assinatura da marca.',blocks:'8 cards',wf:wireframe([
       {bg:'tpc-white',inner:'<div style="padding:3px"><div style="display:flex;align-items:center;gap:2px;margin-bottom:2px"><div style="width:7px;height:7px;border-radius:50%;background:#111;flex-shrink:0"></div><div style="height:1.5px;background:#222;border-radius:1px;width:40%;margin-left:2px"></div></div><div style="height:.5px;background:#e0e0e0;margin:2px 0"></div><div class="tpc-line dark" style="height:2px;width:85%;opacity:.6;margin-bottom:1px"></div><div style="background:#ccc;height:40%;border-radius:2px;margin:2px 0"></div><div class="tpc-line dark" style="height:2px;width:75%;opacity:.8;font-weight:bold"></div></div>'},
@@ -4334,13 +4338,29 @@ async function runRender() {
   const n = numBlocks[S.selectedTemplate];
   showLoading(`Gerando ${n} cards — ${tplNames[S.selectedTemplate]}...`);
   const t = S.triagem; const h = S.selectedHeadline; const e = S.espinha;
+  const provasStr = (e.provasFontes||e.prova||[]).map((p,i)=>typeof p==='object'?p.dado:p).slice(0,3).join(' | ');
+  // If we have previous cards (from template switch), use them as narrative reference
+  const prevNarrativa = S.renderCards && S.renderCards.length > 0
+    ? '\nNARRATIVA ANTERIOR (adapte para o novo template, mantendo as mesmas ideias-chave):\n' + S.renderCards.map(c=>`Card ${c.num}: ${c.titulo} — ${c.corpo||''}`).join('\n')
+    : '';
   const prompt = `Carrossel Instagram. EXATAMENTE ${n} cards numerados.
 
-Tema: ${t.tema_central} | Headline capa: "${h.l1} / ${h.l2}"
-Hook: ${e.hook} | Mecanismo: ${e.mecanismo}
+Tema: ${t.tema_central}
+Headline: "${h.l1} / ${h.l2}"
+Hook: ${e.hook}
+Mecanismo: ${e.mecanismo}
+Aplicação: ${e.aplicacao}
+Direção/CTA: ${e.direcao}
+Provas: ${provasStr}
 Tom: ${S.tom} | Funil: ${t.funil_detectado}
 
-REGRAS: Card 1=capa, último=CTA. Máx 50 palavras/card. Sem 2ª pessoa. Progressão: Hook→Tensão→Mecanismo→Provas→Aplicação→CTA.
+REGRAS CRÍTICAS:
+- Card 1 (CAPA): titulo = headline completa ou variação forte. corpo = subtítulo que amplifica a tensão/promessa. NÃO deixe vazio.
+- Card ${n} (CTA): titulo = afirmação de transformação/resultado. corpo = chamada para ação clara e específica. NÃO deixe vazio.
+- Cards 2 a ${n-1}: desenvolver progressão Hook→Tensão→Mecanismo→Provas→Aplicação.
+- Máx 50 palavras/card. Sem 2ª pessoa. Títulos curtos e impactantes (máx 10 palavras).
+- TODOS os campos titulo e corpo devem ter conteúdo — nunca string vazia.
+${prevNarrativa}
 
 IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
 {"tema":"${t.tema_central}","funil":"${t.funil_detectado}","objetivo":"engajamento|educação|conversão|viralização","razao_viral":"1 frase","cards":[{"num":1,"tipo":"capa","titulo":"","corpo":"","dica_imagem":""}]}`;
@@ -4542,6 +4562,19 @@ function openCardColorPanel(cardEl, num) {
   // Append to body with fixed positioning
   document.body.appendChild(panel);
 
+  // Add backdrop on mobile
+  if (window.innerWidth <= 600) {
+    const backdrop = document.createElement('div');
+    backdrop.id = 'ccp-backdrop';
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:10000;';
+    backdrop.onclick = () => { panel.remove(); backdrop.remove(); };
+    document.body.appendChild(backdrop);
+    panel.style.zIndex = '10001';
+    // Remove backdrop when panel is removed
+    const origRemove = panel.remove.bind(panel);
+    panel.remove = () => { origRemove(); const b = document.getElementById('ccp-backdrop'); if (b) b.remove(); };
+  }
+
   // Position: below card on desktop, bottom sheet on mobile
   if (window.innerWidth > 600) {
     const rect = cardEl.getBoundingClientRect();
@@ -4620,13 +4653,24 @@ function applyCardOverrides() {
         const autoColor = isLight(bgColor) ? b.dark : '#ffffff';
         cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big,.lft-title,.lst-title,.lsit-title,.lss-title,.lth-title,.lte-brand,.lcf-headline').forEach(el => el.style.setProperty('color', autoColor, 'important'));
         cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body,.lft-body,.lst-body,.lsit-body,.lsit-bold,.lss-body,.lth-body,.lth-bold,.lcf-sub').forEach(el => el.style.setProperty('color', autoColor, 'important'));
+        // Also update foco/storylab inline-style elements
+        cardEl.querySelectorAll('[data-editable="titulo"]').forEach(el => el.style.setProperty('color', autoColor, 'important'));
+        cardEl.querySelectorAll('[data-editable="corpo"]').forEach(el => el.style.setProperty('color', autoColor, 'important'));
       }
     }
     const titleColor2 = resolveColor(overrides, 'title');
-    if (titleColor2) cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big,.lft-title,.lst-title,.lsit-title,.lss-title,.lth-title,.lte-brand,.lcf-headline').forEach(el => el.style.setProperty('color', titleColor2, 'important'));
+    if (titleColor2) {
+      cardEl.querySelectorAll('.lc-headline,.lt-quote,.lstat-big,.li-title,.lbg-title,.lcta-headline,.ld-num-big,.lft-title,.lst-title,.lsit-title,.lss-title,.lth-title,.lte-brand,.lcf-headline').forEach(el => el.style.setProperty('color', titleColor2, 'important'));
+      // Also target editable titulo elements (covers foco, storylab and other templates using inline styles)
+      cardEl.querySelectorAll('[data-editable="titulo"]').forEach(el => el.style.setProperty('color', titleColor2, 'important'));
+    }
 
     const bodyColor2 = resolveColor(overrides, 'body');
-    if (bodyColor2) cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body,.lft-body,.lst-body,.lsit-body,.lsit-bold,.lss-body,.lth-body,.lth-bold,.lcf-sub').forEach(el => el.style.setProperty('color', bodyColor2, 'important'));
+    if (bodyColor2) {
+      cardEl.querySelectorAll('.lt-body,.li-text,.lbg-body,.lc-sub,.lstat-small,.lbg-label,.lcta-body,.lft-body,.lst-body,.lsit-body,.lsit-bold,.lss-body,.lth-body,.lth-bold,.lcf-sub').forEach(el => el.style.setProperty('color', bodyColor2, 'important'));
+      // Also target editable corpo elements
+      cardEl.querySelectorAll('[data-editable="corpo"]').forEach(el => el.style.setProperty('color', bodyColor2, 'important'));
+    }
 
     const ctaBtnColor = resolveColor(overrides, 'ctaBtn');
     if (ctaBtnColor) {
@@ -4736,16 +4780,21 @@ const THEME_MAP = {
 };
 
 function imgEditorHtml(num, cardImg, slotW, slotH, isDark) {
+  // Always show corner upload button (change image when has one, add when not)
+  const strokeCol = isDark ? 'rgba(255,255,255,0.8)' : 'rgba(20,18,16,0.6)';
+  const bgBtn     = isDark ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.75)';
+  const btnLabel  = cardImg ? '↺' : '+ Imagem';
+  // When image exists: position at top-left (X button is at top-right)
+  // When no image: position at top-right corner
+  const btnPos = cardImg ? 'top:8px;left:8px' : 'top:10px;right:10px';
+  const cornerBtn = `<div style="position:absolute;${btnPos};z-index:8;cursor:pointer;background:${bgBtn};backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;display:flex;align-items:center;gap:4px;border:1px solid ${strokeCol};" onclick="event.stopPropagation();triggerCardImageUpload(${num})" title="${cardImg ? 'Trocar imagem' : 'Adicionar imagem'}">
+    <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='${strokeCol}' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2' ry='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
+    <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;color:${strokeCol};letter-spacing:0.8px;text-transform:uppercase;white-space:nowrap;">${btnLabel}</span>
+  </div>`;
+
   if (!cardImg) {
-    // No image yet — show upload placeholder (z-index 5 to stay above content overlays)
-    const strokeCol = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(20,18,16,0.3)';
-    const bgCol     = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
-    return `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;background:${bgCol};" onclick="event.stopPropagation();triggerCardImageUpload(${num})">
-      <div style="text-align:center;pointer-events:none;">
-        <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='${strokeCol}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2' ry='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
-        <div style="font-family:'Poppins',sans-serif;font-size:0.55rem;color:${strokeCol};margin-top:4px;letter-spacing:1px;text-transform:uppercase">Adicionar imagem</div>
-      </div>
-    </div>`;
+    // No image yet — show placeholder bg + corner button
+    return `<div style="position:absolute;inset:0;z-index:1;background:${isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.06)'};pointer-events:none;"></div>${cornerBtn}`;
   }
   const src = `data:${cardImg.mime};base64,${cardImg.data}`;
   return `
@@ -4753,7 +4802,8 @@ function imgEditorHtml(num, cardImg, slotW, slotH, isDark) {
       <img src="${src}" style="position:absolute;left:50%;top:50%;transform-origin:center center;pointer-events:none;user-select:none;" draggable="false"/>
     </div>
     <div class="img-editor-hint">Ctrl+scroll=zoom · arraste=mover</div>
-    <button class="cif-clear" style="position:absolute;top:8px;right:8px;z-index:10" onclick="event.stopPropagation();removeCardImage(${num})"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <button class="cif-clear" style="position:absolute;top:8px;right:8px;z-index:10" onclick="event.stopPropagation();removeCardImage(${num})" title="Remover imagem"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    ${cornerBtn}
     <div class="img-editor-controls" style="z-index:10">
       <button class="img-editor-btn" onclick="event.stopPropagation();zoomCard(${num},0.1)" title="Zoom +"><svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><line x1='21' x2='16.65' y1='21' y2='16.65'/><line x1='11' x2='11' y1='8' y2='14'/><line x1='8' x2='14' y1='11' y2='11'/></svg></button>
       <button class="img-editor-btn" onclick="event.stopPropagation();zoomCard(${num},-0.1)" title="Zoom −"><svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><line x1='21' x2='16.65' y1='21' y2='16.65'/><line x1='8' x2='14' y1='11' y2='11'/></svg></button>
@@ -5117,7 +5167,7 @@ function renderCard(card, num, total, tplCls) {
     : '';
 
   // upload button — shown on cards that have image placeholders
-  const hasImgSlot = ['img-top','split','cover','imersivo-cover','imersivo-overlay','imersivo-cta','foco-cover','foco-cta','foco-overlay','sl-cover','sl-cover-cta'].includes(layoutType);
+  const hasImgSlot = ['img-top','split','cover','imersivo-cover','imersivo-overlay','imersivo-cta','foco-cover','foco-cta','foco-overlay','sl-cover','sl-cover-cta','sl-dark-img','sl-dark-imgtext','bgimg'].includes(layoutType);
   const uploadBtn = hasImgSlot ? `
     <div class="card-img-upload" onclick="triggerCardImageUpload(${num})" title="Adicionar imagem">
       <div class="ciu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></div>
@@ -5244,7 +5294,7 @@ function renderCard(card, num, total, tplCls) {
     const isCtaLayout = layoutType === 'imersivo-cta';
     inner = `
       ${imgEditorHtml(num, cardImg, 0, 0, true)}
-      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to top,rgba(0,0,0,0.88) 0%,rgba(0,0,0,0.3) 55%,transparent 100%);pointer-events:none"></div>
+      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.4) 55%,rgba(0,0,0,0.1) 100%);pointer-events:none"></div>
       <div class="layout-cover-full" style="z-index:3">
         <div class="lcf-avatar-row">
           <div class="lcf-avatar">${avatarHtml(bI, initialsI)}</div>
@@ -5288,7 +5338,7 @@ function renderCard(card, num, total, tplCls) {
     const initialsF = (bF.handle||'S').replace('@','').slice(0,2).toUpperCase();
     inner = `
       ${imgEditorHtml(num, cardImg, 0, 0, true)}
-      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to bottom,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0.2) 40%,rgba(0,0,0,0.65) 100%);pointer-events:none"></div>
+      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to bottom,rgba(0,0,0,0.65) 0%,rgba(0,0,0,0.25) 40%,rgba(0,0,0,0.82) 100%);pointer-events:none"></div>
       <div style="position:absolute;inset:0;z-index:3;padding:14px 20px 20px;display:flex;flex-direction:column;justify-content:flex-end;">
         <div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
@@ -5357,7 +5407,7 @@ function renderCard(card, num, total, tplCls) {
   } else if (layoutType === 'foco-overlay') {
     inner = `
       ${imgEditorHtml(num, cardImg, 0, 0, true)}
-      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to top,rgba(0,0,0,0.85) 0%,rgba(0,0,0,0.3) 55%,transparent 100%);pointer-events:none"></div>
+      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.45) 55%,rgba(0,0,0,0.1) 100%);pointer-events:none"></div>
       <div style="position:absolute;bottom:0;left:0;right:0;z-index:3;padding:16px 20px 20px;">
         <div style="font-family:var(--brand-font-display);font-weight:900;font-size:1.45rem;line-height:1.05;color:#fff;margin-bottom:8px;" class="editable" data-editable="titulo" data-card-num="${num}">${card.titulo}</div>
         <div style="font-size:0.78rem;color:rgba(255,255,255,0.85);line-height:1.5;font-weight:600;margin-bottom:12px;" class="editable" data-editable="corpo" data-card-num="${num}">${card.corpo||''}</div>
@@ -5373,18 +5423,18 @@ function renderCard(card, num, total, tplCls) {
     const initialsFC = (bFC.handle||'S').replace('@','').slice(0,2).toUpperCase();
     inner = `
       ${imgEditorHtml(num, cardImg, 0, 0, true)}
-      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to bottom,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0.25) 40%,rgba(0,0,0,0.75) 100%);pointer-events:none"></div>
-      <div style="position:absolute;inset:0;z-index:3;padding:14px 20px 20px;display:flex;flex-direction:column;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div class="lcf-avatar">${avatarHtml(bFC, initialsFC)}</div>
-          <div class="lcf-name">${bFC.handle||'@handle'}
-            ${verifiedBadgeSvg(14)}
-          </div>
-        </div>
+      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to bottom,rgba(0,0,0,0.65) 0%,rgba(0,0,0,0.25) 40%,rgba(0,0,0,0.85) 100%);pointer-events:none"></div>
+      <div style="position:absolute;inset:0;z-index:3;padding:14px 20px 20px;display:flex;flex-direction:column;justify-content:flex-end;">
         <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <div class="lcf-avatar">${avatarHtml(bFC, initialsFC)}</div>
+            <div class="lcf-name">${bFC.handle||'@handle'}
+              ${verifiedBadgeSvg(14)}
+            </div>
+          </div>
           <div style="font-family:var(--brand-font-display);font-weight:900;font-size:1.55rem;line-height:1.05;color:var(--brand-accent);margin-bottom:8px;" class="editable" data-editable="titulo" data-card-num="${num}">${card.titulo}</div>
           <div style="font-size:0.9rem;line-height:1.6;color:rgba(255,255,255,0.9);margin-bottom:16px;" class="editable" data-editable="corpo" data-card-num="${num}">${card.corpo||''}</div>
-          <div style="background:var(--brand-accent);color:var(--brand-dark);border-radius:100px;padding:11px 20px;font-family:'Poppins',sans-serif;font-size:0.78rem;font-weight:700;text-align:center;cursor:pointer;" class="editable" data-editable="ctaText" data-card-num="${num}">Siga para mais conteúdos como esse</div>
+          <div class="lft-cta-btn" style="background:var(--brand-accent);color:var(--brand-dark);border-radius:100px;padding:11px 20px;font-family:'Poppins',sans-serif;font-size:0.78rem;font-weight:700;text-align:center;cursor:pointer;" class="editable" data-editable="ctaText" data-card-num="${num}">Siga para mais conteúdos como esse</div>
         </div>
       </div>`;
 
@@ -5396,7 +5446,7 @@ function renderCard(card, num, total, tplCls) {
     const initialsS = (bS.handle||'S').replace('@','').slice(0,2).toUpperCase();
     inner = `
       ${imgEditorHtml(num, cardImg, 0, 0, true)}
-      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to top,rgba(0,0,0,0.82) 0%,rgba(0,0,0,0.2) 55%,transparent 100%);pointer-events:none"></div>
+      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to top,rgba(0,0,0,0.90) 0%,rgba(0,0,0,0.35) 55%,rgba(0,0,0,0.08) 100%);pointer-events:none"></div>
       <div style="position:absolute;bottom:22px;left:20px;right:20px;z-index:3;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
           <div class="lcf-avatar">${avatarHtml(bS, initialsS)}</div>
