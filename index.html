@@ -2401,7 +2401,7 @@ textarea { min-height: 120px; }
 .lfd-slot.slot-active { box-shadow: inset 0 0 0 2.5px var(--brand-accent, #2de300); }
 
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image-more/2.9.0/dom-to-image-more.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
@@ -5727,163 +5727,117 @@ async function exportCards() {
     try {
       const cardW = srcCard.offsetWidth;
       const cardH = srcCard.offsetHeight;
-      const cardRect0 = srcCard.getBoundingClientRect();
+      const cardRect = srcCard.getBoundingClientRect();
 
-      // ── Ler geometria das imagens ANTES de qualquer manipulação ──
+      // ── 1. Ler geometria das imagens do DOM AO VIVO ──
       const ci  = S.cardImages[i + 1];
       const ciB = S.cardImages[(i + 1) + 100];
 
-      function readSlotDesc(liveSlotEl, ci) {
-        if (!liveSlotEl || !ci) return null;
-        const r = liveSlotEl.getBoundingClientRect();
-        const cR = srcCard.getBoundingClientRect();
-        const sW = Math.round(r.width);
-        const sH = Math.round(r.height);
-        const sL = Math.round(r.left - cR.left);
-        const sT = Math.round(r.top  - cR.top);
-        const liveImg = liveSlotEl.querySelector('img');
-        const natW = liveImg?.naturalWidth  || 800;
-        const natH = liveImg?.naturalHeight || 800;
-        const fitS = Math.max(sW / natW, sH / natH);
-        const rW   = Math.round(natW * fitS * (ci.scale || 1));
-        const rH   = Math.round(natH * fitS * (ci.scale || 1));
-        const iL   = Math.round((sW - rW) / 2) + (ci.x || 0);
-        const iT   = Math.round((sH - rH) / 2) + (ci.y || 0);
+      function readSlotDesc(slotEl, imgData) {
+        if (!slotEl || !imgData) return null;
+        const r   = slotEl.getBoundingClientRect();
+        const sW  = Math.round(r.width);
+        const sH  = Math.round(r.height);
+        const sL  = Math.round(r.left - cardRect.left);
+        const sT  = Math.round(r.top  - cardRect.top);
+        const lImg = slotEl.querySelector('img');
+        const natW = lImg?.naturalWidth  || 800;
+        const natH = lImg?.naturalHeight || 800;
+        const fit  = Math.max(sW / natW, sH / natH) * (imgData.scale || 1);
+        const rW   = Math.round(natW * fit);
+        const rH   = Math.round(natH * fit);
+        const iL   = Math.round((sW - rW) / 2) + (imgData.x || 0);
+        const iT   = Math.round((sH - rH) / 2) + (imgData.y || 0);
         return { sW, sH, sL, sT, rW, rH, iL, iT,
-                 src: `data:${ci.mime};base64,${ci.data}` };
+                 src: `data:${imgData.mime};base64,${imgData.data}` };
       }
 
+      // Slot A — qualquer card com img-editor-wrap
       const liveWrap = srcCard.querySelector('.img-editor-wrap');
-      const liveSlotParent = liveWrap?.parentElement;
-      // Para full-bg: parentElement é o card → usar liveWrap diretamente (inset:0)
-      // Para imgtext: parentElement é o flex:1 div → usar esse div
-      const slotAEl = (liveSlotParent && liveSlotParent !== srcCard && !liveSlotParent.classList.contains('c-card'))
-                      ? liveSlotParent : liveWrap;
-      const slotDescA = ci  ? readSlotDesc(slotAEl,                               ci)  : null;
-      const slotDescB = ciB ? readSlotDesc(srcCard.querySelectorAll('.lfd-slot')[1], ciB) : null;
+      // Para full-bg (inset:0): wrap.parentElement é o card → usar wrap
+      // Para imgtext (flex:1 div): wrap.parentElement é esse div → usar o div
+      const wrapParent = liveWrap?.parentElement;
+      const isFullBg   = !wrapParent || wrapParent === srcCard
+                         || wrapParent.classList.contains('c-card');
+      const slotAEl    = isFullBg ? liveWrap : wrapParent;
+      const slotDescA  = ci  ? readSlotDesc(slotAEl, ci)  : null;
 
-      // ── Clonar o card e preparar para captura offscreen ──
-      const clone = srcCard.cloneNode(true);
-      clone.style.cssText = [
-        `width:${cardW}px !important`,
-        `height:${cardH}px !important`,
-        `border-radius:0 !important`,
-        `overflow:hidden !important`,
-        `position:relative !important`,
-        `flex-shrink:0 !important`,
-        `animation:none !important`,
-        `display:block !important`,
-      ].join(';');
-      clone.style.border = 'none';
-      clone.style.outline = 'none';
+      // Slot B — foco-dual segundo slot
+      const liveSlotB  = srcCard.querySelectorAll('.lfd-slot')[1];
+      const slotDescB  = ciB ? readSlotDesc(liveSlotB, ciB) : null;
 
-      // Forçar border-radius em avatares
-      clone.querySelectorAll([
-        '.lcf-avatar,.lcf-avatar img,.lte-avatar,.lte-avatar img',
-        '.lth-avatar,.lth-avatar img,.li-avatar,.li-avatar img',
-        '.lsit-avatar,.lsit-avatar img,.lim-avatar,.lim-avatar img'
-      ].join(',')).forEach(el => {
-        el.style.setProperty('border-radius', '50%', 'important');
-        el.style.setProperty('overflow', 'hidden', 'important');
-      });
+      // ── 2. Preparar nó para captura: esconder UI, esconder imagens ──
+      // Usamos classes temporárias — NÃO clonamos, capturamos in-place
+      const uiEls = srcCard.querySelectorAll(
+        '.edit-hint,.card-edited-badge,.card-img-upload,.lbg-upload,.cif-clear,' +
+        '.img-editor-controls,.img-editor-hint,.img-editor-btn,.img-editor-hint-wrap,' +
+        '[data-ui-only],[onclick*="triggerCardImageUpload"]'
+      );
+      uiEls.forEach(el => { el.dataset._hidden = '1'; el.style.display = 'none'; });
 
-      // Remover elementos UI
-      clone.querySelectorAll([
-        '.edit-hint,.card-edited-badge,.card-img-upload,.lbg-upload,.cif-clear',
-        '.img-editor-controls,.img-editor-hint,.img-editor-btn,.img-editor-hint-wrap',
-        '[data-ui-only],[title="Adicionar imagem"],[title="Trocar imagem"],[title="Remover imagem"]',
-        '[onclick*="triggerCardImageUpload"]','.img-editor-hint'
-      ].join(',')).forEach(el => el.remove());
+      // Esconder as imagens nos wraps (serão compostas depois)
+      const wrapImgs = srcCard.querySelectorAll('.img-editor-wrap img, .lfd-slot img');
+      wrapImgs.forEach(img => { img.dataset._hidden = '1'; img.style.visibility = 'hidden'; img.style.opacity = '0'; });
 
-      clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
-
-      // Remover img-editor-wrap do clone (imagens serão compostas via canvas)
-      clone.querySelectorAll('.img-editor-wrap').forEach(w => {
-        const ph = document.createElement('div');
-        ph.style.cssText = 'position:absolute;inset:0;background:transparent;pointer-events:none;';
-        w.parentNode.replaceChild(ph, w);
-      });
-      clone.querySelectorAll('.lfd-slot img').forEach(img => img.remove());
-
-      // Corrigir li-img para não colapsar
-      const liLive = srcCard.querySelector('.li-img');
-      const liClone = clone.querySelector('.li-img');
-      if (liLive && liClone) {
-        const lr = liLive.getBoundingClientRect();
-        liClone.style.setProperty('width',  Math.round(lr.width)  + 'px', 'important');
-        liClone.style.setProperty('height', Math.round(lr.height) + 'px', 'important');
-        liClone.style.setProperty('flex-shrink', '0', 'important');
-        liClone.style.setProperty('position', 'relative', 'important');
-        liClone.style.setProperty('overflow', 'hidden', 'important');
-      }
-
-      // Corrigir TODOS os flex:1 com height explícito baseado no live DOM
-      clone.querySelectorAll('*').forEach(el => {
-        const live = srcCard.querySelector(`[data-card-num="${el.getAttribute('data-card-num')}"]`);
-        const cs = window.getComputedStyle(el);
-        if (cs.flex === '1 1 0%' || cs.flex === '1 1 auto' || cs.flexGrow === '1') {
-          // Encontrar elemento correspondente no live DOM pela posição
-        }
-      });
-      // Simpler: fix ALL elements in clone that have flex:1 by reading live DOM
-      // Walk the clone tree and set explicit heights based on live tree
-      function fixFlexHeights(cloneEl, liveEl) {
-        if (!cloneEl || !liveEl) return;
-        const cs = window.getComputedStyle(liveEl);
-        if (parseFloat(cs.flexGrow) > 0) {
-          const lr = liveEl.getBoundingClientRect();
-          if (lr.height > 0) {
-            cloneEl.style.setProperty('height', Math.round(lr.height) + 'px', 'important');
-            cloneEl.style.setProperty('flex', 'none', 'important');
-            cloneEl.style.setProperty('min-height', '0', 'important');
-          }
-        }
-        const cloneChildren = cloneEl.children;
-        const liveChildren = liveEl.children;
-        for (let k = 0; k < Math.min(cloneChildren.length, liveChildren.length); k++) {
-          fixFlexHeights(cloneChildren[k], liveChildren[k]);
-        }
-      }
-      fixFlexHeights(clone, srcCard);
-
-      const bg = getCardBgColor(srcCard);
-      clone.style.backgroundColor = bg;
-      applyBrandInline(clone);
-
-      offscreen.innerHTML = '';
-      offscreen.appendChild(clone);
-      await sleep(300);
-
+      // ── 3. Capturar com dom-to-image-more ──
       const scale = EXPORT_W / cardW;
-      const raw = await html2canvas(clone, {
-        scale,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: bg,
-        logging: false,
-        width: cardW,
+      const dataUrl = await domtoimage.toPng(srcCard, {
+        width:  cardW,
         height: cardH,
-        imageTimeout: 8000,
+        style: {
+          transform: 'none',
+          borderRadius: '0',
+          border: 'none',
+          outline: 'none',
+          overflow: 'hidden',
+        },
+        filter: node => {
+          // Filtrar elementos de UI
+          if (node.dataset?._hidden === '1') return false;
+          if (typeof node.getAttribute === 'function') {
+            const oc = node.getAttribute('onclick') || '';
+            if (oc.includes('triggerCardImageUpload')) return false;
+            const cls = node.getAttribute('class') || '';
+            if (/edit-hint|img-editor-btn|img-editor-hint|cif-clear|card-edited-badge/.test(cls)) return false;
+          }
+          return true;
+        },
+        quality: 1,
       });
 
-      // Canvas final 1080×1350
+      // ── 4. Restaurar elementos escondidos ──
+      uiEls.forEach(el => { delete el.dataset._hidden; el.style.display = ''; });
+      wrapImgs.forEach(img => { delete img.dataset._hidden; img.style.visibility = ''; img.style.opacity = ''; });
+
+      // ── 5. Construir canvas final 1080×1350 ──
+      const bg = getCardBgColor(srcCard);
       const out = document.createElement('canvas');
       out.width  = EXPORT_W;
       out.height = EXPORT_H;
-      const ctx = out.getContext('2d');
+      const ctx  = out.getContext('2d');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-      const scaledH = Math.round(cardH * scale);
-      const yOff = Math.max(0, Math.round((EXPORT_H - scaledH) / 2));
-      ctx.drawImage(raw, 0, yOff, EXPORT_W, scaledH);
 
-      // ── Composite imagens diretamente no canvas ──
+      // Desenhar card capturado (escalado para 1080px)
+      const scaledH = Math.round(cardH * scale);
+      const yOff    = Math.max(0, Math.round((EXPORT_H - scaledH) / 2));
+      await new Promise(resolve => {
+        const cardImg = new Image();
+        cardImg.onload = () => {
+          ctx.drawImage(cardImg, 0, yOff, EXPORT_W, scaledH);
+          resolve();
+        };
+        cardImg.onerror = resolve;
+        cardImg.src = dataUrl;
+      });
+
+      // ── 6. Composite imagens nos slots corretos ──
       async function compositeSlot(desc) {
         if (!desc) return;
         await new Promise(resolve => {
           const img = new Image();
           img.onload = () => {
-            const eS = EXPORT_W / cardW;
+            const eS    = EXPORT_W / cardW;
             const clipX = Math.round(desc.sL * eS);
             const clipY = Math.round(desc.sT * eS + yOff);
             const clipW = Math.round(desc.sW * eS);
@@ -5909,6 +5863,7 @@ async function exportCards() {
 
       const blob = await new Promise(r => out.toBlob(r, 'image/png'));
       pngBlobs.push({ name:`${tema}-card${cardNum}.png`, blob });
+
     } catch(err) {
       console.error(`Card ${i+1} erro:`, err);
     }
