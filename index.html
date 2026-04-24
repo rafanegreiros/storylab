@@ -4325,7 +4325,12 @@ function renderTemplateChoice() {
 
 function selectTemplate(num) {
   S.selectedTemplate = num;
-  document.querySelectorAll('.tpl-card').forEach((el,i) => el.classList.toggle('selected', i+1===num));
+  // Use data attribute or onclick content to match, not index
+  document.querySelectorAll('.tpl-card').forEach(el => {
+    const onclick = el.getAttribute('onclick') || '';
+    const m = onclick.match(/selectTemplate\((\d+)\)/);
+    el.classList.toggle('selected', m && parseInt(m[1]) === num);
+  });
   initSidebar();
 }
 
