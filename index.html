@@ -4339,11 +4339,39 @@ async function runRender() {
   showLoading(`Gerando ${n} cards — ${tplNames[S.selectedTemplate]}...`);
   const t = S.triagem; const h = S.selectedHeadline; const e = S.espinha;
   const provasStr = (e.provasFontes||e.prova||[]).map((p,i)=>typeof p==='object'?p.dado:p).slice(0,3).join(' | ');
-  // If we have previous cards (from template switch), use them as narrative reference
+  const currentTpl = tplCls[S.selectedTemplate];
+  const rhythm = TEMPLATE_RHYTHMS[currentTpl] || [];
+
+  // Build per-card field guide so the model knows exactly what each card shows
+  const cardGuide = Array.from({length: n}, (_, i) => {
+    const layout = rhythm[i] || 'text';
+    const sig = LAYOUT_FIELDS[layout] || 'T+C';
+    const isFirst = i === 0;
+    const isLast  = i === n - 1;
+    let hint = '';
+    if (sig === 'T') {
+      hint = isFirst
+        ? 'CAPA: titulo = headline impactante + subtítulo em uma frase. corpo = "" (não exibido, mas preencha com a mesma ideia expandida para futura troca de template).'
+        : isLast
+        ? 'CTA FINAL: titulo = chamada de transformação completa + ação específica em uma frase. corpo = "" (não exibido).'
+        : `titulo = afirmação completa e impactante (layout ${layout} só exibe título). corpo = expandir a ideia para futura troca.`;
+    } else {
+      hint = isFirst
+        ? 'CAPA: titulo = headline forte (até 10 palavras). corpo = subtítulo que amplia a tensão/promessa.'
+        : isLast
+        ? 'CTA: titulo = afirmação de transformação. corpo = chamada para ação clara e específica.'
+        : `titulo = título impactante. corpo = desenvolvimento, dado ou argumento (layout: ${layout}).`;
+    }
+    return `Card ${i+1} [${layout}|${sig}]: ${hint}`;
+  }).join('
+');
+
+  // Previous narrative context (template switch)
   const prevNarrativa = S.renderCards && S.renderCards.length > 0
-    ? '\nNARRATIVA ANTERIOR (adapte para o novo template, mantendo as mesmas ideias-chave):\n' + S.renderCards.map(c=>`Card ${c.num}: ${c.titulo} — ${c.corpo||''}`).join('\n')
+    ? '\nNARRATIVA ANTERIOR (adapte para o novo template — mesmas ideias, novo ângulo):\n' + S.renderCards.map(c=>`Card ${c.num}: ${c.titulo} — ${c.corpo||''}`).join('\n')
     : '';
-  const prompt = `Carrossel Instagram. EXATAMENTE ${n} cards numerados.
+
+  const prompt = `Carrossel Instagram. EXATAMENTE ${n} cards numerados para o template ${tplNames[S.selectedTemplate]}.
 
 Tema: ${t.tema_central}
 Headline: "${h.l1} / ${h.l2}"
@@ -4354,32 +4382,54 @@ Direção/CTA: ${e.direcao}
 Provas: ${provasStr}
 Tom: ${S.tom} | Funil: ${t.funil_detectado}
 
-REGRAS CRÍTICAS:
-- Card 1 (CAPA): titulo = headline completa ou variação forte. corpo = subtítulo que amplifica a tensão/promessa. NÃO deixe vazio.
-- Card ${n} (CTA): titulo = afirmação de transformação/resultado. corpo = chamada para ação clara e específica. NÃO deixe vazio.
-- Cards 2 a ${n-1}: desenvolver progressão Hook→Tensão→Mecanismo→Provas→Aplicação.
-- Máx 50 palavras/card. Sem 2ª pessoa. Títulos curtos e impactantes (máx 10 palavras).
-- TODOS os campos titulo e corpo devem ter conteúdo — nunca string vazia.
+ESTRUTURA OBRIGATÓRIA DE CADA CARD (respeite o campo [layout|campos]):
+${cardGuide}
+
+REGRAS GERAIS:
+- Máx 50 palavras por card. Sem 2ª pessoa. Progressão: Hook→Tensão→Mecanismo→Provas→Aplicação→CTA.
+- titulo NUNCA pode ser string vazia "".
+- corpo NUNCA pode ser string vazia "" — mesmo quando o layout não o exibe, preencha com a ideia expandida.
+- Quando [campos=T], concentre TODO o conteúdo do card no titulo (frase completa, impactante).
 ${prevNarrativa}
 
-EXEMPLO DE FORMATO (adapte o conteúdo para o tema real — todos os campos preenchidos):
-{"tema":"exemplo","funil":"awareness","objetivo":"engajamento","razao_viral":"quebra mito comum","cards":[
-  {"num":1,"tipo":"capa","titulo":"TITULO FORTE DA CAPA","corpo":"Subtítulo que amplia a tensão e desperta curiosidade do leitor.","dica_imagem":"foto do tema"},
-  {"num":2,"tipo":"texto","titulo":"O GRANDE PROBLEMA","corpo":"Descrição do problema central que o leitor enfrenta.","dica_imagem":""},
-  {"num":${n},"tipo":"cta","titulo":"TRANSFORMAÇÃO POSSÍVEL","corpo":"Chamada para ação específica. O que o leitor deve fazer agora.","dica_imagem":"foto do resultado"}
-]}
-
-REGRA FINAL: TODOS os ${n} cards devem aparecer no JSON. titulo e corpo NUNCA podem ser string vazia "". Responda SOMENTE com o JSON completo, sem texto antes ou depois.`;
+Responda SOMENTE com o JSON completo abaixo, sem texto antes ou depois:
+{"tema":"${t.tema_central}","funil":"${t.funil_detectado}","objetivo":"engajamento|educação|conversão|viralização","razao_viral":"1 frase","cards":[{"num":1,"tipo":"capa","titulo":"","corpo":"","dica_imagem":""}]}`;
   try {
     const data = extractJSON(await callClaude(prompt, 3500));
-    // Ensure no card has empty titulo or corpo
+
+    // Post-process: apply field signature rules to every card
     const fixedCards = (data.cards||[]).map((c, idx, arr) => {
       const isFirst = idx === 0;
       const isLast  = idx === arr.length - 1;
+      const layout  = rhythm[idx] || 'text';
+      const sig     = LAYOUT_FIELDS[layout] || 'T+C';
       let titulo = (c.titulo||'').trim();
       let corpo  = (c.corpo||'').trim();
-      if (!titulo) titulo = isFirst ? (h.l1+' / '+h.l2) : isLast ? (e.direcao||'Saiba mais') : e.hook;
-      if (!corpo)  corpo  = isFirst ? (e.hook||'') : isLast ? (e.aplicacao||e.direcao||'') : '';
+
+      // Ensure titulo is never empty
+      if (!titulo) {
+        titulo = isFirst ? (h.l1 + ' / ' + h.l2)
+               : isLast  ? (e.direcao || 'Saiba mais')
+               : (e.hook || 'Título');
+      }
+
+      // Ensure corpo is never empty (always stored, even if not displayed)
+      if (!corpo) {
+        corpo = isFirst ? (e.hook || titulo)
+              : isLast  ? (e.aplicacao || e.direcao || titulo)
+              : titulo;
+      }
+
+      // Smart merge: layout shows ONLY titulo but corpo has content → merge into titulo
+      if (sig === 'T' && corpo && corpo !== titulo) {
+        // If titulo is short and corpo adds meaning, merge them
+        const combined = titulo + ' — ' + corpo;
+        if (combined.length <= 160) {
+          titulo = combined;
+        }
+        // corpo stays populated (for future template switches)
+      }
+
       return {...c, titulo, corpo};
     });
     S.renderCards = fixedCards;
@@ -4794,6 +4844,55 @@ const THEME_MAP = {
   'tpl-storylab':  { 'sl-cover':'theme-sl-cover','sl-text':'theme-sl-text','sl-imgtext':'theme-sl-imgtext','sl-statement':'theme-sl-statement','sl-dark-img':'theme-sl-dark-img','sl-imgtext-light':'theme-sl-imgtext-light','sl-text-accent':'theme-sl-text-accent','sl-dark-imgtext':'theme-sl-dark-imgtext','sl-cover-cta':'theme-sl-cover-cta' },
   'tpl-thread':    { 'thread':'theme-thread','thread-end':'theme-thread-end' },
 };
+
+// Per-layout field signature: what each layout actually renders
+// 'T'   = titulo only (pack all content here)
+// 'T+C' = titulo + corpo (full content)
+// 'C'   = corpo only (no titulo shown)
+// 'T+C?' = titulo + corpo optional
+const LAYOUT_FIELDS = {
+  // Clareza / Impacto / Autoridade / Ritmo (classic)
+  'cover':      'T+C',
+  'text':       'T+C',
+  'img-top':    'T+C',
+  'bgimg':      'T+C',
+  'statement':  'T+C?',
+  'data':       'T+C',
+  'cta':        'T+C',
+  'split':      'T+C',
+  // Imersivo
+  'imersivo-cover':   'T+C',
+  'imersivo-overlay': 'T+C',
+  'imersivo-rect':    'T+C',
+  'imersivo-cta':     'T+C',
+  // Foco
+  'foco-cover':       'T+C',
+  'foco-text':        'T+C',
+  'foco-text-white':  'T+C',
+  'foco-dual':        'T',     // no text, only images
+  'foco-overlay':     'T+C',
+  'foco-cta':         'T+C',
+  // Storylab — the key ones
+  'sl-cover':         'T+C',   // titulo + corpo (corpo shown when present)
+  'sl-cover-cta':     'T+C',   // titulo + corpo + CTA button
+  'sl-text':          'T+C',
+  'sl-text-accent':   'T+C',
+  'sl-imgtext':       'T+C',
+  'sl-imgtext-light': 'T+C',
+  'sl-statement':     'T+C',
+  'sl-dark-img':      'T+C',
+  'sl-dark-imgtext':  'T+C',
+  // Thread
+  'thread':           'T+C',
+  'thread-end':       'T',
+};
+
+// Get field signature for a specific card position in a template
+function getCardFieldSig(tplCls, cardIndex) {
+  const rhythm = TEMPLATE_RHYTHMS[tplCls] || [];
+  const layout = rhythm[cardIndex] || 'text';
+  return LAYOUT_FIELDS[layout] || 'T+C';
+}
 
 function imgEditorHtml(num, cardImg, slotW, slotH, isDark) {
   // Always show corner upload button (change image when has one, add when not)
@@ -5460,6 +5559,7 @@ function renderCard(card, num, total, tplCls) {
   } else if (layoutType === 'sl-cover' || layoutType === 'sl-cover-cta') {
     const bS = getBrand();
     const initialsS = (bS.handle||'S').replace('@','').slice(0,2).toUpperCase();
+    const isSlCta = layoutType === 'sl-cover-cta';
     inner = `
       ${imgEditorHtml(num, cardImg, 0, 0, true)}
       <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to top,rgba(0,0,0,0.90) 0%,rgba(0,0,0,0.35) 55%,rgba(0,0,0,0.08) 100%);pointer-events:none"></div>
@@ -5470,7 +5570,9 @@ function renderCard(card, num, total, tplCls) {
             ${verifiedBadgeSvg(14)}
           </div>
         </div>
-        <div style="font-family:var(--brand-font-display);font-weight:400;font-style:italic;font-size:1.55rem;line-height:1.1;color:#fff;" class="editable" data-editable="titulo" data-card-num="${num}">${card.titulo}</div>
+        <div style="font-family:var(--brand-font-display);font-weight:400;font-style:italic;font-size:1.55rem;line-height:1.1;color:#fff;margin-bottom:${card.corpo?'8px':'0'};" class="editable" data-editable="titulo" data-card-num="${num}">${card.titulo}</div>
+        ${card.corpo ? `<div style="font-size:0.82rem;line-height:1.55;color:rgba(255,255,255,0.82);font-weight:500;${isSlCta?'margin-bottom:14px;':''}" class="editable" data-editable="corpo" data-card-num="${num}">${card.corpo}</div>` : ''}
+        ${isSlCta ? `<div class="lft-cta-btn" style="background:var(--brand-accent);color:var(--brand-dark);border-radius:100px;padding:11px 20px;font-family:'Poppins',sans-serif;font-size:0.78rem;font-weight:700;text-align:center;cursor:pointer;" class="editable" data-editable="ctaText" data-card-num="${num}">Siga para mais conteúdos como esse</div>` : ''}
       </div>`;
 
   } else if (layoutType === 'sl-text') {
@@ -5673,32 +5775,115 @@ async function exportCards() {
 
       // ── Apply images using stored transform state ──
       const ci = S.cardImages[i + 1];
+      const ciB = S.cardImages[(i + 1) + 100]; // Slot B for dual-image cards
       if (ci) {
-        // Find the img-editor-wrap in clone and set its image with exact transform
-        const editorWrap = clone.querySelector('.img-editor-wrap');
-        const editorImg  = editorWrap?.querySelector('img');
-        if (editorWrap && editorImg) {
-          // Make wrap cover the whole slot
-          editorWrap.style.cssText = `position:absolute;top:0;left:0;width:${cardW}px;height:${cardH}px;overflow:hidden;z-index:1;`;
-          // Apply the exact transform the user set
-          editorImg.style.cssText = `
-            position:absolute;
-            left:50%;top:50%;
-            width:auto;height:auto;
-            transform:translate(calc(-50% + ${ci.x || 0}px), calc(-50% + ${ci.y || 0}px)) scale(${ci.scale || 1});
-            transform-origin:center center;
-            max-width:none;max-height:none;
-            display:block;
-          `;
+        const src_url = `data:${ci.mime};base64,${ci.data}`;
+        const scale_factor = EXPORT_W / cardW; // e.g. 1080/320 = 3.375
+
+        // Find the live (pre-clone) img-editor-wrap to get its real rendered slot dimensions
+        const liveWrap = srcCard.querySelector('.img-editor-wrap');
+        const liveImg  = liveWrap?.querySelector('img');
+
+        // Get the slot rect (the container the image lives inside) from live DOM
+        const slotEl = liveWrap?.parentElement || liveWrap;
+        const slotRect = slotEl?.getBoundingClientRect();
+        const cardRect = srcCard.getBoundingClientRect();
+
+        // Slot dimensions relative to card (in screen px)
+        const slotW_screen = slotRect ? slotRect.width  : cardW;
+        const slotH_screen = slotRect ? slotRect.height : cardH;
+        const slotTop_screen  = slotRect ? (slotRect.top  - cardRect.top)  : 0;
+        const slotLeft_screen = slotRect ? (slotRect.left - cardRect.left) : 0;
+
+        // Scale slot to export canvas dimensions
+        const slotW_exp  = Math.round(slotW_screen  * scale_factor);
+        const slotH_exp  = Math.round(slotH_screen  * scale_factor);
+        const slotTop_exp  = Math.round(slotTop_screen  * scale_factor);
+        const slotLeft_exp = Math.round(slotLeft_screen * scale_factor);
+
+        // Get natural image dimensions from live img element
+        const natW = liveImg?.naturalWidth  || 800;
+        const natH = liveImg?.naturalHeight || 800;
+
+        // Compute the rendered size of the image at scale (ci.scale) to fit the SLOT
+        // Base fit: cover the slot
+        const fitScale = Math.max(slotW_exp / natW, slotH_exp / natH);
+        const rendW = Math.round(natW * fitScale * (ci.scale || 1));
+        const rendH = Math.round(natH * fitScale * (ci.scale || 1));
+
+        // User translation in export pixels (ci.x/y are in screen px, scale up)
+        const tx = Math.round((ci.x || 0) * scale_factor);
+        const ty = Math.round((ci.y || 0) * scale_factor);
+
+        // Center position within slot + user translation
+        const imgLeft = slotLeft_exp + Math.round((slotW_exp - rendW) / 2) + tx;
+        const imgTop  = slotTop_exp  + Math.round((slotH_exp - rendH) / 2) + ty;
+
+        // Find clone's wrap and replace with canvas-drawn approach
+        const cloneWrap = clone.querySelector('.img-editor-wrap');
+        if (cloneWrap) {
+          // Replace wrap with a plain div containing an absolutely positioned img
+          const newWrap = document.createElement('div');
+          newWrap.style.cssText = `position:absolute;top:${slotTop_screen}px;left:${slotLeft_screen}px;width:${slotW_screen}px;height:${slotH_screen}px;overflow:hidden;z-index:1;`;
+
+          // Fit-scale for screen dimensions
+          const fitScaleScreen = Math.max(slotW_screen / natW, slotH_screen / natH);
+          const rendW_s = Math.round(natW * fitScaleScreen * (ci.scale || 1));
+          const rendH_s = Math.round(natH * fitScaleScreen * (ci.scale || 1));
+          const imgLeft_s = Math.round((slotW_screen - rendW_s) / 2) + (ci.x || 0);
+          const imgTop_s  = Math.round((slotH_screen - rendH_s) / 2) + (ci.y || 0);
+
+          const newImg = document.createElement('img');
+          newImg.src = src_url;
+          newImg.style.cssText = `position:absolute;top:${imgTop_s}px;left:${imgLeft_s}px;width:${rendW_s}px;height:${rendH_s}px;max-width:none;max-height:none;pointer-events:none;`;
+          newWrap.appendChild(newImg);
+          cloneWrap.parentNode.replaceChild(newWrap, cloneWrap);
         }
-        // Also handle li-img slot (img-top layout)
-        const liSlot = clone.querySelector('.li-img');
-        if (liSlot && editorWrap && liSlot.contains(editorWrap)) {
-          const liR = srcCard.querySelector('.li-img')?.getBoundingClientRect();
-          if (liR) {
-            liSlot.style.cssText = `position:relative;overflow:hidden;width:${liR.width}px;height:${liR.height}px;flex-shrink:0;`;
-            editorWrap.style.cssText = `position:absolute;top:0;left:0;width:${liR.width}px;height:${liR.height}px;overflow:hidden;z-index:1;`;
+
+        // Fix li-img container dimensions to match live slot
+        const liSlot_clone = clone.querySelector('.li-img');
+        const liSlot_live  = srcCard.querySelector('.li-img');
+        if (liSlot_clone && liSlot_live) {
+          const liR = liSlot_live.getBoundingClientRect();
+          const liW = Math.round(liR.width);
+          const liH = Math.round(liR.height);
+          liSlot_clone.style.cssText = `position:relative;overflow:hidden;width:${liW}px;height:${liH}px;flex-shrink:0;border-radius:0;`;
+          // Reposition the newWrap inside li-img (not card-relative)
+          const newWrapInLi = liSlot_clone.querySelector('div[style*="overflow:hidden"]');
+          if (newWrapInLi) {
+            newWrapInLi.style.cssText = `position:absolute;top:0;left:0;width:${liW}px;height:${liH}px;overflow:hidden;z-index:1;`;
+            const imgInLi = newWrapInLi.querySelector('img');
+            if (imgInLi && liveImg) {
+              const fitS = Math.max(liW / natW, liH / natH);
+              const rW = Math.round(natW * fitS * (ci.scale || 1));
+              const rH = Math.round(natH * fitS * (ci.scale || 1));
+              const iL = Math.round((liW - rW) / 2) + (ci.x || 0);
+              const iT = Math.round((liH - rH) / 2) + (ci.y || 0);
+              imgInLi.style.cssText = `position:absolute;top:${iT}px;left:${iL}px;width:${rW}px;height:${rH}px;max-width:none;max-height:none;pointer-events:none;`;
+            }
           }
+        }
+      }
+
+      // ── Handle slot B (foco-dual second image) ──
+      if (ciB) {
+        const srcB_url = `data:${ciB.mime};base64,${ciB.data}`;
+        const liveSlotB = srcCard.querySelectorAll('.lfd-slot')[1];
+        const cloneSlotB = clone.querySelectorAll('.lfd-slot')[1];
+        if (liveSlotB && cloneSlotB) {
+          const rB = liveSlotB.getBoundingClientRect();
+          const cR = srcCard.getBoundingClientRect();
+          const sW = Math.round(rB.width); const sH = Math.round(rB.height);
+          const liveImgB_el = liveSlotB.querySelector('img');
+          const natWB = liveImgB_el?.naturalWidth  || 800;
+          const natHB = liveImgB_el?.naturalHeight || 800;
+          const fitB = Math.max(sW / natWB, sH / natHB);
+          const rWB = Math.round(natWB * fitB * (ciB.scale || 1));
+          const rHB = Math.round(natHB * fitB * (ciB.scale || 1));
+          const iLB = Math.round((sW - rWB) / 2) + (ciB.x || 0);
+          const iTB = Math.round((sH - rHB) / 2) + (ciB.y || 0);
+          cloneSlotB.style.cssText = `position:relative;overflow:hidden;width:${sW}px;height:${sH}px;`;
+          cloneSlotB.innerHTML = `<img src="${srcB_url}" style="position:absolute;top:${iTB}px;left:${iLB}px;width:${rWB}px;height:${rHB}px;max-width:none;max-height:none;">`;
         }
       }
 
