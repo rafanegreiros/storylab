@@ -4363,8 +4363,7 @@ async function runRender() {
         : `titulo = título impactante. corpo = desenvolvimento, dado ou argumento (layout: ${layout}).`;
     }
     return `Card ${i+1} [${layout}|${sig}]: ${hint}`;
-  }).join('
-');
+  }).join('\n');
 
   // Previous narrative context (template switch)
   const prevNarrativa = S.renderCards && S.renderCards.length > 0
