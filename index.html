@@ -4325,7 +4325,10 @@ function renderTemplateChoice() {
 
 function selectTemplate(num) {
   S.selectedTemplate = num;
-  document.querySelectorAll('.tpl-card').forEach((el,i) => el.classList.toggle('selected', i+1===num));
+  document.querySelectorAll('.tpl-card').forEach(el => {
+    const m = (el.getAttribute('onclick')||'').match(/selectTemplate\((\d+)\)/);
+    el.classList.toggle('selected', m && parseInt(m[1]) === num);
+  });
   initSidebar();
 }
 
@@ -5722,59 +5725,22 @@ async function exportCards() {
     if (status) status.textContent = `Card ${i+1} de ${total}...`;
 
     try {
-      // Clone card into offscreen container
-      const clone = srcCard.cloneNode(true);
       const cardW = srcCard.offsetWidth;
       const cardH = srcCard.offsetHeight;
-      clone.style.cssText = `
-        width:${cardW}px !important;
-        height:${cardH}px !important;
-        border-radius:0 !important;
-        overflow:hidden !important;
-        position:relative !important;
-        flex-shrink:0 !important;
-        animation:none !important;
-        display:block !important;
-      `;
+      const cardRect0 = srcCard.getBoundingClientRect();
 
-      // Remove outer card border/outline only — preserve internal border-radius (avatars, pills, badges)
-      clone.style.border = 'none';
-      clone.style.outline = 'none';
-      // Force border-radius:50% inline on all avatar elements so html2canvas respects it
-      clone.querySelectorAll('.lcf-avatar,.lcf-avatar img,.lte-avatar,.lte-avatar img,.lth-avatar,.lth-avatar img,.li-avatar,.li-avatar img,.lsit-avatar,.lsit-avatar img,.lim-avatar,.lim-avatar img').forEach(el => {
-        el.style.setProperty('border-radius', '50%', 'important');
-        el.style.setProperty('overflow', 'hidden', 'important');
-      });
-
-      // Remove ALL UI-only elements from clone (upload buttons, hints, badges, editor controls)
-      clone.querySelectorAll(
-        '.edit-hint,.card-edited-badge,.card-img-upload,.lbg-upload,.cif-clear,' +
-        '.img-editor-controls,.img-editor-hint,.img-editor-btn,.img-editor-hint-wrap,' +
-        '[data-ui-only],[title="Adicionar imagem"],[title="Trocar imagem"],[title="Remover imagem"]'
-      ).forEach(el => el.remove());
-
-      // Remove contenteditable attribute (keep text, remove edit mode)
-      clone.querySelectorAll('[contenteditable]').forEach(el => {
-        el.removeAttribute('contenteditable');
-      });
-
-      // Remove any floating corner-button divs (they use onclick=triggerCardImageUpload)
-      clone.querySelectorAll('[onclick*="triggerCardImageUpload"]').forEach(el => el.remove());
-
-      // Remove the upload hint text div
-      clone.querySelectorAll('.img-editor-hint').forEach(el => el.remove());
-
-      // ── Collect image slot geometry from LIVE DOM BEFORE moving to offscreen ──
-      // After html2canvas, we composite images directly onto the canvas.
-      const cardRect = srcCard.getBoundingClientRect();
+      // ── Ler geometria das imagens ANTES de qualquer manipulação ──
+      const ci  = S.cardImages[i + 1];
+      const ciB = S.cardImages[(i + 1) + 100];
 
       function readSlotDesc(liveSlotEl, ci) {
         if (!liveSlotEl || !ci) return null;
         const r = liveSlotEl.getBoundingClientRect();
+        const cR = srcCard.getBoundingClientRect();
         const sW = Math.round(r.width);
         const sH = Math.round(r.height);
-        const sL = Math.round(r.left - cardRect.left);
-        const sT = Math.round(r.top  - cardRect.top);
+        const sL = Math.round(r.left - cR.left);
+        const sT = Math.round(r.top  - cR.top);
         const liveImg = liveSlotEl.querySelector('img');
         const natW = liveImg?.naturalWidth  || 800;
         const natH = liveImg?.naturalHeight || 800;
@@ -5787,53 +5753,108 @@ async function exportCards() {
                  src: `data:${ci.mime};base64,${ci.data}` };
       }
 
-      const ci  = S.cardImages[i + 1];
-      const ciB = S.cardImages[(i + 1) + 100];
-
-      // Slot A: any card with .img-editor-wrap
       const liveWrap = srcCard.querySelector('.img-editor-wrap');
-      const slotDescA = ci ? readSlotDesc(liveWrap?.parentElement || liveWrap, ci) : null;
+      const liveSlotParent = liveWrap?.parentElement;
+      // Para full-bg: parentElement é o card → usar liveWrap diretamente (inset:0)
+      // Para imgtext: parentElement é o flex:1 div → usar esse div
+      const slotAEl = (liveSlotParent && liveSlotParent !== srcCard && !liveSlotParent.classList.contains('c-card'))
+                      ? liveSlotParent : liveWrap;
+      const slotDescA = ci  ? readSlotDesc(slotAEl,                               ci)  : null;
+      const slotDescB = ciB ? readSlotDesc(srcCard.querySelectorAll('.lfd-slot')[1], ciB) : null;
 
-      // Slot B: foco-dual second slot
-      const liveSlotB = srcCard.querySelectorAll('.lfd-slot')[1];
-      const slotDescB = ciB ? readSlotDesc(liveSlotB, ciB) : null;
+      // ── Clonar o card e preparar para captura offscreen ──
+      const clone = srcCard.cloneNode(true);
+      clone.style.cssText = [
+        `width:${cardW}px !important`,
+        `height:${cardH}px !important`,
+        `border-radius:0 !important`,
+        `overflow:hidden !important`,
+        `position:relative !important`,
+        `flex-shrink:0 !important`,
+        `animation:none !important`,
+        `display:block !important`,
+      ].join(';');
+      clone.style.border = 'none';
+      clone.style.outline = 'none';
 
-      // Fix li-img slot in clone so flex layouts don't collapse
-      const liSlot_clone = clone.querySelector('.li-img');
-      const liSlot_live  = srcCard.querySelector('.li-img');
-      if (liSlot_clone && liSlot_live) {
-        const liR = liSlot_live.getBoundingClientRect();
-        liSlot_clone.style.setProperty('width',  Math.round(liR.width)  + 'px', 'important');
-        liSlot_clone.style.setProperty('height', Math.round(liR.height) + 'px', 'important');
-        liSlot_clone.style.setProperty('flex-shrink', '0', 'important');
-        liSlot_clone.style.setProperty('position', 'relative', 'important');
-        liSlot_clone.style.setProperty('overflow', 'hidden', 'important');
-      }
+      // Forçar border-radius em avatares
+      clone.querySelectorAll([
+        '.lcf-avatar,.lcf-avatar img,.lte-avatar,.lte-avatar img',
+        '.lth-avatar,.lth-avatar img,.li-avatar,.li-avatar img',
+        '.lsit-avatar,.lsit-avatar img,.lim-avatar,.lim-avatar img'
+      ].join(',')).forEach(el => {
+        el.style.setProperty('border-radius', '50%', 'important');
+        el.style.setProperty('overflow', 'hidden', 'important');
+      });
 
-      // Remove all img-editor-wrap from clone (images will be composited on canvas)
+      // Remover elementos UI
+      clone.querySelectorAll([
+        '.edit-hint,.card-edited-badge,.card-img-upload,.lbg-upload,.cif-clear',
+        '.img-editor-controls,.img-editor-hint,.img-editor-btn,.img-editor-hint-wrap',
+        '[data-ui-only],[title="Adicionar imagem"],[title="Trocar imagem"],[title="Remover imagem"]',
+        '[onclick*="triggerCardImageUpload"]','.img-editor-hint'
+      ].join(',')).forEach(el => el.remove());
+
+      clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+
+      // Remover img-editor-wrap do clone (imagens serão compostas via canvas)
       clone.querySelectorAll('.img-editor-wrap').forEach(w => {
         const ph = document.createElement('div');
         ph.style.cssText = 'position:absolute;inset:0;background:transparent;pointer-events:none;';
         w.parentNode.replaceChild(ph, w);
       });
-      // Clear lfd-slot images from clone too
       clone.querySelectorAll('.lfd-slot img').forEach(img => img.remove());
 
-      // Apply background from brand config directly as inline style
+      // Corrigir li-img para não colapsar
+      const liLive = srcCard.querySelector('.li-img');
+      const liClone = clone.querySelector('.li-img');
+      if (liLive && liClone) {
+        const lr = liLive.getBoundingClientRect();
+        liClone.style.setProperty('width',  Math.round(lr.width)  + 'px', 'important');
+        liClone.style.setProperty('height', Math.round(lr.height) + 'px', 'important');
+        liClone.style.setProperty('flex-shrink', '0', 'important');
+        liClone.style.setProperty('position', 'relative', 'important');
+        liClone.style.setProperty('overflow', 'hidden', 'important');
+      }
+
+      // Corrigir TODOS os flex:1 com height explícito baseado no live DOM
+      clone.querySelectorAll('*').forEach(el => {
+        const live = srcCard.querySelector(`[data-card-num="${el.getAttribute('data-card-num')}"]`);
+        const cs = window.getComputedStyle(el);
+        if (cs.flex === '1 1 0%' || cs.flex === '1 1 auto' || cs.flexGrow === '1') {
+          // Encontrar elemento correspondente no live DOM pela posição
+        }
+      });
+      // Simpler: fix ALL elements in clone that have flex:1 by reading live DOM
+      // Walk the clone tree and set explicit heights based on live tree
+      function fixFlexHeights(cloneEl, liveEl) {
+        if (!cloneEl || !liveEl) return;
+        const cs = window.getComputedStyle(liveEl);
+        if (parseFloat(cs.flexGrow) > 0) {
+          const lr = liveEl.getBoundingClientRect();
+          if (lr.height > 0) {
+            cloneEl.style.setProperty('height', Math.round(lr.height) + 'px', 'important');
+            cloneEl.style.setProperty('flex', 'none', 'important');
+            cloneEl.style.setProperty('min-height', '0', 'important');
+          }
+        }
+        const cloneChildren = cloneEl.children;
+        const liveChildren = liveEl.children;
+        for (let k = 0; k < Math.min(cloneChildren.length, liveChildren.length); k++) {
+          fixFlexHeights(cloneChildren[k], liveChildren[k]);
+        }
+      }
+      fixFlexHeights(clone, srcCard);
+
       const bg = getCardBgColor(srcCard);
       clone.style.backgroundColor = bg;
-
-      // Apply all dynamic brand styles inline to clone's children
       applyBrandInline(clone);
 
       offscreen.innerHTML = '';
       offscreen.appendChild(clone);
-
-      // Wait for fonts to render fully
-      await sleep(250);
+      await sleep(300);
 
       const scale = EXPORT_W / cardW;
-
       const raw = await html2canvas(clone, {
         scale,
         useCORS: true,
@@ -5845,36 +5866,37 @@ async function exportCards() {
         imageTimeout: 8000,
       });
 
-      // Compose onto exact 1080x1350 canvas
+      // Canvas final 1080×1350
       const out = document.createElement('canvas');
-      out.width = EXPORT_W;
+      out.width  = EXPORT_W;
       out.height = EXPORT_H;
       const ctx = out.getContext('2d');
       ctx.fillStyle = bg;
-      ctx.fillRect(0,0,EXPORT_W,EXPORT_H);
+      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
       const scaledH = Math.round(cardH * scale);
-      const yOff = Math.max(0, Math.round((EXPORT_H - scaledH)/2));
+      const yOff = Math.max(0, Math.round((EXPORT_H - scaledH) / 2));
       ctx.drawImage(raw, 0, yOff, EXPORT_W, scaledH);
-      // ── Composite images directly onto canvas ──
+
+      // ── Composite imagens diretamente no canvas ──
       async function compositeSlot(desc) {
         if (!desc) return;
-        await new Promise((resolve) => {
+        await new Promise(resolve => {
           const img = new Image();
           img.onload = () => {
-            const eScale = EXPORT_W / cardW;
-            const cx = Math.round((desc.sL + desc.iL) * eScale);
-            const cy = Math.round((desc.sT + desc.iT) * eScale + yOff);
-            const cW = Math.round(desc.rW * eScale);
-            const cH = Math.round(desc.rH * eScale);
-            const clipX = Math.round(desc.sL * eScale);
-            const clipY = Math.round(desc.sT * eScale + yOff);
-            const clipW = Math.round(desc.sW * eScale);
-            const clipH = Math.round(desc.sH * eScale);
+            const eS = EXPORT_W / cardW;
+            const clipX = Math.round(desc.sL * eS);
+            const clipY = Math.round(desc.sT * eS + yOff);
+            const clipW = Math.round(desc.sW * eS);
+            const clipH = Math.round(desc.sH * eS);
+            const imgX  = Math.round((desc.sL + desc.iL) * eS);
+            const imgY  = Math.round((desc.sT + desc.iT) * eS + yOff);
+            const imgW  = Math.round(desc.rW * eS);
+            const imgH  = Math.round(desc.rH * eS);
             ctx.save();
             ctx.beginPath();
             ctx.rect(clipX, clipY, clipW, clipH);
             ctx.clip();
-            ctx.drawImage(img, cx, cy, cW, cH);
+            ctx.drawImage(img, imgX, imgY, imgW, imgH);
             ctx.restore();
             resolve();
           };
@@ -5885,10 +5907,8 @@ async function exportCards() {
       await compositeSlot(slotDescA);
       await compositeSlot(slotDescB);
 
-
       const blob = await new Promise(r => out.toBlob(r, 'image/png'));
       pngBlobs.push({ name:`${tema}-card${cardNum}.png`, blob });
-
     } catch(err) {
       console.error(`Card ${i+1} erro:`, err);
     }
