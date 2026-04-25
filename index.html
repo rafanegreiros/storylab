@@ -5559,6 +5559,45 @@ function triggerDownload(blob, filename) {
 }
 
 
+
+function brandHeaderHtml(isDark, num, total) {
+  const b = getBrand();
+  const hasHeader = b.handle || b.tagline || b.year;
+  if (!hasHeader) return '';
+  const fb = b.fontBody;
+  // All elements neutral — subtle white on dark, subtle black on light
+  const handleColor = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(20,18,16,0.4)';
+  const subtleColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
+  const yearColor   = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
+  return `<div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;pointer-events:none;">
+    <span style="font-family:${fb};font-size:0.56rem;letter-spacing:0.8px;color:${handleColor};font-weight:600">${b.handle||''}</span>
+    <span style="font-family:${fb};font-size:0.5rem;letter-spacing:0.6px;color:${subtleColor};flex:1;text-align:center;text-transform:uppercase">${b.tagline||''}</span>
+    <span style="font-family:${fb};font-size:0.5rem;letter-spacing:1px;color:${yearColor}">${b.year||''}</span>
+  </div>`;
+}
+
+function brandCounterHtml(isDark, num, total) {
+  const color = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.2)';
+  return `<div style="position:absolute;bottom:10px;right:14px;z-index:5;font-family:'Poppins',sans-serif;font-weight:300;font-size:0.58rem;letter-spacing:1px;color:${color};pointer-events:none">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</div>`;
+}
+
+function extractJSON(text) {
+  // Try direct parse first
+  try { return JSON.parse(text); } catch {}
+  // Extract first {...} or [...] block from text
+  const match = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (match) {
+    try { return JSON.parse(match[1]); } catch {}
+  }
+  // Last resort: find the largest JSON-like block
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    try { return JSON.parse(text.slice(start, end + 1)); } catch {}
+  }
+  throw new Error('Resposta inválida da IA. Tente novamente.');
+}
+
 async function callClaude(prompt, maxTokens, retries = 4) {
   const token = getAuthToken();
   if (!token) { showLoginScreen(); throw new Error('Faça login para continuar.'); }
