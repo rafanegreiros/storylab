@@ -184,10 +184,12 @@ header {
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  overflow: hidden;
 }
 
 .sidebar-header {
   padding: 28px 28px 0;
+  flex-shrink: 0;
 }
 
 .step-title {
@@ -210,6 +212,9 @@ header {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .field-label {
@@ -280,6 +285,7 @@ textarea { min-height: 120px; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .primary-btn {
