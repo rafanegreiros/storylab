@@ -2900,6 +2900,12 @@ function applyBrandToCards() {
   root.style.setProperty('--brand-light', b.light);
   root.style.setProperty('--brand-font-display', b.fontDisplay);
   root.style.setProperty('--brand-font-body', b.fontBody);
+  // If on step 4 (carrossel), refresh card sidebar to update brand palette swatches
+  if (S.step === 4 && S.cards.length) {
+    // Update the brand palette colors in all cards that still have default colors
+    setTimeout(() => { if (typeof renderCardSidebar === 'function') renderCardSidebar(); }, 100);
+  }
+
   // Expose RGB triplet for templates that need rgba(var(--brand-primary-rgb), alpha)
   const _pr = parseInt(b.primary.slice(1,3),16);
   const _pg = parseInt(b.primary.slice(3,5),16);
@@ -4297,8 +4303,6 @@ function defaultCardState(idx, titulo, corpo) {
       align: 'left',
       highlight: null, // { word: 'texto', color: '#ffcc00' }
       fontFamily: b.fontDisplay || "'Fraunces', serif",
-      offsetX: 0,  // px offset from default position
-      offsetY: 0,
     },
     body: {
       text: corpo || '',
@@ -4307,13 +4311,12 @@ function defaultCardState(idx, titulo, corpo) {
       visible: true,
       align: 'left',
       fontFamily: b.fontBody || "'Syne', sans-serif",
-      offsetX: 0,
-      offsetY: 0,
     },
     // Layer 5: Components
     header: {
       visible: true,
       bgColor: 'transparent',
+      colorMode: 'auto', // 'auto'|'light'|'dark'
     },
     cta: {
       visible: idx === 0 || false,
@@ -4324,11 +4327,14 @@ function defaultCardState(idx, titulo, corpo) {
     },
     avatar: {
       visible: idx === 0,
-      position: 'tl', // 'tl'|'tr'|'bl'|'br'
-      placement: 'bottom', // 'top' (above title) | 'bottom' (below body)
+      position: 'tl',
+      placement: 'bottom',
+      offsetX: 0,
+      offsetY: 0,
     },
     pageNum: {
       visible: true,
+      colorMode: 'auto', // 'auto'|'light'|'dark'
     },
     // Layout hint
     layout: idx === 0 ? 'cover' : 'text',
@@ -4424,7 +4430,11 @@ function renderFinal() {
   const b = getBrand();
 
   const cardsHtml = S.cards.map((c, i) => renderCardHtml(c, i, S.cards.length)).join('');
-  const codeText = S.cards.map((c,i) => `Card ${i+1} — ${c.title.text}${c.body.text ? ' · ' + c.body.text : ''}`).join('\n');
+  const markdownText = S.cards.map((c,i) => {
+    const label = `texto ${i+1}`;
+    const body = c.body.visible && c.body.text ? '\n' + c.body.text : '';
+    return `${label} - ${c.title.text}${body}`;
+  }).join('\n');
 
   document.getElementById('canvas').innerHTML = `
     <div class="render-header">
@@ -4488,18 +4498,10 @@ function renderFinal() {
     <div style="margin-top:8px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <div style="font-family:'Poppins',sans-serif;font-size:0.58rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);">Texto completo dos cards</div>
-        <button class="copy-btn" onclick="copyCardsText()" style="font-size:0.65rem;">Copiar tudo</button>
+        <button class="copy-btn" onclick="copyCardsMarkdown()" style="font-size:0.65rem;">Copiar markdown</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;" id="cards-text-list">
-        ${S.cards.map((c,i) => `
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">
-            <div style="font-family:'Poppins',sans-serif;font-size:0.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Card ${i+1} ${c.layout==='cover'?'· Capa':c.layout==='cta'?'· CTA':''}</div>
-            <div style="font-size:0.82rem;font-weight:600;color:var(--ink);line-height:1.4;margin-bottom:${c.body.text?'4px':'0'}">${c.title.text}</div>
-            ${c.body.text ? `<div style="font-size:0.78rem;color:var(--muted);line-height:1.5;">${c.body.text}</div>` : ''}
-          </div>`).join('')}
-      </div>
+      <pre id="cards-markdown-block" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-family:'Syne Mono',monospace;font-size:0.75rem;color:var(--ink);line-height:1.9;white-space:pre-wrap;word-break:break-word;">${markdownText}</pre>
     </div>
-    <div class="code-block" id="code-output" style="display:none">${codeText}</div>
     ${isAdmin() ? renderSaveTemplateModal() : ''}`;
 
   setTimeout(() => {
@@ -4534,7 +4536,7 @@ function renderCardHtml(card, idx, total) {
   if (card.bg.type === 'image' && card.bg.imageSrc) {
     const fit = card.bg.imageMode === 'contain' ? 'contain' : 'cover';
     layers += `<div style="position:absolute;inset:0;overflow:hidden;z-index:1;">
-      <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;transform:translate(calc(-50% + ${card.bg.imageX||0}px), calc(-50% + ${card.bg.imageY||0}px)) scale(${card.bg.imageScale||1});transform-origin:center;object-fit:${fit};min-width:100%;min-height:100%;pointer-events:none;user-select:none;" draggable="false"/>
+      <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(calc(-50% + ${card.bg.imageX||0}px), calc(-50% + ${card.bg.imageY||0}px)) scale(${card.bg.imageScale||1});transform-origin:center;object-fit:${card.bg.imageMode==='contain'?'contain':card.bg.imageMode==='fill'?'fill':'cover'};pointer-events:none;user-select:none;" draggable="false"/>
       <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
         <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
         <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;color:rgba(255,255,255,0.8);letter-spacing:0.8px;text-transform:uppercase;">Trocar</span>
@@ -4565,12 +4567,18 @@ function renderCardHtml(card, idx, total) {
 
   // Layer: header (brand)
   if (card.header.visible) {
-    layers += brandHeaderHtml(isColorDark(card.bg.color), num, total);
+    const headerIsDark = card.header.colorMode === 'dark' ? true :
+      card.header.colorMode === 'light' ? false :
+      (isColorDark(card.bg.color) || card.bg.type === 'image');
+    layers += brandHeaderHtml(headerIsDark, num, total);
   }
 
   // Layer: page number
   if (card.pageNum.visible) {
-    layers += brandCounterHtml(isColorDark(card.bg.color), num, total);
+    const counterIsDark = card.pageNum.colorMode === 'dark' ? true :
+      card.pageNum.colorMode === 'light' ? false :
+      (isColorDark(card.bg.color) || card.bg.type === 'image');
+    layers += brandCounterHtml(counterIsDark, num, total);
   }
 
   // Layer: avatar + handle
@@ -4578,9 +4586,13 @@ function renderCardHtml(card, idx, total) {
     const bv = getBrand();
     const initials = (bv.handle||'S').replace('@','').slice(0,2).toUpperCase();
     const avPlacement = card.avatar.placement || 'bottom';
-    const avTop = avPlacement === 'top' ? (card.header.visible ? '44px' : '12px') : 'auto';
-    const avBottom = avPlacement === 'bottom' ? (card.cta.visible?'80px':'20px') : 'auto';
-    layers += `<div style="position:absolute;top:${avTop};bottom:${avBottom};left:20px;right:20px;z-index:6;display:flex;align-items:center;gap:10px;">
+    const avBaseTop = avPlacement === 'top' ? (card.header.visible ? '44px' : '12px') : 'auto';
+    const avBaseBottom = avPlacement === 'bottom' ? (card.cta.visible ? '80px' : '20px') : 'auto';
+    const avOX = card.avatar.offsetX || 0;
+    const avOY = card.avatar.offsetY || 0;
+    const avTopFinal = avBaseTop !== 'auto' ? `calc(${avBaseTop} + ${avOY}px)` : 'auto';
+    const avBottomFinal = avBaseBottom !== 'auto' ? `calc(${avBaseBottom} - ${avOY}px)` : 'auto';
+    layers += `<div style="position:absolute;top:${avTopFinal};bottom:${avBottomFinal};left:calc(20px + ${avOX}px);right:20px;z-index:6;display:flex;align-items:center;gap:10px;">
       <div style="width:38px;height:38px;border-radius:50%;background:${bv.primary||'#0071e3'};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,0.2);">
         ${bv.avatarImg ? `<img src="${bv.avatarImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>` : `<span style="font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:700;color:#fff;">${initials}</span>`}
       </div>
@@ -4595,12 +4607,9 @@ function renderCardHtml(card, idx, total) {
   }
 
   // Layer: text content
-  const textTop = card.avatar.visible && card.avatar.placement === 'top' ? '80px' : (card.header.visible ? '44px' : '20px');
-  const textBottom = card.cta.visible ? '70px' : (card.avatar.visible && card.avatar.placement === 'bottom' ? '80px' : (card.pageNum.visible ? '28px' : '20px'));
-  const titleOffX = card.title.offsetX || 0;
-  const titleOffY = card.title.offsetY || 0;
-  const bodyOffX = card.body.offsetX || 0;
-  const bodyOffY = card.body.offsetY || 0;
+  const textTop = card.avatar.visible ? '14px' : (card.header.visible ? '44px' : '20px');
+  const textBottom = card.cta.visible ? '70px' : (card.pageNum.visible ? '28px' : '20px');
+  const textPad = card.avatar.visible ? '${textTop} 20px 80px' : `${textTop} 20px ${textBottom}`;
 
   // Render title with optional word highlight
   let titleHtml = card.title.text || '';
@@ -4614,7 +4623,7 @@ function renderCardHtml(card, idx, total) {
 
   let bodyHtml = (card.body.text || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-  layers += `<div style="position:absolute;top:${textTop};left:20px;right:20px;bottom:${textBottom};z-index:6;display:flex;flex-direction:column;justify-content:center;gap:10px;transform:translate(${titleOffX}px,${titleOffY}px);">
+  layers += `<div style="position:absolute;top:${textTop};left:20px;right:20px;bottom:${textBottom};z-index:6;display:flex;flex-direction:column;justify-content:center;gap:10px;">
     <div contenteditable="true" spellcheck="false"
       data-field="title" data-idx="${idx}"
       onblur="updateCardText(${idx},'title',this.innerText)"
@@ -4623,7 +4632,7 @@ function renderCardHtml(card, idx, total) {
     ${card.body.visible && card.body.text ? `<div contenteditable="true" spellcheck="false"
       data-field="body" data-idx="${idx}"
       onblur="updateCardText(${idx},'body',this.innerText)"
-      style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.6;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyOffY}px;margin-left:${bodyOffX}px;"
+      style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.6;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;"
     >${bodyHtml}</div>` : ''}
   </div>`;
 
@@ -4722,13 +4731,12 @@ function renderCardSidebar() {
       const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), bv=parseInt(hex.slice(5,7),16);
       return (0.299*r+0.587*g+0.114*bv)/255 > 0.55;
     };
-    // onChangeFn is like "(c)=>setCardBgColor(0,c)" — we wrap it as an IIFE call
     const swatches = palette.map(p => `
-      <div onclick="(${onChangeFn})('${p.val}')"
+      <div onclick="${onChangeFn}('${p.val}')"
         style="width:26px;height:26px;border-radius:5px;background:${p.val};cursor:pointer;border:2px solid ${currentColor===p.val?'#fff':'transparent'};${isLight(p.val)?'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);':''}transition:transform 0.1s;"
         title="${p.label}" onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform=''"></div>`).join('');
     const freeInput = `<label style="width:26px;height:26px;border-radius:5px;background:${currentColor};cursor:pointer;border:2px solid rgba(255,255,255,0.15);position:relative;overflow:hidden;display:block;" title="Cor livre">
-      <input type="color" value="${currentColor}" oninput="(${onChangeFn})(this.value)"
+      <input type="color" value="${currentColor}" oninput="${onChangeFn}(this.value)"
         style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:none;padding:0;"/>
     </label>`;
     return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">${swatches}${freeInput}</div>`;
@@ -4745,14 +4753,13 @@ function renderCardSidebar() {
   }
 
   function slider(label, val, min, max, step, onInput) {
-    const sid = 'sv' + Math.random().toString(36).slice(2,8);
     return `<div>
       <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
         <span style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">${label}</span>
-        <span style="font-size:0.72rem;font-weight:600;color:var(--ink)" id="${sid}">${val}</span>
+        <span style="font-size:0.72rem;font-weight:600;color:var(--ink)" id="sv-${onInput.replace(/[^a-z0-9]/gi,'')}">${val}</span>
       </div>
       <input type="range" min="${min}" max="${max}" step="${step}" value="${val}"
-        oninput="document.getElementById('${sid}').textContent=this.value; (${onInput})(this.value)"
+        oninput="document.getElementById('sv-${onInput.replace(/[^a-z0-9]/gi,'')}').textContent=this.value; ${onInput}(this.value)"
         style="width:100%;accent-color:var(--accent);cursor:pointer;"/>
     </div>`;
   }
@@ -4789,7 +4796,9 @@ function renderCardSidebar() {
         <div style="display:flex;gap:6px;margin-bottom:8px;">
           ${['cover','contain','fill'].map(m => `<button onclick="setCardImgMode(${idx},'${m}')" style="flex:1;padding:5px;border-radius:5px;border:1.5px solid ${card.bg.imageMode===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.6rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${card.bg.imageMode===m?'var(--accent)':'var(--muted)'}">${m==='cover'?'Full':m==='contain'?'Conter':'Preencher'}</button>`).join('')}
         </div>
-        ${slider('Zoom', Math.round((card.bg.imageScale||1)*100), 50, 300, 5, `(v)=>setCardImgScale(${idx},v/100)`)}` : `
+        ${slider('Zoom', Math.round((card.bg.imageScale||1)*100), 50, 300, 5, `(v)=>setCardImgScale(${idx},v/100)`)}
+        ${slider('↔ Posição X', card.bg.imageX||0, -200, 200, 4, `(v)=>setCardImgX(${idx},v)`)}
+        ${slider('↕ Posição Y', card.bg.imageY||0, -200, 200, 4, `(v)=>setCardImgY(${idx},v)`)}` : `
         <button onclick="triggerBgImageUpload(${idx})" style="width:100%;padding:10px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;color:var(--muted);font-size:0.78rem;">
           + Adicionar imagem
         </button>`}
@@ -4836,7 +4845,7 @@ function renderCardSidebar() {
       <div>
         <div class="field-label" style="margin-bottom:6px;">Alinhamento</div>
         <div style="display:flex;gap:5px;">
-          ${[['left','<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><line x1=\'21\' x2=\'3\' y1=\'6\' y2=\'6\'/><line x1=\'15\' x2=\'3\' y1=\'12\' y2=\'12\'/><line x1=\'17\' x2=\'3\' y1=\'18\' y2=\'18\'/></svg>'],['center','<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><line x1=\'21\' x2=\'3\' y1=\'6\' y2=\'6\'/><line x1=\'17\' x2=\'7\' y1=\'12\' y2=\'12\'/><line x1=\'19\' x2=\'5\' y1=\'18\' y2=\'18\'/></svg>'],['right','<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><line x1=\'21\' x2=\'3\' y1=\'6\' y2=\'6\'/><line x1=\'21\' x2=\'9\' y1=\'12\' y2=\'12\'/><line x1=\'21\' x2=\'7\' y1=\'18\' y2=\'18\'/></svg>']].map(([v,l]) =>
+          ${[['left','⬅'],['center','☰'],['right','➡']].map(([v,l]) =>
             `<button onclick="setCardTitleAlign(${idx},'${v}')" style="flex:1;padding:6px;border-radius:5px;border:1.5px solid ${card.title.align===v?'var(--accent)':'var(--border)'};background:transparent;font-size:0.85rem;cursor:pointer;color:${card.title.align===v?'var(--accent)':'var(--muted)'};">${l}</button>`
           ).join('')}
         </div>
@@ -4852,11 +4861,6 @@ function renderCardSidebar() {
           <button onclick="clearHighlight(${idx})" style="padding:6px 8px;border-radius:5px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:0.72rem;color:var(--muted);">✕</button>
         </div>
       </div>
-      <div>
-        <div class="field-label" style="margin-bottom:6px;">Posição do bloco de texto</div>
-        ${slider('↕ Vertical', card.title.offsetY||0, -120, 120, 2, `(v)=>setCardTitleOffsetY(${idx},v)`)}
-        ${slider('↔ Horizontal', card.title.offsetX||0, -80, 80, 2, `(v)=>setCardTitleOffsetX(${idx},v)`)}
-      </div>
     </div>
   `);
 
@@ -4869,11 +4873,10 @@ function renderCardSidebar() {
           ${colorSwatches('body', card.body.color, `(c)=>setCardBodyColor(${idx},c)`)}
         </div>
         ${slider('Tamanho', card.body.size, 10, 28, 1, `(v)=>setCardBodySize(${idx},v)`)}
-        ${slider('↕ Deslocamento vertical', card.body.offsetY||0, -60, 60, 2, `(v)=>setCardBodyOffsetY(${idx},v)`)}
         <div>
           <div class="field-label" style="margin-bottom:6px;">Alinhamento</div>
           <div style="display:flex;gap:5px;">
-            ${[['left','<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><line x1=\'21\' x2=\'3\' y1=\'6\' y2=\'6\'/><line x1=\'15\' x2=\'3\' y1=\'12\' y2=\'12\'/><line x1=\'17\' x2=\'3\' y1=\'18\' y2=\'18\'/></svg>'],['center','<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><line x1=\'21\' x2=\'3\' y1=\'6\' y2=\'6\'/><line x1=\'17\' x2=\'7\' y1=\'12\' y2=\'12\'/><line x1=\'19\' x2=\'5\' y1=\'18\' y2=\'18\'/></svg>'],['right','<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><line x1=\'21\' x2=\'3\' y1=\'6\' y2=\'6\'/><line x1=\'21\' x2=\'9\' y1=\'12\' y2=\'12\'/><line x1=\'21\' x2=\'7\' y1=\'18\' y2=\'18\'/></svg>']].map(([v,l]) =>
+            ${[['left','⬅'],['center','☰'],['right','➡']].map(([v,l]) =>
               `<button onclick="setCardBodyAlign(${idx},'${v}')" style="flex:1;padding:6px;border-radius:5px;border:1.5px solid ${card.body.align===v?'var(--accent)':'var(--border)'};background:transparent;font-size:0.85rem;cursor:pointer;color:${card.body.align===v?'var(--accent)':'var(--muted)'};">${l}</button>`
             ).join('')}
           </div>
@@ -4886,22 +4889,32 @@ function renderCardSidebar() {
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Header / Marca</div>
         ${toggle('Visível', card.header.visible, `toggleHeader(${idx})`)}
+        ${card.header.visible ? `<div style="display:flex;gap:4px;margin-top:2px;">
+          ${['auto','light','dark'].map(m => `<button onclick="setHeaderColor(${idx},'${m}')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ${(card.header.colorMode||'auto')===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.58rem;cursor:pointer;color:${(card.header.colorMode||'auto')===m?'var(--accent)':'var(--muted)'};">${m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro'}</button>`).join('')}
+        </div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Avatar + Handle</div>
         ${toggle('Visível', card.avatar.visible, `toggleAvatar(${idx})`)}
         ${card.avatar.visible ? `
-        <div style="margin-top:4px;">
-          <div class="field-label" style="margin-bottom:5px;">Posição</div>
-          <div style="display:flex;gap:5px;">
-            <button onclick="setAvatarPlacement(${idx},'top')" style="flex:1;padding:6px;border-radius:5px;border:1.5px solid ${(card.avatar.placement||'bottom')==='top'?'var(--accent)':'var(--border)'};background:transparent;font-size:0.65rem;cursor:pointer;color:${(card.avatar.placement||'bottom')==='top'?'var(--accent)':'var(--muted)'};">↑ Acima do título</button>
-            <button onclick="setAvatarPlacement(${idx},'bottom')" style="flex:1;padding:6px;border-radius:5px;border:1.5px solid ${(card.avatar.placement||'bottom')==='bottom'?'var(--accent)':'var(--border)'};background:transparent;font-size:0.65rem;cursor:pointer;color:${(card.avatar.placement||'bottom')==='bottom'?'var(--accent)':'var(--muted)'};">↓ Abaixo do texto</button>
+        <div style="margin-top:4px;display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <div class="field-label" style="margin-bottom:5px;">Posição vertical</div>
+            <div style="display:flex;gap:5px;">
+              <button onclick="setAvatarPlacement(${idx},'top')" style="flex:1;padding:6px;border-radius:5px;border:1.5px solid ${(card.avatar.placement||'bottom')==='top'?'var(--accent)':'var(--border)'};background:transparent;font-size:0.62rem;cursor:pointer;color:${(card.avatar.placement||'bottom')==='top'?'var(--accent)':'var(--muted)'};">↑ Acima</button>
+              <button onclick="setAvatarPlacement(${idx},'bottom')" style="flex:1;padding:6px;border-radius:5px;border:1.5px solid ${(card.avatar.placement||'bottom')==='bottom'?'var(--accent)':'var(--border)'};background:transparent;font-size:0.62rem;cursor:pointer;color:${(card.avatar.placement||'bottom')==='bottom'?'var(--accent)':'var(--muted)'};">↓ Abaixo</button>
+            </div>
           </div>
+          ${slider('↕ Ajuste Y', card.avatar.offsetY||0, -120, 120, 2, `(v)=>setAvatarOffsetY(${idx},v)`)}
+          ${slider('↔ Ajuste X', card.avatar.offsetX||0, -80, 80, 2, `(v)=>setAvatarOffsetX(${idx},v)`)}
         </div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Número de página</div>
         ${toggle('Visível', card.pageNum.visible, `togglePageNum(${idx})`)}
+        ${card.pageNum.visible ? `<div style="display:flex;gap:4px;margin-top:2px;">
+          ${['auto','light','dark'].map(m => `<button onclick="setPageNumColor(${idx},'${m}')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ${(card.pageNum.colorMode||'auto')===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.58rem;cursor:pointer;color:${(card.pageNum.colorMode||'auto')===m?'var(--accent)':'var(--muted)'};">${m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro'}</button>`).join('')}
+        </div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Botão CTA</div>
@@ -4988,6 +5001,8 @@ function setCardImgScale(idx, scale) {
   S.cards[idx].bg.imageScale = parseFloat(scale);
   refreshCard(idx);
 }
+function setCardImgX(idx, v) { S.cards[idx].bg.imageX = parseInt(v); refreshCard(idx); }
+function setCardImgY(idx, v) { S.cards[idx].bg.imageY = parseInt(v); refreshCard(idx); }
 
 function clearBgImage(idx) {
   S.cards[idx].bg.imageSrc = null;
@@ -5048,17 +5063,16 @@ function setCardBodyAlign(idx, align) { S.cards[idx].body.align = align; refresh
 // Component controls
 function toggleHeader(idx) { S.cards[idx].header.visible = !S.cards[idx].header.visible; refreshCard(idx); renderCardSidebar(); }
 function toggleAvatar(idx) { S.cards[idx].avatar.visible = !S.cards[idx].avatar.visible; refreshCard(idx); renderCardSidebar(); }
+function setAvatarPlacement(idx, p) { S.cards[idx].avatar.placement = p; refreshCard(idx); renderCardSidebar(); }
+function setAvatarOffsetX(idx, v) { S.cards[idx].avatar.offsetX = parseInt(v); refreshCard(idx); }
+function setAvatarOffsetY(idx, v) { S.cards[idx].avatar.offsetY = parseInt(v); refreshCard(idx); }
 function togglePageNum(idx) { S.cards[idx].pageNum.visible = !S.cards[idx].pageNum.visible; refreshCard(idx); renderCardSidebar(); }
 function toggleCta(idx) { S.cards[idx].cta.visible = !S.cards[idx].cta.visible; refreshCard(idx); renderCardSidebar(); }
+function setPageNumColor(idx, mode) { S.cards[idx].pageNum.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
+function setHeaderColor(idx, mode) { S.cards[idx].header.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
 function setCtaBg(idx, color) { S.cards[idx].cta.bgColor = color; refreshCard(idx); renderCardSidebar(); }
 function setCtaText(idx, color) { S.cards[idx].cta.textColor = color; refreshCard(idx); renderCardSidebar(); }
 function setCtaRadius(idx, r) { S.cards[idx].cta.radius = parseInt(r); refreshCard(idx); }
-
-// Position controls
-function setCardTitleOffsetX(idx, v) { S.cards[idx].title.offsetX = parseInt(v); refreshCard(idx); }
-function setCardTitleOffsetY(idx, v) { S.cards[idx].title.offsetY = parseInt(v); refreshCard(idx); }
-function setCardBodyOffsetY(idx, v) { S.cards[idx].body.offsetY = parseInt(v); refreshCard(idx); }
-function setAvatarPlacement(idx, placement) { S.cards[idx].avatar.placement = placement; refreshCard(idx); renderCardSidebar(); }
 
 // Add/Remove/Duplicate
 function duplicateCard(idx) {
@@ -5182,11 +5196,22 @@ function applyTemplate(tplId) {
 // ── COPY CARDS TEXT ──
 function copyCardsText() {
   const text = S.cards.map((c,i) =>
-    `Card ${i+1}: ${c.title.text}${c.body.text ? ' — ' + c.body.text : ''}`
+    `texto ${i+1} - ${c.title.text}${c.body.visible && c.body.text ? '\n' + c.body.text : ''}`
   ).join('\n');
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelector('.copy-btn');
     if (btn) { const orig = btn.innerHTML; btn.textContent = '✓ Copiado!'; setTimeout(() => { btn.innerHTML = orig; }, 1800); }
+  });
+}
+
+function copyCardsMarkdown() {
+  const el = document.getElementById('cards-markdown-block');
+  const text = el ? el.textContent : S.cards.map((c,i) =>
+    `texto ${i+1} - ${c.title.text}${c.body.visible && c.body.text ? '\n' + c.body.text : ''}`
+  ).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btns = document.querySelectorAll('.copy-btn');
+    btns.forEach(btn => { if (btn.textContent.includes('markdown')) { btn.textContent = '✓ Copiado!'; setTimeout(() => { btn.textContent = 'Copiar markdown'; }, 1800); }});
   });
 }
 
@@ -5300,11 +5325,9 @@ async function exportCardToCanvas(card, idx) {
   const ctx = canvas.getContext('2d');
   const b = getBrand();
 
-  // Scale factor: card preview is 320×400, export is 1080×1350
-  const scaleX = EXPORT_W / 320;
-  const scaleY = EXPORT_H / 400;
-  // Use uniform scale to match aspect ratio
-  const scale = Math.min(scaleX, scaleY); // Should be ~3.375
+  // Preview card is 320×400px. Export is 1080×1350px.
+  // Both have the same 4:5 aspect ratio, so scale is uniform: 3.375x
+  const SC = EXPORT_W / 320; // 3.375 — single scale factor for all elements
 
   // ── Layer 1: Background ──
   if (card.bg.type === 'solid') {
@@ -5355,27 +5378,30 @@ async function exportCardToCanvas(card, idx) {
     const handleText = b.handle || '';
     const taglineText = b.tagline || '';
     const yearText = b.year ? String(b.year) : '';
-    const headerY = 36;
-    const headerPadX = 54;
-    const isD = isColorDark(card.bg.color) || card.bg.type === 'image';
+    // Preview header: ~10px from top, 8px from left/right
+    const headerY = Math.round(12 * SC);
+    const headerPadX = Math.round(8 * SC);
+    const hColorMode = card.header.colorMode || 'auto';
+    const isD = hColorMode === 'dark' ? true : hColorMode === 'light' ? false : (isColorDark(card.bg.color) || card.bg.type === 'image');
     const handleCol = isD ? 'rgba(255,255,255,0.5)' : 'rgba(20,18,16,0.4)';
     const taglineCol = isD ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
     const yearCol = isD ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
+    const headerFontSize = Math.round(7 * SC); // ~7px in preview = ~24px export
     ctx.save();
-    ctx.font = `600 ${Math.round(18*scale/scaleX)}px 'Syne', sans-serif`;
+    ctx.font = `600 ${headerFontSize}px 'Syne', sans-serif`;
     ctx.fillStyle = handleCol;
-    ctx.fillText(handleText, headerPadX, headerY);
+    ctx.fillText(handleText, headerPadX, headerY + headerFontSize);
     if (taglineText) {
       ctx.textAlign = 'center';
       ctx.fillStyle = taglineCol;
-      ctx.font = `400 ${Math.round(16*scale/scaleX)}px 'Syne', sans-serif`;
-      ctx.fillText(taglineText.toUpperCase(), EXPORT_W/2, headerY);
+      ctx.font = `400 ${headerFontSize}px 'Syne', sans-serif`;
+      ctx.fillText(taglineText.toUpperCase(), EXPORT_W/2, headerY + headerFontSize);
     }
     if (yearText) {
       ctx.textAlign = 'right';
       ctx.fillStyle = yearCol;
-      ctx.font = `400 ${Math.round(16*scale/scaleX)}px 'Syne', sans-serif`;
-      ctx.fillText(yearText, EXPORT_W - headerPadX, headerY);
+      ctx.font = `400 ${headerFontSize}px 'Syne', sans-serif`;
+      ctx.fillText(yearText, EXPORT_W - headerPadX, headerY + headerFontSize);
     }
     ctx.textAlign = 'left';
     ctx.restore();
@@ -5383,73 +5409,127 @@ async function exportCardToCanvas(card, idx) {
 
   // ── Layer 4: Page counter ──
   if (card.pageNum.visible) {
-    const isD = isColorDark(card.bg.color) || card.bg.type === 'image';
-    const counterCol = isD ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.2)';
+    const pnColorMode = card.pageNum.colorMode || 'auto';
+    const isD2 = pnColorMode === 'dark' ? true : pnColorMode === 'light' ? false : (isColorDark(card.bg.color) || card.bg.type === 'image');
+    const counterCol = isD2 ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.2)';
     const num = idx + 1;
     const tot = S.cards.length;
-    const text = `${String(num).padStart(2,'0')} / ${String(tot).padStart(2,'0')}`;
+    const counterText = `${String(num).padStart(2,'0')} / ${String(tot).padStart(2,'0')}`;
+    const counterFontSize = Math.round(6 * SC);
     ctx.save();
-    ctx.font = `300 ${Math.round(18*scale/scaleX)}px 'Poppins', sans-serif`;
+    ctx.font = `300 ${counterFontSize}px 'Poppins', sans-serif`;
     ctx.fillStyle = counterCol;
     ctx.textAlign = 'right';
-    ctx.fillText(text, EXPORT_W - 48, EXPORT_H - 32);
+    ctx.fillText(counterText, EXPORT_W - Math.round(8*SC), EXPORT_H - Math.round(8*SC));
     ctx.textAlign = 'left';
     ctx.restore();
   }
 
   // ── Layer 5: Avatar + handle ──
-  const avatarBottom = card.cta.visible ? 280 : 70;
   if (card.avatar.visible) {
-    const avX = 68, avY = EXPORT_H - avatarBottom - 50;
-    const avR = 64; // radius
+    // Match preview: avatar circle 19px radius, positioned using same placement logic
+    const avR = Math.round(19 * SC);
+    const avPlacement = card.avatar.placement || 'bottom';
+    const avOX = (card.avatar.offsetX || 0) * SC;
+    const avOY = (card.avatar.offsetY || 0) * SC;
+    const ctaH = Math.round((card.cta.visible ? 80 : 0) * SC);
+    const headerH = Math.round((card.header.visible ? 44 : 12) * SC);
+
+    let avX, avY;
+    if (avPlacement === 'top') {
+      avX = Math.round(20 * SC) + avR + avOX;
+      avY = headerH + avR + avOY;
+    } else {
+      avX = Math.round(20 * SC) + avR + avOX;
+      avY = EXPORT_H - ctaH - Math.round(20 * SC) - avR + avOY;
+    }
+
+    // Draw ring (story ring effect)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avX, avY, avR + Math.round(2.5*SC), 0, Math.PI*2);
+    ctx.strokeStyle = b.accent || '#c8f05a';
+    ctx.lineWidth = Math.round(2*SC);
+    ctx.stroke();
+    ctx.restore();
+
+    // Draw circle bg
     ctx.save();
     ctx.beginPath();
     ctx.arc(avX, avY, avR, 0, Math.PI*2);
     ctx.fillStyle = b.primary || '#0071e3';
     ctx.fill();
     if (b.avatarImg) {
-      try {
-        await drawCircleImage(ctx, b.avatarImg, avX, avY, avR);
-      } catch(e) {}
+      try { await drawCircleImage(ctx, b.avatarImg, avX, avY, avR); } catch(e) {}
     } else {
       const initials = (b.handle||'S').replace('@','').slice(0,2).toUpperCase();
       ctx.fillStyle = '#ffffff';
-      ctx.font = `700 ${avR}px 'Poppins', sans-serif`;
+      ctx.font = `700 ${Math.round(avR * 0.7)}px 'Poppins', sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(initials, avX, avY);
       ctx.textBaseline = 'alphabetic';
     }
     ctx.restore();
-    // Handle text
-    const hText = b.handle || '@handle';
+
+    // Verified badge
+    const badgeR = Math.round(5 * SC);
+    const badgeX = avX + avR - badgeR;
+    const badgeY = avY + avR - badgeR;
     ctx.save();
-    ctx.font = `700 ${Math.round(26*scale/scaleX)}px 'Poppins', sans-serif`;
+    ctx.beginPath();
+    ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI*2);
+    ctx.fillStyle = '#1d9bf0'; // Twitter/Instagram blue
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `700 ${Math.round(5*SC)}px 'Poppins', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✓', badgeX, badgeY);
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+
+    // Handle text + verified
+    const hText = b.handle || '@handle';
+    const handleFontSize = Math.round(7 * SC);
+    ctx.save();
+    ctx.font = `700 ${handleFontSize}px 'Poppins', sans-serif`;
     ctx.fillStyle = card.title.color || '#ffffff';
-    ctx.fillText(hText, avX + avR + 24, EXPORT_H - avatarBottom - 20);
+    ctx.fillText(hText, avX + avR + Math.round(8*SC), avY + handleFontSize * 0.35);
+    if (b.tagline) {
+      ctx.font = `400 ${Math.round(5.5*SC)}px 'Poppins', sans-serif`;
+      ctx.fillStyle = hexAlpha(card.title.color || '#ffffff', 0.55);
+      ctx.fillText(b.tagline, avX + avR + Math.round(8*SC), avY + handleFontSize * 0.35 + Math.round(6.5*SC));
+    }
     ctx.restore();
   }
 
   // ── Layer 6: Text ──
-  const textPadX = 68;
-  const textTop = card.header.visible ? 120 : 68;
-  const textBottom = card.cta.visible ? 310 : (card.pageNum.visible ? 100 : 68);
-  const availH = EXPORT_H - textTop - textBottom;
+  // Match preview layout: padX=20px, textTop depends on header/avatar
+  const textPadX = Math.round(20 * SC);
+  const avIsTop = (card.avatar.placement || 'bottom') === 'top';
+  const textTopPx = avIsTop ? Math.round(80 * SC) : (card.header.visible ? Math.round(44 * SC) : Math.round(20 * SC));
+  const avIsBottom = !avIsTop && card.avatar.visible;
+  const textBottomPx = card.cta.visible ? Math.round(70 * SC) :
+    (avIsBottom ? Math.round(80 * SC) : (card.pageNum.visible ? Math.round(28 * SC) : Math.round(20 * SC)));
+  const titleOffY = (card.title.offsetY || 0) * SC;
   const availW = EXPORT_W - textPadX * 2;
+  const textCenterY = textTopPx + (EXPORT_H - textTopPx - textBottomPx) / 2;
 
   // Title
   if (card.title.text) {
     ctx.save();
-    const fontSize = Math.round(card.title.size * (EXPORT_W / 320));
+    const fontSize = Math.round(card.title.size * SC);
     ctx.font = `${card.title.weight} ${fontSize}px ${card.title.fontFamily || "'Fraunces', serif"}`;
     ctx.fillStyle = card.title.color;
     ctx.textAlign = card.title.align === 'center' ? 'center' : (card.title.align === 'right' ? 'right' : 'left');
     const titleX = card.title.align === 'center' ? EXPORT_W/2 : (card.title.align === 'right' ? EXPORT_W - textPadX : textPadX);
 
-    // Strip markdown bold for canvas
     const titleClean = card.title.text.replace(/\*\*(.*?)\*\*/g, '$1');
     const titleLines = wrapText(ctx, titleClean, availW, fontSize * 1.15);
-    let y = textTop + fontSize;
+    // Start y so the text block is vertically centered in available space
+    const totalTitleH = titleLines.length * fontSize * 1.2;
+    let y = textCenterY - totalTitleH / 2 + fontSize + titleOffY;
 
     // Handle word highlight
     for (const line of titleLines) {
@@ -5479,7 +5559,7 @@ async function exportCardToCanvas(card, idx) {
     // Body below title
     if (card.body.visible && card.body.text) {
       ctx.save();
-      const bodyFontSize = Math.round(card.body.size * (EXPORT_W / 320));
+      const bodyFontSize = Math.round(card.body.size * SC);
       ctx.font = `400 ${bodyFontSize}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       ctx.fillStyle = card.body.color;
       ctx.textAlign = card.body.align === 'center' ? 'center' : (card.body.align === 'right' ? 'right' : 'left');
@@ -5497,18 +5577,18 @@ async function exportCardToCanvas(card, idx) {
 
   // ── Layer 7: CTA button ──
   if (card.cta.visible && card.cta.text) {
-    const btnH = 86;
-    const btnY = EXPORT_H - 68 - btnH;
+    const btnH = Math.round(38 * SC); // 38px in preview
+    const btnY = EXPORT_H - Math.round(20 * SC) - btnH;
     const btnPadX = textPadX;
     const btnW = EXPORT_W - btnPadX * 2;
-    const btnR = Math.min(card.cta.radius * (EXPORT_W/320), btnH/2);
+    const btnR = Math.min(card.cta.radius * SC, btnH/2);
 
     ctx.save();
     ctx.fillStyle = card.cta.bgColor;
     roundedRect(ctx, btnPadX, btnY, btnW, btnH, btnR);
     ctx.fill();
 
-    const ctaFontSize = Math.round(26 * (EXPORT_W/320));
+    const ctaFontSize = Math.round(12 * SC); // 12px in preview
     ctx.font = `700 ${ctaFontSize}px 'Poppins', sans-serif`;
     ctx.fillStyle = card.cta.textColor;
     ctx.textAlign = 'center';
@@ -5897,11 +5977,16 @@ function getSessionSnapshot() {
     espinha: S.espinha,
     selectedTemplate: S.selectedTemplate,
     renderCards: S.renderCards,
+    cards: S.cards.map(c => {
+      // Strip image data from cards before saving (too large for Supabase)
+      const copy = JSON.parse(JSON.stringify(c));
+      if (copy.bg && copy.bg.imageSrc) copy.bg.imageSrc = null;
+      return copy;
+    }),
     renderAnalysis: S.renderAnalysis,
     sources: S.sources,
     postDescricao: S.postDescricao || '',
     postComentario: S.postComentario || '',
-    // Save brand settings too
     brand: getBrand(),
     savedAt: new Date().toISOString(),
   };
@@ -6079,14 +6164,15 @@ function showStepNavigator(snap) {
     { num: 1, name: 'Triagem', key: 'triagem', preview: snap.triagem?.tema_central || '' },
     { num: 2, name: 'Headlines', key: 'headlines', preview: snap.headlines?.[0] ? `${snap.headlines[0].l1} ${snap.headlines[0].l2}` : '' },
     { num: 3, name: 'Espinha Dorsal', key: 'espinha', preview: snap.espinha?.hook || '' },
-    { num: 4, name: 'Carrossel', key: 'cards', preview: (snap.cards?.length || snap.renderCards?.length) ? `${(snap.cards || snap.renderCards).length} cards gerados` : '' },
+    { num: 4, name: 'Template', key: 'selectedTemplate', preview: snap.selectedTemplate ? ['','Clareza','Impacto','Autoridade','Ritmo','Imersivo','Foco','Storylab','Thread'][snap.selectedTemplate] : '' },
+    { num: 5, name: 'Carrossel', key: 'renderCards', preview: snap.renderCards?.length ? `${snap.renderCards.length} cards gerados` : '' },
   ];
 
   const currentStep = snap.step || 1;
 
   const stepsHtml = steps.map(s => {
-    const hasData = s.key === 'cards'
-      ? ((snap.cards?.length || snap.renderCards?.length || 0) > 0)
+    const hasData = s.key === 'renderCards'
+      ? (snap[s.key] && snap[s.key].length > 0)
       : !!snap[s.key];
     const isActive = s.num === currentStep;
     const cls = !hasData ? 'disabled' : isActive ? 'active done' : 'done';
