@@ -174,7 +174,7 @@ header {
   z-index: 5;
   display: grid;
   grid-template-columns: 360px 1fr;
-  min-height: calc(100vh - 57px);
+  height: calc(100vh - 57px);
   align-items: start;
 }
 
@@ -185,6 +185,9 @@ header {
   flex-direction: column;
   background: var(--bg);
   overflow: hidden;
+  height: 100%;
+  position: sticky;
+  top: 0;
 }
 
 .sidebar-header {
