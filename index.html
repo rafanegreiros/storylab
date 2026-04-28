@@ -4608,9 +4608,8 @@ function renderCardHtml(card, idx, total) {
     </div>`;
   } else if (card.bg.type !== 'image') {
     // Show image upload button when no image
-    const btnStyle = card.bg.type === 'solid' ? `background:rgba(255,255,255,0.08);border:1px dashed rgba(255,255,255,0.2);` : '';
-    layers += `<div onclick="triggerBgImageUpload(${idx})" style="position:absolute;top:8px;right:8px;z-index:5;${btnStyle}border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;" title="Adicionar imagem de fundo">
-      <svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='${card.title.color || "#fff"}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='opacity:0.5'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
+    layers += `<div onclick="triggerBgImageUpload(${idx})" style="position:absolute;top:8px;right:8px;z-index:20;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);border:1px dashed rgba(255,255,255,0.25);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;" title="Adicionar imagem de fundo">
+      <svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='opacity:0.7'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
     </div>`;
   }
 
@@ -6105,54 +6104,102 @@ function getSessionSnapshot() {
 
 // ─── Image persistence helpers ───────────────────────────────────────────────
 // Images are base64 and too heavy for Supabase — we keep them in localStorage
-// keyed by session ID so they survive page reloads and history restores.
+// ── IMAGE STORAGE via IndexedDB (no size limits unlike localStorage) ──────────
 
-function _imgStoreKey(sessionId) {
-  // Use a stable temp key when no session ID exists yet
-  return 'storylab_images_' + (sessionId || 'current');
+const _IDB_NAME = 'storylab_images';
+const _IDB_STORE = 'sessions';
+let _idbReady = null;
+
+function _openIDB() {
+  if (_idbReady) return _idbReady;
+  _idbReady = new Promise((resolve, reject) => {
+    const req = indexedDB.open(_IDB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(_IDB_STORE);
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = () => reject(req.error);
+  });
+  return _idbReady;
 }
 
-function saveImagesToStorage(sessionId) {
+async function saveImagesToStorage(sessionId) {
+  const key = 'storylab_images_' + (sessionId || 'current');
+  const cardBgImages = {};
+  (S.cards || []).forEach((card, i) => {
+    if (card.bg && card.bg.imageSrc) cardBgImages[i] = { src: card.bg.imageSrc, mime: card.bg.imageMime };
+  });
+  const payload = { cardImages: S.cardImages || {}, cardBgImages };
+  const hasAny = Object.keys(payload.cardImages).length > 0 || Object.keys(cardBgImages).length > 0;
+
   try {
-    const key = _imgStoreKey(sessionId);
-    // Collect legacy cardImages + new card bg images
-    const cardBgImages = {};
-    (S.cards || []).forEach((c, i) => {
-      if (c.bg && c.bg.imageSrc) cardBgImages[i] = { src: c.bg.imageSrc, mime: c.bg.imageMime };
-    });
-    const payload = {
-      cardImages: S.cardImages || {},
-      cardBgImages,
-    };
-    const hasAny = Object.keys(payload.cardImages).length > 0 || Object.keys(cardBgImages).length > 0;
-    if (!hasAny) {
-      localStorage.removeItem(key);
-    } else {
-      localStorage.setItem(key, JSON.stringify(payload));
-    }
+    const db = await _openIDB();
+    const tx = db.transaction(_IDB_STORE, 'readwrite');
+    if (hasAny) tx.objectStore(_IDB_STORE).put(payload, key);
+    else        tx.objectStore(_IDB_STORE).delete(key);
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
   } catch(e) {
-    if (e.name === 'QuotaExceededError') {
-      console.warn('localStorage quota exceeded — images too large to persist');
-    } else {
-      console.warn('saveImagesToStorage failed:', e.message);
+    // Fallback to localStorage with size warning
+    try {
+      if (hasAny) localStorage.setItem(key, JSON.stringify(payload));
+    } catch(e2) {
+      console.warn('Image storage failed:', e2.message);
     }
   }
 }
 
-function loadImagesFromStorage(sessionId) {
+async function loadImagesFromStorage(sessionId) {
+  const key  = 'storylab_images_' + (sessionId || 'current');
+  const key2 = 'storylab_images_current';
   try {
-    const raw = localStorage.getItem(_imgStoreKey(sessionId))
-             || (sessionId ? localStorage.getItem('storylab_images_current') : null);
+    const db = await _openIDB();
+    const tx = db.transaction(_IDB_STORE, 'readonly');
+    const get = k => new Promise((res, rej) => {
+      const r = tx.objectStore(_IDB_STORE).get(k);
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    const data = await get(key) || (sessionId ? await get(key2) : null);
+    if (data) return data;
+  } catch(e) { /* fall through to localStorage */ }
+
+  // Fallback: localStorage (legacy sessions)
+  try {
+    const raw = localStorage.getItem(key) || (sessionId ? localStorage.getItem(key2) : null);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
-    // New format: { cardImages, cardBgImages }
-    if (parsed && typeof parsed === 'object' && ('cardImages' in parsed || 'cardBgImages' in parsed)) {
+    if (parsed && typeof parsed === 'object' && ('cardImages' in parsed || 'cardBgImages' in parsed))
       return parsed;
-    }
-    // Legacy format: flat object of cardImages
     return { cardImages: parsed, cardBgImages: {} };
+  } catch(e) { return {}; }
+}
+
+async function migrateImagesOnNewSession(newId) {
+  // Called when autoSave creates a new session: move 'current' → newId
+  try {
+    const db  = await _openIDB();
+    const tx1 = db.transaction(_IDB_STORE, 'readonly');
+    const cur = await new Promise((res, rej) => {
+      const r = tx1.objectStore(_IDB_STORE).get('storylab_images_current');
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    if (cur) {
+      const tx2 = db.transaction(_IDB_STORE, 'readwrite');
+      tx2.objectStore(_IDB_STORE).put(cur, 'storylab_images_' + newId);
+      tx2.objectStore(_IDB_STORE).delete('storylab_images_current');
+      await new Promise((res, rej) => { tx2.oncomplete = res; tx2.onerror = () => rej(tx2.error); });
+    }
+    // Also check localStorage fallback
+    const lsKey = 'storylab_images_current';
+    const lsData = localStorage.getItem(lsKey);
+    if (lsData) {
+      localStorage.setItem('storylab_images_' + newId, lsData);
+      localStorage.removeItem(lsKey);
+    }
   } catch(e) {
-    return {};
+    // Legacy localStorage fallback
+    const lsData = localStorage.getItem('storylab_images_current');
+    if (lsData) {
+      localStorage.setItem('storylab_images_' + newId, lsData);
+      localStorage.removeItem('storylab_images_current');
+    }
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6182,19 +6229,14 @@ async function autoSave() {
         });
         const data = await res.json();
         if (data.id) {
-          // Migrate images from temp key → session key
-          const tempImgs = localStorage.getItem('storylab_images_current');
-          if (tempImgs) {
-            localStorage.setItem('storylab_images_' + data.id, tempImgs);
-            localStorage.removeItem('storylab_images_current');
-          }
           activeSessionId = data.id;
+          await migrateImagesOnNewSession(data.id);
         }
       }
 
       showSaveIndicator();
-      // Persist images locally (too heavy for Supabase payload)
-      saveImagesToStorage(activeSessionId);
+      // Persist images in IndexedDB (no size limits)
+      await saveImagesToStorage(activeSessionId);
     } catch(e) {
       console.warn('AutoSave failed:', e.message);
     }
@@ -6387,19 +6429,27 @@ function restoreSnap(snap, sessionId) {
     localStorage.setItem('storylab_brand', JSON.stringify(snap.brand));
     applyBrandToCards();
   }
-  // Restore images from localStorage (not stored in Supabase)
-  const imgData = loadImagesFromStorage(sessionId || activeSessionId);
-  S.cardImages = imgData.cardImages || imgData || {};
-  // Re-inject card background images into S.cards[]
-  const bgImgs = imgData.cardBgImages || {};
-  Object.entries(bgImgs).forEach(([idxStr, imgObj]) => {
-    const i = parseInt(idxStr);
-    if (S.cards[i] && imgObj && imgObj.src) {
-      S.cards[i].bg.imageSrc  = imgObj.src;
-      S.cards[i].bg.imageMime = imgObj.mime || 'image/jpeg';
-      S.cards[i].bg.type      = 'image';
+  // Restore images from IndexedDB (async) — re-render when done
+  const _sessId = sessionId || activeSessionId;
+  loadImagesFromStorage(_sessId).then(imgData => {
+    S.cardImages = imgData.cardImages || imgData || {};
+    const bgImgs = imgData.cardBgImages || {};
+    let anyImg = false;
+    Object.entries(bgImgs).forEach(([idxStr, imgObj]) => {
+      const i = parseInt(idxStr);
+      if (S.cards[i] && imgObj && imgObj.src) {
+        S.cards[i].bg.imageSrc  = imgObj.src;
+        S.cards[i].bg.imageMime = imgObj.mime || 'image/jpeg';
+        S.cards[i].bg.type      = 'image';
+        anyImg = true;
+      }
+    });
+    // Re-render cards if we injected images
+    if (anyImg && S.step === 4 && S.cards.length) {
+      renderFinal();
+      setTimeout(() => selectCard(S.activeCardIdx || 0), 60);
     }
-  });
+  }).catch(() => {});
 }
 
 function renderStep(step) {
