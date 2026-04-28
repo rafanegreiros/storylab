@@ -5071,6 +5071,8 @@ function clearBgImage(idx) {
   S.cards[idx].bg.imageMime = null;
   S.cards[idx].bg.type = 'solid';
   refreshCard(idx); renderCardSidebar();
+  if (activeSessionId) saveImagesToStorage(activeSessionId);
+  else saveImagesToStorage('current');
 }
 
 function triggerBgImageUpload(idx) {
@@ -5085,6 +5087,13 @@ function triggerBgImageUpload(idx) {
       S.cards[idx].bg.imageMime = file.type;
       S.cards[idx].bg.type = 'image';
       refreshCard(idx); renderCardSidebar();
+      // Save immediately — images live in localStorage, not Supabase
+      if (activeSessionId) {
+        saveImagesToStorage(activeSessionId);
+      } else {
+        saveImagesToStorage('current');
+      }
+      autoSave();
     };
     reader.readAsDataURL(file);
   };
@@ -6256,10 +6265,15 @@ async function loadSession(id) {
     _currentHistSnap = snap;
     _currentHistId = id;
 
-    // Abre direto — restaura estado e navega para a etapa salva
+    // Restore state — images are re-injected by restoreSnap from localStorage
     restoreSnap(snap, id);
     closeHistory();
     renderStep(snap.step || 1);
+    // If on carrossel step, re-render to show images after they're injected
+    if ((snap.step || 1) === 4 && S.cards.length) {
+      renderFinal();
+      setTimeout(() => selectCard(S.activeCardIdx || 0), 60);
+    }
 
   } catch(e) {
     alert('Erro ao carregar sessão.');
