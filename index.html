@@ -3208,6 +3208,20 @@ function updateBrandPreview() {
   if (ctaTitle) { ctaTitle.style.fontFamily = fd; ctaTitle.style.color = ctaTitleColor; }
   const pill = document.getElementById('prev-pill');
   if (pill) { pill.style.background = accent; pill.style.color = isLight(accent) ? dark : '#fff'; }
+
+  // Also update CSS variables live so card preview updates in real time
+  const root = document.documentElement;
+  root.style.setProperty('--brand-primary', primary);
+  root.style.setProperty('--brand-accent', accent);
+  root.style.setProperty('--brand-dark', dark);
+  root.style.setProperty('--brand-light', light);
+  root.style.setProperty('--brand-font-display', fd);
+  root.style.setProperty('--brand-font-body', fb);
+
+  // Load the fonts if not already loaded
+  if (typeof loadBrandFonts === 'function') {
+    loadBrandFonts({ fontDisplay: fd, fontBody: fb });
+  }
 }
 
 function applyBrandToNewCards() {
@@ -5482,11 +5496,11 @@ async function exportCardToCanvas(card, idx) {
       ? hdrHeight + avR + avOY
       : EXPORT_H - ctaRowH - Math.round(20 * SC) - avR + avOY;
 
-    // Story ring
+    // Story ring — use brand primary blue (matching Instagram-style ring)
     ctx.save();
     ctx.beginPath();
     ctx.arc(avX, avY, avR + Math.round(2.5 * SC), 0, Math.PI*2);
-    ctx.strokeStyle = b.accent || '#c8f05a';
+    ctx.strokeStyle = '#1d9bf0'; // Instagram blue, matches the verified badge
     ctx.lineWidth = Math.round(2 * SC);
     ctx.stroke();
     ctx.restore();
@@ -5511,22 +5525,34 @@ async function exportCardToCanvas(card, idx) {
     ctx.textBaseline = 'alphabetic';
     ctx.restore();
 
-    // Verified badge
-    const bR = Math.round(5.5 * SC); // 19px
-    const bX = avX + avR - bR * 0.6;
-    const bY = avY + avR - bR * 0.6;
+    // Verified badge — 11-point star matching verifiedBadgeSvg() in preview
+    const bSize = Math.round(13 * SC); // same as verifiedBadgeSvg(13)
+    const bX = avX + avR - bSize * 0.35;
+    const bY = avY + avR - bSize * 0.35;
     ctx.save();
+    ctx.translate(bX, bY);
+    // Draw 11-point star (same geometry as verifiedBadgeSvg)
+    const starPoints = 11, outerR2 = bSize * 0.39, innerR2 = bSize * 0.27;
     ctx.beginPath();
-    ctx.arc(bX, bY, bR, 0, Math.PI*2);
+    for (let i = 0; i < starPoints * 2; i++) {
+      const angle = (Math.PI / starPoints) * i - Math.PI / 2;
+      const r2 = i % 2 === 0 ? outerR2 : innerR2;
+      const px = r2 * Math.cos(angle), py = r2 * Math.sin(angle);
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
     ctx.fillStyle = '#1d9bf0';
     ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `700 ${Math.round(bR * 1.1)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('✓', bX, bY);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
+    // Checkmark inside star
+    ctx.beginPath();
+    ctx.moveTo(-bSize * 0.14, 0);
+    ctx.lineTo(-bSize * 0.03, bSize * 0.11);
+    ctx.lineTo(bSize * 0.14, -bSize * 0.09);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.round(2 * SC);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
     ctx.restore();
 
     // Handle text + tagline
@@ -5604,7 +5630,9 @@ async function exportCardToCanvas(card, idx) {
     ctx.fillStyle = card.title.color;
     ctx.textAlign = tAlign;
     for (const line of titleLines) {
-      if (card.title.highlight?.word && line.includes(card.title.highlight.word)) {
+      const hlWord = card.title.highlight?.word?.toLowerCase();
+      if (hlWord && line.toLowerCase().includes(hlWord)) {
+        // Draw word by word, highlighting matching words
         const words = line.split(' ');
         let wx = tX;
         if (tAlign !== 'left') {
@@ -5612,7 +5640,8 @@ async function exportCardToCanvas(card, idx) {
           wx = tAlign==='center' ? tX - lineW/2 : tX - lineW;
         }
         for (const word of words) {
-          const isHL = word.replace(/[.,!?;:]/g,'') === card.title.highlight.word.replace(/[.,!?;:]/g,'');
+          const wordClean = word.replace(/[.,!?;:]/g,'').toLowerCase();
+          const isHL = wordClean === hlWord || wordClean.includes(hlWord);
           ctx.fillStyle = isHL ? card.title.highlight.color : card.title.color;
           ctx.fillText(word, wx, y);
           wx += ctx.measureText(word + ' ').width;
