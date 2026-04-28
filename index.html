@@ -3135,8 +3135,16 @@ function openBrand() {
       if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) { pick.value = hex.value; updateBrandPreview(); renderColorRoleSwatches(); }
     });
   });
-  document.getElementById('brand-font-display').addEventListener('change', updateBrandPreview);
-  document.getElementById('brand-font-body').addEventListener('change', updateBrandPreview);
+  document.getElementById('brand-font-display').addEventListener('change', () => {
+    const val = document.getElementById('brand-font-display').value;
+    if (val) loadBrandFonts({ fontDisplay: val, fontBody: document.getElementById('brand-font-body').value });
+    updateBrandPreview();
+  });
+  document.getElementById('brand-font-body').addEventListener('change', () => {
+    const val = document.getElementById('brand-font-body').value;
+    if (val) loadBrandFonts({ fontDisplay: document.getElementById('brand-font-display').value, fontBody: val });
+    updateBrandPreview();
+  });
 }
 
 function updateBrandPreview() {
@@ -4648,7 +4656,7 @@ function renderCardHtml(card, idx, total) {
     // Instagram gradient ring
     layers += `<div style="position:absolute;top:${avTop};bottom:${avBottom};left:20px;right:20px;z-index:6;display:flex;align-items:center;gap:10px;">
       <div style="width:41px;height:41px;border-radius:50%;background:conic-gradient(from 30deg,#5f46d2,#cd3b72,#e33960,#f59756,#fec053,#5f46d2);padding:1.5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-        <div style="width:37px;height:37px;border-radius:50%;background:${bv.primary||'#141210'};display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid var(--bg,#fff);">
+        <div style="width:37px;height:37px;border-radius:50%;background:${bv.primary||'#141210'};display:flex;align-items:center;justify-content:center;overflow:hidden;">
           ${bv.avatarImg ? `<img src="${bv.avatarImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>` : `<span style="font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:700;color:#fff;">${initials}</span>`}
         </div>
       </div>
@@ -4657,7 +4665,6 @@ function renderCardHtml(card, idx, total) {
           <span style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.78rem;color:${card.title.color || '#fff'};">${bv.handle||'@handle'}</span>
           <svg width="15" height="15" viewBox="0 0 25.06 25.06" fill="none" style="flex-shrink:0;vertical-align:middle;display:inline-block;"><path d="M24.24,11.89l-1.12-.76c-.42-.28-.52-.85-.22-1.26l.79-1.09c.83-1.15.36-2.21-1.05-2.36l-1.34-.14c-.5-.05-.86-.51-.79-1.01l.19-1.34c.2-1.41-.72-2.12-2.03-1.59l-.71.28c-.49.2-1.04-.07-1.19-.58l-.21-.73c-.39-1.36-1.52-1.65-2.5-.62l-.94.97c-.35.36-.93.36-1.28,0l-.94-.97c-.99-1.02-2.11-.74-2.5.62l-.37,1.3c-.14.48-.65.75-1.13.6l-1.28-.42c-1.35-.44-2.21.34-1.92,1.73l.28,1.32c.1.49-.22.97-.71,1.06l-1.33.23c-1.4.25-1.8,1.34-.88,2.43l.87,1.03c.32.38.26.96-.13,1.27l-1.06.83c-1.12.87-.96,2.02.36,2.56l1.25.51c.47.19.68.73.48,1.18l-.55,1.23c-.58,1.3.11,2.24,1.52,2.09l1.34-.14c.5-.05.94.32.98.82l.09,1.35c.1,1.42,1.14,1.93,2.32,1.13l1.12-.76c.42-.28.98-.16,1.25.27l.72,1.15c.75,1.2,1.91,1.16,2.58-.09l.63-1.19c.24-.44.79-.6,1.23-.35l1.17.68c1.23.71,2.24.13,2.24-1.29v-1.35c0-.5.42-.9.92-.89l1.35.05c1.42.05,2.03-.94,1.37-2.19l-.63-1.19c-.24-.44-.06-.99.39-1.21l1.21-.59c1.28-.62,1.36-1.78.18-2.57Z" fill="#0096fb"/><path d="M11.65,17.57c-.29,0-.58-.12-.78-.32l-4.22-4.22c-.43-.43-.43-1.13,0-1.57.43-.43,1.13-.43,1.57,0l2.81,2.81c.35.35.91.35,1.26,0l4.85-4.85c.43-.43,1.13-.43,1.57,0,.43.43.43,1.13,0,1.57l-6.26,6.26c-.21.21-.49.32-.78.32Z" fill="#fff"/></svg>
         </div>
-        ${bv.tagline ? `<div style="font-size:0.55rem;color:${hexAlpha(card.title.color||'#fff', 0.55)};font-family:'Poppins',sans-serif;">${bv.tagline}</div>` : ''}
       </div>
     </div>`;
   }
@@ -4965,11 +4972,16 @@ function renderCardSidebar() {
             <button onclick="setAvatarPlacement(${idx},'top')" style="flex:1;padding:6px;border-radius:5px;border:1.5px solid ${(card.avatar.placement||'bottom')==='top'?'var(--accent)':'var(--border)'};background:transparent;font-size:0.65rem;cursor:pointer;color:${(card.avatar.placement||'bottom')==='top'?'var(--accent)':'var(--muted)'};">↑ Acima do título</button>
             <button onclick="setAvatarPlacement(${idx},'bottom')" style="flex:1;padding:6px;border-radius:5px;border:1.5px solid ${(card.avatar.placement||'bottom')==='bottom'?'var(--accent)':'var(--border)'};background:transparent;font-size:0.65rem;cursor:pointer;color:${(card.avatar.placement||'bottom')==='bottom'?'var(--accent)':'var(--muted)'};">↓ Abaixo do texto</button>
           </div>
+          ${slider('↕ Y (cima/baixo)', card.avatar.offsetY||0, -120, 120, 2, `(v)=>setAvatarOffsetY(${idx},v)`)}
+          ${slider('↔ X (esq/dir)', card.avatar.offsetX||0, -80, 80, 2, `(v)=>setAvatarOffsetX(${idx},v)`)}
         </div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Número de página</div>
         ${toggle('Visível', card.pageNum.visible, `togglePageNum(${idx})`)}
+        ${card.pageNum.visible ? `<div style="display:flex;gap:4px;margin-top:4px;">
+          ${['auto','light','dark'].map(m=>`<button onclick="setPageNumColor(${idx},'${m}')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ${(card.pageNum.colorMode||'auto')===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.58rem;cursor:pointer;color:${(card.pageNum.colorMode||'auto')===m?'var(--accent)':'var(--muted)'};">${m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro'}</button>`).join('')}
+        </div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Botão CTA</div>
@@ -5133,6 +5145,7 @@ function setCardBodyAlign(idx, align) { S.cards[idx].body.align = align; refresh
 function toggleHeader(idx) { S.cards[idx].header.visible = !S.cards[idx].header.visible; refreshCard(idx); renderCardSidebar(); }
 function toggleAvatar(idx) { S.cards[idx].avatar.visible = !S.cards[idx].avatar.visible; refreshCard(idx); renderCardSidebar(); }
 function togglePageNum(idx) { S.cards[idx].pageNum.visible = !S.cards[idx].pageNum.visible; refreshCard(idx); renderCardSidebar(); }
+function setPageNumColor(idx, mode) { S.cards[idx].pageNum.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
 function toggleCta(idx) { S.cards[idx].cta.visible = !S.cards[idx].cta.visible; refreshCard(idx); renderCardSidebar(); }
 function setCtaBg(idx, color) { S.cards[idx].cta.bgColor = color; refreshCard(idx); renderCardSidebar(); }
 function setCtaText(idx, color) { S.cards[idx].cta.textColor = color; refreshCard(idx); renderCardSidebar(); }
@@ -5635,7 +5648,7 @@ async function exportCardToCanvas(card, idx) {
       ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       bodyLines2 = wrapText(ctx, bodyClean2, availW, bFS2 * 1.6);
     }
-    const totalBodyH = bodyLines2.length > 0 ? Math.round(6 * SC) + bodyLines2.length * bFS2 * 1.42 : 0;
+    const totalBodyH = bodyLines2.length > 0 ? Math.round(4 * SC) + bodyLines2.length * bFS2 * 1.42 : 0;
     const totalBlockH = totalTextH + totalBodyH;
     let y = tCenterY - totalBlockH / 2 + tFS + tOffY;
 
@@ -5646,19 +5659,28 @@ async function exportCardToCanvas(card, idx) {
     for (const line of titleLines) {
       const hlWord = card.title.highlight?.word?.toLowerCase();
       if (hlWord && line.toLowerCase().includes(hlWord)) {
-        // Draw word by word, highlighting matching words
-        const words = line.split(' ');
-        let wx = tX;
-        if (tAlign !== 'left') {
-          const lineW = ctx.measureText(line).width;
-          wx = tAlign==='center' ? tX - lineW/2 : tX - lineW;
-        }
-        for (const word of words) {
-          const wordClean = word.replace(/[.,!?;:]/g,'').toLowerCase();
-          const isHL = wordClean === hlWord || wordClean.includes(hlWord);
-          ctx.fillStyle = isHL ? card.title.highlight.color : card.title.color;
-          ctx.fillText(word, wx, y);
-          wx += ctx.measureText(word + ' ').width;
+        // Highlight: find the phrase within the line and color it differently
+        const lineLower = line.toLowerCase();
+        const hlStart = lineLower.indexOf(hlWord);
+        if (hlStart >= 0) {
+          // Measure text before highlight
+          const before = line.slice(0, hlStart);
+          const highlighted = line.slice(hlStart, hlStart + hlWord.length);
+          const after = line.slice(hlStart + hlWord.length);
+          let wx = tX;
+          if (tAlign !== 'left') {
+            const lineW = ctx.measureText(line).width;
+            wx = tAlign==='center' ? tX - lineW/2 : tX - lineW;
+          }
+          // Draw before
+          if (before) { ctx.fillStyle = card.title.color; ctx.fillText(before, wx, y); wx += ctx.measureText(before).width; }
+          // Draw highlighted
+          ctx.fillStyle = card.title.highlight.color;
+          ctx.fillText(highlighted, wx, y); wx += ctx.measureText(highlighted).width;
+          // Draw after
+          if (after) { ctx.fillStyle = card.title.color; ctx.fillText(after, wx, y); }
+        } else {
+          ctx.fillStyle = card.title.color; ctx.fillText(line, tX, y);
         }
         ctx.fillStyle = card.title.color;
       } else {
@@ -5670,7 +5692,7 @@ async function exportCardToCanvas(card, idx) {
 
     // Body
     if (bodyClean2 && bodyLines2.length) {
-      y += Math.round(6 * SC); // ~6px gap between title and body
+      y += Math.round(4 * SC); // ~4px gap between title and body
       ctx.save();
       ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       ctx.fillStyle = card.body.color;
@@ -5809,7 +5831,7 @@ function brandHeaderHtml(isDark, num, total) {
   const yearColor   = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
   return `<div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;pointer-events:none;">
     <span style="font-family:${fb};font-size:0.56rem;letter-spacing:0.8px;color:${handleColor};font-weight:600">${b.handle||''}</span>
-    <span style="font-family:${fb};font-size:0.5rem;letter-spacing:0.6px;color:${subtleColor};flex:1;text-align:center;text-transform:uppercase">${b.tagline||''}</span>
+    <span style="font-family:${fb};font-size:0.42rem;letter-spacing:0.6px;color:${subtleColor};flex:1;text-align:center;text-transform:uppercase">${b.tagline||''}</span>
     <span style="font-family:${fb};font-size:0.5rem;letter-spacing:1px;color:${yearColor}">${b.year||''}</span>
   </div>`;
 }
