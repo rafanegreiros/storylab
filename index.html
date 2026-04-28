@@ -3210,6 +3210,53 @@ function updateBrandPreview() {
   if (pill) { pill.style.background = accent; pill.style.color = isLight(accent) ? dark : '#fff'; }
 }
 
+function applyBrandToNewCards() {
+  // Re-apply brand palette and fonts to all cards,
+  // updating only values that still match the old brand defaults
+  // (i.e. user hasn't manually customized them)
+  const b = getBrand();
+  const prev = _lastAppliedBrand || {};
+
+  S.cards.forEach((card, i) => {
+    const isFirst = i === 0;
+    const isLast  = i === S.cards.length - 1;
+
+    // Background color — update if it matches the old brand primary/dark/light
+    if (card.bg.type === 'solid') {
+      if (!prev.primary || card.bg.color === prev.primary) card.bg.color = isFirst ? b.primary : (isLast ? b.dark : b.light);
+      else if (card.bg.color === prev.dark)  card.bg.color = b.dark;
+      else if (card.bg.color === prev.light) card.bg.color = b.light;
+    }
+    if (card.bg.type === 'gradient' && prev.primary) {
+      if (card.bg.gradColors[0] === prev.primary) card.bg.gradColors[0] = b.primary;
+      if (card.bg.gradColors[1] === prev.dark)    card.bg.gradColors[1] = b.dark;
+    }
+
+    // Title color
+    if (!prev.primary || card.title.color === prev.primary || card.title.color === '#ffffff' || card.title.color === prev.dark)
+      card.title.color = (isFirst || isLast || card.bg.type==='image') ? '#ffffff' : (b.dark || '#141210');
+
+    // Body color
+    if (!prev.primary || card.body.color === 'rgba(255,255,255,0.85)' || card.body.color === prev.dark)
+      card.body.color = (isFirst || isLast || card.bg.type==='image') ? 'rgba(255,255,255,0.82)' : (b.dark || '#141210');
+
+    // Fonts
+    card.title.fontFamily = b.fontDisplay || "'Fraunces', serif";
+    card.body.fontFamily  = b.fontBody    || "'Syne', sans-serif";
+
+    // CTA colors
+    if (!prev.accent || card.cta.bgColor === prev.accent || card.cta.bgColor === (prev.cta||'#e3fe03'))
+      card.cta.bgColor = b.accent || b.cta || '#c8f05a';
+    if (!prev.dark || card.cta.textColor === prev.dark)
+      card.cta.textColor = b.dark || '#141210';
+  });
+
+  _lastAppliedBrand = { ...b };
+}
+
+// Track last applied brand to detect manual customizations
+let _lastAppliedBrand = null;
+
 function saveBrand() {
   const existing = getBrand();
   const b = {
@@ -3230,7 +3277,9 @@ function saveBrand() {
   localStorage.setItem('storylab_brand', JSON.stringify(b));
   applyBrandToCards();
   document.getElementById('brand-modal').style.display = 'none';
-  if (S.step === 5 && S.renderCards.length) {
+  // Re-apply brand to existing cards if on step 4
+  if (S.step === 4 && S.cards.length) {
+    applyBrandToNewCards();
     renderFinal();
   }
 }
@@ -4423,6 +4472,7 @@ Responda SOMENTE JSON:
     S.renderAnalysis = { tema: data.tema, funil: data.funil, objetivo: data.objetivo, razao_viral: data.razao_viral };
     S.activeCardIdx = 0;
     S.step = 4;
+    _lastAppliedBrand = { ...getBrand() }; // record brand at generation time
     initSidebar();
     renderFinal();
     autoSave();
@@ -5305,19 +5355,18 @@ async function exportAllCards() {
   setTimeout(() => { overlay.remove(); if (btn) btn.disabled = false; }, 2500);
 }
 
+
 // ── EXPORT SINGLE CARD TO CANVAS 2D ──
 async function exportCardToCanvas(card, idx) {
   const canvas = document.createElement('canvas');
-  canvas.width = EXPORT_W;
-  canvas.height = EXPORT_H;
+  canvas.width  = EXPORT_W; // 1080
+  canvas.height = EXPORT_H; // 1350
   const ctx = canvas.getContext('2d');
   const b = getBrand();
 
-  // Scale factor: card preview is 320×400, export is 1080×1350
-  const scaleX = EXPORT_W / 320;
-  const scaleY = EXPORT_H / 400;
-  // Use uniform scale to match aspect ratio
-  const scale = Math.min(scaleX, scaleY); // Should be ~3.375
+  // Preview card: 320×400px → Export: 1080×1350px
+  // Exact same 4:5 ratio → uniform scale factor SC = 3.375
+  const SC = EXPORT_W / 320;
 
   // ── Layer 1: Background ──
   if (card.bg.type === 'solid') {
@@ -5325,155 +5374,242 @@ async function exportCardToCanvas(card, idx) {
     ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
   } else if (card.bg.type === 'gradient') {
     const angle = (card.bg.gradAngle || 180) * Math.PI / 180;
-    const x1 = EXPORT_W/2 - Math.cos(angle)*EXPORT_W/2;
-    const y1 = EXPORT_H/2 - Math.sin(angle)*EXPORT_H/2;
-    const x2 = EXPORT_W/2 + Math.cos(angle)*EXPORT_W/2;
-    const y2 = EXPORT_H/2 + Math.sin(angle)*EXPORT_H/2;
-    const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+    const cx2 = EXPORT_W/2, cy2 = EXPORT_H/2;
+    const grad = ctx.createLinearGradient(
+      cx2 - Math.cos(angle)*EXPORT_W/2, cy2 - Math.sin(angle)*EXPORT_H/2,
+      cx2 + Math.cos(angle)*EXPORT_W/2, cy2 + Math.sin(angle)*EXPORT_H/2
+    );
     grad.addColorStop(0, card.bg.gradColors[0]);
     grad.addColorStop(1, card.bg.gradColors[1]);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-  } else if (card.bg.type === 'image' && card.bg.imageSrc) {
-    ctx.fillStyle = '#111111';
-    ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-    await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H);
   } else {
-    ctx.fillStyle = '#111111';
+    ctx.fillStyle = card.bg.color || '#111111';
     ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+    if (card.bg.type === 'image' && card.bg.imageSrc) {
+      await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H);
+    }
   }
 
-  // ── Layer 2: Overlay gradient ──
+  // ── Layer 2: Overlay ──
   if (card.overlay.visible) {
     const dirs = {
-      'bottom-up': [EXPORT_W/2, EXPORT_H, EXPORT_W/2, 0],
-      'top-down': [EXPORT_W/2, 0, EXPORT_W/2, EXPORT_H],
+      'bottom-up':  [EXPORT_W/2, EXPORT_H, EXPORT_W/2, 0],
+      'top-down':   [EXPORT_W/2, 0, EXPORT_W/2, EXPORT_H],
       'left-right': [0, EXPORT_H/2, EXPORT_W, EXPORT_H/2],
-      'diagonal': [0, EXPORT_H, EXPORT_W, 0],
+      'diagonal':   [0, EXPORT_H, EXPORT_W, 0],
     };
     const [x1,y1,x2,y2] = dirs[card.overlay.direction] || dirs['bottom-up'];
     const reach = (card.overlay.reach || 60) / 100;
-    const oGrad = ctx.createLinearGradient(x1, y1, x2, y2);
     const col = card.overlay.color || '#000000';
-    const r=parseInt(col.slice(1,3)||'0',16), g=parseInt(col.slice(3,5)||'0',16), bv=parseInt(col.slice(5,7)||'0',16);
-    oGrad.addColorStop(0, `rgba(${r},${g},${bv},${card.overlay.opacityStart})`);
-    oGrad.addColorStop(reach, `rgba(${r},${g},${bv},${card.overlay.opacityEnd})`);
-    oGrad.addColorStop(1, `rgba(${r},${g},${bv},${card.overlay.opacityEnd})`);
+    const r2 = parseInt(col.slice(1,3),16), g2 = parseInt(col.slice(3,5),16), b2 = parseInt(col.slice(5,7),16);
+    const oGrad = ctx.createLinearGradient(x1,y1,x2,y2);
+    oGrad.addColorStop(0,     `rgba(${r2},${g2},${b2},${card.overlay.opacityStart})`);
+    oGrad.addColorStop(reach, `rgba(${r2},${g2},${b2},${card.overlay.opacityEnd})`);
+    oGrad.addColorStop(1,     `rgba(${r2},${g2},${b2},${card.overlay.opacityEnd})`);
     ctx.fillStyle = oGrad;
     ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
   }
 
-  // ── Layer 3: Header (brand) ──
+  // ── Layer 3: Header ──
+  // Preview: ~10px top, 8px sides, font ~7px → SC gives ~24px font, ~27px Y
   if (card.header.visible) {
-    const handleText = b.handle || '';
-    const taglineText = b.tagline || '';
-    const yearText = b.year ? String(b.year) : '';
-    const headerY = 36;
-    const headerPadX = 54;
-    const isD = isColorDark(card.bg.color) || card.bg.type === 'image';
-    const handleCol = isD ? 'rgba(255,255,255,0.5)' : 'rgba(20,18,16,0.4)';
-    const taglineCol = isD ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
-    const yearCol = isD ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
+    const hPad  = Math.round(8  * SC); // 27px
+    const hY    = Math.round(10 * SC); // 34px
+    const hFS   = Math.round(7  * SC); // 24px
+    const hMode = card.header.colorMode || 'auto';
+    const hDark = hMode==='dark' ? true : hMode==='light' ? false
+                : (isColorDark(card.bg.color) || card.bg.type==='image');
+    const hHandleCol  = hDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
+    const hTaglineCol = hDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
+    const hYearCol    = hDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
     ctx.save();
-    ctx.font = `600 ${Math.round(18*scale/scaleX)}px 'Syne', sans-serif`;
-    ctx.fillStyle = handleCol;
-    ctx.fillText(handleText, headerPadX, headerY);
-    if (taglineText) {
+    ctx.font = `600 ${hFS}px 'Syne', sans-serif`;
+    ctx.fillStyle = hHandleCol;
+    ctx.textBaseline = 'top';
+    ctx.fillText(b.handle || '', hPad, hY);
+    if (b.tagline) {
       ctx.textAlign = 'center';
-      ctx.fillStyle = taglineCol;
-      ctx.font = `400 ${Math.round(16*scale/scaleX)}px 'Syne', sans-serif`;
-      ctx.fillText(taglineText.toUpperCase(), EXPORT_W/2, headerY);
+      ctx.fillStyle = hTaglineCol;
+      ctx.font = `400 ${hFS}px 'Syne', sans-serif`;
+      ctx.fillText((b.tagline||'').toUpperCase(), EXPORT_W/2, hY);
     }
-    if (yearText) {
+    if (b.year) {
       ctx.textAlign = 'right';
-      ctx.fillStyle = yearCol;
-      ctx.font = `400 ${Math.round(16*scale/scaleX)}px 'Syne', sans-serif`;
-      ctx.fillText(yearText, EXPORT_W - headerPadX, headerY);
+      ctx.fillStyle = hYearCol;
+      ctx.font = `400 ${hFS}px 'Syne', sans-serif`;
+      ctx.fillText(String(b.year), EXPORT_W - hPad, hY);
     }
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
   // ── Layer 4: Page counter ──
+  // Preview: bottom-right, font ~6px, 8px from edges
   if (card.pageNum.visible) {
-    const isD = isColorDark(card.bg.color) || card.bg.type === 'image';
-    const counterCol = isD ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.2)';
-    const num = idx + 1;
-    const tot = S.cards.length;
-    const text = `${String(num).padStart(2,'0')} / ${String(tot).padStart(2,'0')}`;
+    const pnMode = card.pageNum.colorMode || 'auto';
+    const pnDark = pnMode==='dark' ? true : pnMode==='light' ? false
+                 : (isColorDark(card.bg.color) || card.bg.type==='image');
+    const pnCol = pnDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.20)';
+    const pnFS  = Math.round(6 * SC); // 20px
+    const pnPad = Math.round(8 * SC); // 27px
     ctx.save();
-    ctx.font = `300 ${Math.round(18*scale/scaleX)}px 'Poppins', sans-serif`;
-    ctx.fillStyle = counterCol;
+    ctx.font = `300 ${pnFS}px 'Poppins', sans-serif`;
+    ctx.fillStyle = pnCol;
     ctx.textAlign = 'right';
-    ctx.fillText(text, EXPORT_W - 48, EXPORT_H - 32);
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`${String(idx+1).padStart(2,'0')} / ${String(S.cards.length).padStart(2,'0')}`, EXPORT_W - pnPad, EXPORT_H - pnPad);
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
   // ── Layer 5: Avatar + handle ──
-  const avatarBottom = card.cta.visible ? 280 : 70;
+  // Preview: circle 19px radius, placed bottom-left or top-left
   if (card.avatar.visible) {
-    const avX = 68, avY = EXPORT_H - avatarBottom - 50;
-    const avR = 64; // radius
+    const avR   = Math.round(19 * SC); // 64px
+    const avPad = Math.round(20 * SC); // 68px from left edge
+    const avPlac = card.avatar.placement || 'bottom';
+    const avOX  = (card.avatar.offsetX || 0) * SC;
+    const avOY  = (card.avatar.offsetY || 0) * SC;
+
+    // Y position
+    const ctaRowH   = card.cta.visible ? Math.round(58 * SC) : 0; // 38px btn + 20px pad
+    const hdrHeight = card.header.visible ? Math.round(28 * SC) : Math.round(12 * SC);
+    let avX = avPad + avR + avOX;
+    let avY = avPlac === 'top'
+      ? hdrHeight + avR + avOY
+      : EXPORT_H - ctaRowH - Math.round(20 * SC) - avR + avOY;
+
+    // Story ring
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avX, avY, avR + Math.round(2.5 * SC), 0, Math.PI*2);
+    ctx.strokeStyle = b.accent || '#c8f05a';
+    ctx.lineWidth = Math.round(2 * SC);
+    ctx.stroke();
+    ctx.restore();
+
+    // Circle fill
     ctx.save();
     ctx.beginPath();
     ctx.arc(avX, avY, avR, 0, Math.PI*2);
     ctx.fillStyle = b.primary || '#0071e3';
     ctx.fill();
     if (b.avatarImg) {
-      try {
-        await drawCircleImage(ctx, b.avatarImg, avX, avY, avR);
-      } catch(e) {}
+      try { await drawCircleImage(ctx, b.avatarImg, avX, avY, avR); } catch(e) {}
     } else {
-      const initials = (b.handle||'S').replace('@','').slice(0,2).toUpperCase();
+      const ini = (b.handle||'S').replace('@','').slice(0,2).toUpperCase();
       ctx.fillStyle = '#ffffff';
-      ctx.font = `700 ${avR}px 'Poppins', sans-serif`;
+      ctx.font = `700 ${Math.round(avR * 0.65)}px 'Poppins', sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(initials, avX, avY);
-      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(ini, avX, avY);
     }
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
-    // Handle text
-    const hText = b.handle || '@handle';
+
+    // Verified badge
+    const bR = Math.round(5.5 * SC); // 19px
+    const bX = avX + avR - bR * 0.6;
+    const bY = avY + avR - bR * 0.6;
     ctx.save();
-    ctx.font = `700 ${Math.round(26*scale/scaleX)}px 'Poppins', sans-serif`;
+    ctx.beginPath();
+    ctx.arc(bX, bY, bR, 0, Math.PI*2);
+    ctx.fillStyle = '#1d9bf0';
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `700 ${Math.round(bR * 1.1)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✓', bX, bY);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+
+    // Handle text + tagline
+    const hFS2  = Math.round(7.5 * SC); // ~25px — matches preview ~7.5px handle text
+    const hX    = avX + avR + Math.round(8 * SC);
+    ctx.save();
+    ctx.font = `700 ${hFS2}px 'Poppins', sans-serif`;
     ctx.fillStyle = card.title.color || '#ffffff';
-    ctx.fillText(hText, avX + avR + 24, EXPORT_H - avatarBottom - 20);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(b.handle || '@handle', hX, avY - Math.round(3 * SC));
+    if (b.tagline) {
+      const tFS = Math.round(5.5 * SC); // ~19px
+      ctx.font = `400 ${tFS}px 'Poppins', sans-serif`;
+      ctx.fillStyle = hexAlpha(card.title.color || '#ffffff', 0.55);
+      ctx.fillText(b.tagline, hX, avY + Math.round(6 * SC));
+    }
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
-  // ── Layer 6: Text ──
-  const textPadX = 68;
-  const textTop = card.header.visible ? 120 : 68;
-  const textBottom = card.cta.visible ? 310 : (card.pageNum.visible ? 100 : 68);
-  const availH = EXPORT_H - textTop - textBottom;
-  const availW = EXPORT_W - textPadX * 2;
+  // ── Layer 6: Text (title + body) ──
+  // Preview layout: padX=20px, top boundary depends on header/avatar-top,
+  // bottom boundary depends on cta/avatar-bottom/pagenum
+  const tPad  = Math.round(20 * SC); // 68px
+  const avIsTop = (card.avatar.placement || 'bottom') === 'top' && card.avatar.visible;
+  const avIsBot =  card.avatar.visible && !avIsTop;
 
-  // Title
+  // Available text area top/bottom (mirrors renderCardHtml logic exactly)
+  const tAreaTop = avIsTop
+    ? Math.round(90 * SC)                                           // avatar above
+    : (card.header.visible ? Math.round(28 * SC) : Math.round(14 * SC)); // just header
+  const tAreaBot = card.cta.visible
+    ? Math.round(68 * SC)                                           // CTA reserve
+    : (avIsBot ? Math.round(78 * SC)                                // avatar below
+    : (card.pageNum.visible ? Math.round(22 * SC) : Math.round(14 * SC)));
+
+  const availW   = EXPORT_W - tPad * 2;
+  const tAreaH   = EXPORT_H - tAreaTop - tAreaBot;
+  const tCenterY = tAreaTop + tAreaH / 2;
+
+  // offsetY/X from user controls
+  const tOffY = (card.title.offsetY || 0) * SC;
+  const tOffX = (card.title.offsetX || 0) * SC;
+
   if (card.title.text) {
     ctx.save();
-    const fontSize = Math.round(card.title.size * (EXPORT_W / 320));
-    ctx.font = `${card.title.weight} ${fontSize}px ${card.title.fontFamily || "'Fraunces', serif"}`;
+    const tFS = Math.round(card.title.size * SC); // e.g. 28px * 3.375 = 94px
+    ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
     ctx.fillStyle = card.title.color;
-    ctx.textAlign = card.title.align === 'center' ? 'center' : (card.title.align === 'right' ? 'right' : 'left');
-    const titleX = card.title.align === 'center' ? EXPORT_W/2 : (card.title.align === 'right' ? EXPORT_W - textPadX : textPadX);
+    const tAlign = card.title.align || 'left';
+    ctx.textAlign = tAlign;
+    const tX = tAlign==='center' ? EXPORT_W/2 + tOffX
+              : tAlign==='right' ? EXPORT_W - tPad + tOffX
+              : tPad + tOffX;
 
-    // Strip markdown bold for canvas
     const titleClean = card.title.text.replace(/\*\*(.*?)\*\*/g, '$1');
-    const titleLines = wrapText(ctx, titleClean, availW, fontSize * 1.15);
-    let y = textTop + fontSize;
+    const titleLines = wrapText(ctx, titleClean, availW, tFS * 1.15);
 
-    // Handle word highlight
+    // Vertically center the whole text block
+    const totalTextH = titleLines.length * tFS * 1.22;
+    const bodyClean2 = card.body.visible && card.body.text
+      ? card.body.text.replace(/\*\*(.*?)\*\*/g, '$1') : '';
+    const bFS2 = Math.round(card.body.size * SC);
+    let bodyLines2 = [];
+    if (bodyClean2) {
+      ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
+      bodyLines2 = wrapText(ctx, bodyClean2, availW, bFS2 * 1.6);
+    }
+    const totalBodyH = bodyLines2.length > 0 ? Math.round(12 * SC) + bodyLines2.length * bFS2 * 1.7 : 0;
+    const totalBlockH = totalTextH + totalBodyH;
+    let y = tCenterY - totalBlockH / 2 + tFS + tOffY;
+
+    // Draw title lines
+    ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
+    ctx.fillStyle = card.title.color;
+    ctx.textAlign = tAlign;
     for (const line of titleLines) {
       if (card.title.highlight?.word && line.includes(card.title.highlight.word)) {
-        // Draw word by word
         const words = line.split(' ');
-        let wx = titleX;
-        if (card.title.align !== 'left') {
-          // For center/right, measure full line first
+        let wx = tX;
+        if (tAlign !== 'left') {
           const lineW = ctx.measureText(line).width;
-          wx = card.title.align === 'center' ? titleX - lineW/2 : titleX - lineW;
+          wx = tAlign==='center' ? tX - lineW/2 : tX - lineW;
         }
         for (const word of words) {
           const isHL = word.replace(/[.,!?;:]/g,'') === card.title.highlight.word.replace(/[.,!?;:]/g,'');
@@ -5481,59 +5617,58 @@ async function exportCardToCanvas(card, idx) {
           ctx.fillText(word, wx, y);
           wx += ctx.measureText(word + ' ').width;
         }
+        ctx.fillStyle = card.title.color;
       } else {
-        ctx.fillText(line, titleX, y);
+        ctx.fillText(line, tX, y);
       }
-      y += fontSize * 1.2;
+      y += tFS * 1.22;
     }
-    ctx.textAlign = 'left';
     ctx.restore();
 
-    // Body below title
-    if (card.body.visible && card.body.text) {
+    // Body
+    if (bodyClean2 && bodyLines2.length) {
+      y += Math.round(10 * SC); // ~10px gap between title and body
       ctx.save();
-      const bodyFontSize = Math.round(card.body.size * (EXPORT_W / 320));
-      ctx.font = `400 ${bodyFontSize}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
+      ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       ctx.fillStyle = card.body.color;
-      ctx.textAlign = card.body.align === 'center' ? 'center' : (card.body.align === 'right' ? 'right' : 'left');
-      const bodyX = card.body.align === 'center' ? EXPORT_W/2 : (card.body.align === 'right' ? EXPORT_W - textPadX : textPadX);
-      const bodyClean = card.body.text.replace(/\*\*(.*?)\*\*/g, '$1');
-      const bodyLines = wrapText(ctx, bodyClean, availW, bodyFontSize * 1.6);
-      for (const line of bodyLines) {
-        ctx.fillText(line, bodyX, y);
-        y += bodyFontSize * 1.7;
+      const bAlign = card.body.align || 'left';
+      ctx.textAlign = bAlign;
+      const bX = bAlign==='center' ? EXPORT_W/2 : bAlign==='right' ? EXPORT_W - tPad : tPad;
+      for (const line of bodyLines2) {
+        ctx.fillText(line, bX, y);
+        y += bFS2 * 1.65;
       }
-      ctx.textAlign = 'left';
       ctx.restore();
     }
   }
 
   // ── Layer 7: CTA button ──
+  // Preview: 38px tall button, 20px from bottom, padX=20px, font 12px
   if (card.cta.visible && card.cta.text) {
-    const btnH = 86;
-    const btnY = EXPORT_H - 68 - btnH;
-    const btnPadX = textPadX;
-    const btnW = EXPORT_W - btnPadX * 2;
-    const btnR = Math.min(card.cta.radius * (EXPORT_W/320), btnH/2);
+    const btnH   = Math.round(38 * SC); // 128px
+    const btnPad = Math.round(20 * SC); // 68px
+    const btnY   = EXPORT_H - btnPad - btnH;
+    const btnW   = EXPORT_W - btnPad * 2;
+    const btnR   = Math.min(card.cta.radius * SC, btnH / 2);
+    const ctaFS  = Math.round(12 * SC); // 40px
 
     ctx.save();
     ctx.fillStyle = card.cta.bgColor;
-    roundedRect(ctx, btnPadX, btnY, btnW, btnH, btnR);
+    roundedRect(ctx, btnPad, btnY, btnW, btnH, btnR);
     ctx.fill();
-
-    const ctaFontSize = Math.round(26 * (EXPORT_W/320));
-    ctx.font = `700 ${ctaFontSize}px 'Poppins', sans-serif`;
+    ctx.font = `700 ${ctaFS}px 'Poppins', sans-serif`;
     ctx.fillStyle = card.cta.textColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(card.cta.text, EXPORT_W/2, btnY + btnH/2);
-    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(card.cta.text, EXPORT_W / 2, btnY + btnH / 2);
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
   return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/png'));
 }
+
 
 // ── CANVAS HELPERS ──
 function wrapText(ctx, text, maxWidth, lineH) {
