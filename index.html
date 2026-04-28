@@ -4647,7 +4647,7 @@ function renderCardHtml(card, idx, total) {
     const avBottom = avPlacement === 'bottom' ? (card.cta.visible?'80px':'20px') : 'auto';
     // Instagram gradient ring
     layers += `<div style="position:absolute;top:${avTop};bottom:${avBottom};left:20px;right:20px;z-index:6;display:flex;align-items:center;gap:10px;">
-      <div style="width:44px;height:44px;border-radius:50%;background:conic-gradient(from 30deg,#5f46d2,#cd3b72,#e33960,#f59756,#fec053,#5f46d2);padding:2.5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+      <div style="width:41px;height:41px;border-radius:50%;background:conic-gradient(from 30deg,#5f46d2,#cd3b72,#e33960,#f59756,#fec053,#5f46d2);padding:1.5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
         <div style="width:37px;height:37px;border-radius:50%;background:${bv.primary||'#141210'};display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid var(--bg,#fff);">
           ${bv.avatarImg ? `<img src="${bv.avatarImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>` : `<span style="font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:700;color:#fff;">${initials}</span>`}
         </div>
@@ -4682,7 +4682,7 @@ function renderCardHtml(card, idx, total) {
 
   let bodyHtml = (card.body.text || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-  layers += `<div style="position:absolute;top:${textTop};left:20px;right:20px;bottom:${textBottom};z-index:6;display:flex;flex-direction:column;justify-content:center;gap:10px;transform:translate(${titleOffX}px,${titleOffY}px);">
+  layers += `<div style="position:absolute;top:${textTop};left:20px;right:20px;bottom:${textBottom};z-index:6;display:flex;flex-direction:column;justify-content:center;gap:6px;transform:translate(${titleOffX}px,${titleOffY}px);">
     <div contenteditable="true" spellcheck="false"
       data-field="title" data-idx="${idx}"
       onblur="updateCardText(${idx},'title',this.innerText)"
@@ -4691,7 +4691,7 @@ function renderCardHtml(card, idx, total) {
     ${card.body.visible && card.body.text ? `<div contenteditable="true" spellcheck="false"
       data-field="body" data-idx="${idx}"
       onblur="updateCardText(${idx},'body',this.innerText)"
-      style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.6;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyOffY}px;margin-left:${bodyOffX}px;"
+      style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyOffY}px;margin-left:${bodyOffX}px;"
     >${bodyHtml}</div>` : ''}
   </div>`;
 
@@ -5489,7 +5489,7 @@ async function exportCardToCanvas(card, idx) {
   // ── Layer 5: Avatar + handle ──
   // Preview: circle 19px radius, placed bottom-left or top-left
   if (card.avatar.visible) {
-    const avR   = Math.round(19 * SC); // 64px
+    const avR   = Math.round(18.5 * SC); // 62px — matches preview 37px diameter
     const avPad = Math.round(20 * SC); // 68px from left edge
     const avPlac = card.avatar.placement || 'bottom';
     const avOX  = (card.avatar.offsetX || 0) * SC;
@@ -5519,7 +5519,7 @@ async function exportCardToCanvas(card, idx) {
       ctx.beginPath();
       ctx.arc(avX, avY, ringR, 0, Math.PI*2);
       ctx.strokeStyle = ringGrad;
-      ctx.lineWidth = Math.round(4 * SC);
+      ctx.lineWidth = Math.round(2 * SC);
       ctx.stroke();
     } else {
       // Fallback: simple gradient approximation
@@ -5555,7 +5555,7 @@ async function exportCardToCanvas(card, idx) {
     // We'll draw it after the handle text below
 
     // Handle text + Instagram badge inline + tagline
-    const hFS2  = Math.round(7.5 * SC);
+    const hFS2  = Math.round(12.5 * SC); // 0.78rem * 16px * SC
     const hX    = avX + avR + Math.round(8 * SC);
     const handleY = avY - Math.round(3 * SC);
     ctx.save();
@@ -5626,7 +5626,7 @@ async function exportCardToCanvas(card, idx) {
     const titleLines = wrapText(ctx, titleClean, availW, tFS * 1.15);
 
     // Vertically center the whole text block
-    const totalTextH = titleLines.length * tFS * 1.22;
+    const totalTextH = titleLines.length * tFS * 1.12;
     const bodyClean2 = card.body.visible && card.body.text
       ? card.body.text.replace(/\*\*(.*?)\*\*/g, '$1') : '';
     const bFS2 = Math.round(card.body.size * SC);
@@ -5635,7 +5635,7 @@ async function exportCardToCanvas(card, idx) {
       ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       bodyLines2 = wrapText(ctx, bodyClean2, availW, bFS2 * 1.6);
     }
-    const totalBodyH = bodyLines2.length > 0 ? Math.round(12 * SC) + bodyLines2.length * bFS2 * 1.7 : 0;
+    const totalBodyH = bodyLines2.length > 0 ? Math.round(6 * SC) + bodyLines2.length * bFS2 * 1.42 : 0;
     const totalBlockH = totalTextH + totalBodyH;
     let y = tCenterY - totalBlockH / 2 + tFS + tOffY;
 
@@ -5664,13 +5664,13 @@ async function exportCardToCanvas(card, idx) {
       } else {
         ctx.fillText(line, tX, y);
       }
-      y += tFS * 1.22;
+      y += tFS * 1.12;
     }
     ctx.restore();
 
     // Body
     if (bodyClean2 && bodyLines2.length) {
-      y += Math.round(10 * SC); // ~10px gap between title and body
+      y += Math.round(6 * SC); // ~6px gap between title and body
       ctx.save();
       ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       ctx.fillStyle = card.body.color;
@@ -5679,7 +5679,7 @@ async function exportCardToCanvas(card, idx) {
       const bX = bAlign==='center' ? EXPORT_W/2 : bAlign==='right' ? EXPORT_W - tPad : tPad;
       for (const line of bodyLines2) {
         ctx.fillText(line, bX, y);
-        y += bFS2 * 1.65;
+        y += bFS2 * 1.42;
       }
       ctx.restore();
     }
