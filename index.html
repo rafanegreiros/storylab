@@ -4386,6 +4386,14 @@ function defaultCardState(idx, titulo, corpo) {
       imageSrc: null, imageMime: null,
       imageScale: 1, imageX: 0, imageY: 0,
       imageMode: 'cover', // 'cover' | 'contain' | 'fill'
+      // Box mode
+      boxMode: false,       // false = Full, true = Box
+      boxY: 10,             // % from top (0–100)
+      boxH: 42,             // % of card height
+      boxW: 100,            // % of card width
+      boxImgX: 0,           // px offset of image inside box
+      boxImgY: 0,           // px offset of image inside box
+      boxTextLayout: 'top', // 'top' | 'middle' | 'bottom'
     },
     // Layer 2: Overlay/Gradient
     overlay: {
@@ -4640,7 +4648,15 @@ function renderCardHtml(card, idx, total) {
   } else if (card.bg.type === 'gradient') {
     bgStyle = `background:linear-gradient(${card.bg.gradAngle}deg, ${card.bg.gradColors[0]}, ${card.bg.gradColors[1]});`;
   } else if (card.bg.type === 'image' && card.bg.imageSrc) {
-    bgStyle = `background:#111;`;
+    if (card.bg.boxMode) {
+      if (card.bg.gradColors && card.bg.gradColors[1]) {
+        bgStyle = `background:linear-gradient(${card.bg.gradAngle||180}deg, ${card.bg.gradColors[0]||'#111'}, ${card.bg.gradColors[1]||'#000'});`;
+      } else {
+        bgStyle = `background:${card.bg.color||'#141210'};`;
+      }
+    } else {
+      bgStyle = `background:#111;`;
+    }
   }
 
   // Build layers HTML
@@ -4648,13 +4664,31 @@ function renderCardHtml(card, idx, total) {
 
   // Layer: background image
   if (card.bg.type === 'image' && card.bg.imageSrc) {
-    layers += `<div style="position:absolute;inset:0;overflow:hidden;z-index:1;">
-      <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${card.bg.imageScale||1});transform-origin:center;object-fit:${card.bg.imageMode==='contain'?'contain':card.bg.imageMode==='fill'?'fill':'cover'};pointer-events:none;user-select:none;" draggable="false"/>
+    if (card.bg.boxMode) {
+      // ── BOX MODE ── image in a positioned rectangular mask
+      const bxW  = card.bg.boxW  || 100;  // % of card width
+      const bxH  = card.bg.boxH  || 42;   // % of card height
+      const bxY  = card.bg.boxY  || 10;   // % from top
+      const bxIX = card.bg.boxImgX || 0;  // px offset inside box
+      const bxIY = card.bg.boxImgY || 0;  // px offset inside box
+      const boxLeft = ((100 - bxW) / 2).toFixed(2);
+      layers += `<div style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:4px;">
+        <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;min-width:100%;min-height:100%;transform:translate(calc(-50% + ${bxIX}px), calc(-50% + ${bxIY}px));object-fit:cover;pointer-events:none;user-select:none;" draggable="false"/>
+      </div>
       <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
         <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
         <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;color:rgba(255,255,255,0.8);letter-spacing:0.8px;text-transform:uppercase;">Trocar</span>
-      </div>
-    </div>`;
+      </div>`;
+    } else {
+      // ── FULL MODE ── image covers entire card
+      layers += `<div style="position:absolute;inset:0;overflow:hidden;z-index:1;">
+        <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${card.bg.imageScale||1});transform-origin:center;object-fit:${card.bg.imageMode==='contain'?'contain':card.bg.imageMode==='fill'?'fill':'cover'};pointer-events:none;user-select:none;" draggable="false"/>
+        <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
+          <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
+          <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;color:rgba(255,255,255,0.8);letter-spacing:0.8px;text-transform:uppercase;">Trocar</span>
+        </div>
+      </div>`;
+    }
   } else if (card.bg.type !== 'image') {
     // Show image upload button when no image
     layers += `<div onclick="triggerBgImageUpload(${idx})" style="position:absolute;top:8px;right:8px;z-index:20;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);border:1px dashed rgba(255,255,255,0.25);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;" title="Adicionar imagem de fundo">
@@ -4909,10 +4943,43 @@ function renderCardSidebar() {
           <img src="${card.bg.imageSrc}" style="width:100%;height:100%;object-fit:cover;opacity:0.8;"/>
           <button onclick="clearBgImage(${idx})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;">×</button>
         </div>
-        <div style="display:flex;gap:6px;margin-bottom:8px;">
-          ${['cover','contain','fill'].map(m => `<button onclick="setCardImgMode(${idx},'${m}')" style="flex:1;padding:5px;border-radius:5px;border:1.5px solid ${card.bg.imageMode===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.6rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${card.bg.imageMode===m?'var(--accent)':'var(--muted)'}">${m==='cover'?'Full':m==='contain'?'Conter':'Preencher'}</button>`).join('')}
+        <div class="field-label" style="margin-bottom:6px;">Modo de exibição</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;">
+          <button onclick="setCardBgBoxMode(${idx},false)"
+            style="flex:1;padding:6px 4px;border-radius:6px;border:1.5px solid ${!card.bg.boxMode?'var(--accent)':'var(--border)'};background:${!card.bg.boxMode?'rgba(0,113,227,0.1)':'transparent'};font-size:0.65rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${!card.bg.boxMode?'var(--accent)':'var(--muted)'};">
+            ▣ Full
+          </button>
+          <button onclick="setCardBgBoxMode(${idx},true)"
+            style="flex:1;padding:6px 4px;border-radius:6px;border:1.5px solid ${card.bg.boxMode?'var(--accent)':'var(--border)'};background:${card.bg.boxMode?'rgba(0,113,227,0.1)':'transparent'};font-size:0.65rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${card.bg.boxMode?'var(--accent)':'var(--muted)'};">
+            ⬚ Box
+          </button>
         </div>
-        ${slider('Zoom', Math.round((card.bg.imageScale||1)*100), 50, 300, 5, `(v)=>setCardImgScale(${idx},v/100)`)}` : `
+        ${card.bg.boxMode ? `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <div class="field-label" style="margin-bottom:6px;">Layout do texto em relação ao box</div>
+              <div style="display:flex;gap:5px;">
+                ${[['top','↑ Topo'],['middle','↕ Meio'],['bottom','↓ Base']].map(([v,l]) =>
+                  `<button onclick="setBoxTextLayout(${idx},'${v}')" style="flex:1;padding:5px;border-radius:5px;border:1.5px solid ${(card.bg.boxTextLayout||'top')===v?'var(--accent)':'var(--border)'};background:transparent;font-size:0.6rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${(card.bg.boxTextLayout||'top')===v?'var(--accent)':'var(--muted)'};">${l}</button>`
+                ).join('')}
+              </div>
+            </div>
+            <div>
+              <div class="field-label">Cor de fundo (trás do box)</div>
+              ${colorSwatches('bg', card.bg.color, `(c)=>setCardBgColor(${idx},c)`)}
+            </div>
+            ${slider('↕ Posição Y do box %', card.bg.boxY != null ? card.bg.boxY : 10, 0, 80, 1, `(v)=>setBoxY(${idx},v)`)}
+            ${slider('↕ Altura do box %', card.bg.boxH || 42, 15, 90, 1, `(v)=>setBoxH(${idx},v)`)}
+            ${slider('↔ Largura do box %', card.bg.boxW != null ? card.bg.boxW : 100, 40, 100, 1, `(v)=>setBoxW(${idx},v)`)}
+            ${slider('↔ Imagem X (dentro)', card.bg.boxImgX || 0, -400, 400, 4, `(v)=>setBoxImgX(${idx},v)`)}
+            ${slider('↕ Imagem Y (dentro)', card.bg.boxImgY || 0, -400, 400, 4, `(v)=>setBoxImgY(${idx},v)`)}
+          </div>
+        ` : `
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            ${['cover','contain','fill'].map(m => `<button onclick="setCardImgMode(${idx},'${m}')" style="flex:1;padding:5px;border-radius:5px;border:1.5px solid ${card.bg.imageMode===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.6rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${card.bg.imageMode===m?'var(--accent)':'var(--muted)'}">${m==='cover'?'Full':m==='contain'?'Conter':'Preencher'}</button>`).join('')}
+          </div>
+          ${slider('Zoom', Math.round((card.bg.imageScale||1)*100), 50, 300, 5, `(v)=>setCardImgScale(${idx},v/100)`)}
+        `}` : `
         <button onclick="triggerBgImageUpload(${idx})" style="width:100%;padding:10px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;color:var(--muted);font-size:0.78rem;">
           + Adicionar imagem
         </button>`}
@@ -5120,6 +5187,65 @@ function setCardImgMode(idx, mode) {
 function setCardImgScale(idx, scale) {
   S.cards[idx].bg.imageScale = parseFloat(scale);
   refreshCard(idx);
+}
+
+// ── BOX MODE CONTROLS ──
+function setCardBgBoxMode(idx, isBox) {
+  S.cards[idx].bg.boxMode = isBox;
+  // Apply preset layout when switching to box
+  if (isBox) {
+    const layout = S.cards[idx].bg.boxTextLayout || 'top';
+    _applyBoxTextLayout(idx, layout);
+  }
+  refreshCard(idx); renderCardSidebar();
+}
+
+function setBoxY(idx, v) { S.cards[idx].bg.boxY = parseFloat(v); refreshCard(idx); }
+function setBoxH(idx, v) { S.cards[idx].bg.boxH = parseFloat(v); refreshCard(idx); }
+function setBoxW(idx, v) { S.cards[idx].bg.boxW = parseFloat(v); refreshCard(idx); }
+function setBoxImgX(idx, v) { S.cards[idx].bg.boxImgX = parseInt(v); refreshCard(idx); }
+function setBoxImgY(idx, v) { S.cards[idx].bg.boxImgY = parseInt(v); refreshCard(idx); }
+
+function setBoxTextLayout(idx, layout) {
+  S.cards[idx].bg.boxTextLayout = layout;
+  _applyBoxTextLayout(idx, layout);
+  refreshCard(idx); renderCardSidebar();
+}
+
+function _applyBoxTextLayout(idx, layout) {
+  const card = S.cards[idx];
+  const bxY  = card.bg.boxY  != null ? card.bg.boxY  : 10;
+  const bxH  = card.bg.boxH  || 42;
+  // Card height = 400px (preview). Convert % to px then to offset
+  // Text block sits in the remaining space. We use offsetY to nudge into position.
+  // The text container by default is centered in the full card area.
+  // For each preset we shift offsetY so text appears above or below the box.
+  const boxTopPx  = (bxY / 100) * 400;       // px from top
+  const boxBotPx  = boxTopPx + (bxH / 100) * 400; // px from top to box bottom
+  const cardMid   = 200;
+  if (layout === 'top') {
+    // Box at top — text below box, centered in lower half
+    card.bg.boxY = bxY;
+    const lowerMid = boxBotPx + (400 - boxBotPx) / 2;
+    card.title.offsetY = Math.round(lowerMid - cardMid);
+    card.body.offsetY  = 0;
+  } else if (layout === 'middle') {
+    // Box in center — headline above, body below
+    const midBoxTop = 29;
+    card.bg.boxY = midBoxTop;
+    const boxTopPx2 = (midBoxTop / 100) * 400;
+    const aboveMid = boxTopPx2 / 2;
+    card.title.offsetY = Math.round(aboveMid - cardMid - 20);
+    card.body.offsetY  = Math.round(((midBoxTop / 100 * 400) + (bxH / 100 * 400) + (400 - (midBoxTop + bxH) / 100 * 400) / 2) - cardMid + 10);
+  } else if (layout === 'bottom') {
+    // Box at bottom — text above box
+    const botBoxY = 100 - bxH - 5;
+    card.bg.boxY = Math.max(0, botBoxY);
+    const boxTopPx3 = (card.bg.boxY / 100) * 400;
+    const aboveMid2 = boxTopPx3 / 2;
+    card.title.offsetY = Math.round(aboveMid2 - cardMid);
+    card.body.offsetY  = 0;
+  }
 }
 
 function clearBgImage(idx) {
@@ -5476,10 +5602,33 @@ async function exportCardToCanvas(card, idx) {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
   } else {
-    ctx.fillStyle = card.bg.color || '#111111';
-    ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-    if (card.bg.type === 'image' && card.bg.imageSrc) {
-      await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H);
+    // Determine background for image cards
+    if (card.bg.boxMode) {
+      // Box mode: draw solid/gradient background first
+      if (card.bg.gradColors && card.bg.gradColors[1]) {
+        const angle = (card.bg.gradAngle || 180) * Math.PI / 180;
+        const cx2 = EXPORT_W/2, cy2 = EXPORT_H/2;
+        const grad = ctx.createLinearGradient(
+          cx2 - Math.cos(angle)*EXPORT_W/2, cy2 - Math.sin(angle)*EXPORT_H/2,
+          cx2 + Math.cos(angle)*EXPORT_W/2, cy2 + Math.sin(angle)*EXPORT_H/2
+        );
+        grad.addColorStop(0, card.bg.gradColors[0]);
+        grad.addColorStop(1, card.bg.gradColors[1]);
+        ctx.fillStyle = grad;
+      } else {
+        ctx.fillStyle = card.bg.color || '#141210';
+      }
+      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+      // Draw image in box mask
+      if (card.bg.imageSrc) {
+        await drawBoxImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H, SC);
+      }
+    } else {
+      ctx.fillStyle = card.bg.color || '#111111';
+      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+      if (card.bg.type === 'image' && card.bg.imageSrc) {
+        await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H);
+      }
     }
   }
 
@@ -5837,6 +5986,43 @@ async function drawImageOnCanvas(ctx, src, bgState, W, H) {
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, 0, W, H);
+      ctx.clip();
+      ctx.drawImage(img, dx, dy, rW, rH);
+      ctx.restore();
+      resolve();
+    };
+    img.onerror = () => resolve();
+    img.src = src;
+  });
+}
+
+// ── BOX IMAGE DRAW (canvas export) ──
+async function drawBoxImageOnCanvas(ctx, src, bgState, W, H, SC) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const bxW  = (bgState.boxW  != null ? bgState.boxW  : 100) / 100;   // fraction of W
+      const bxH  = (bgState.boxH  || 42)  / 100;   // fraction of H
+      const bxY  = (bgState.boxY  != null ? bgState.boxY  : 10)  / 100;   // fraction of H from top
+      const bxIX = (bgState.boxImgX || 0) * (W / 320);
+      const bxIY = (bgState.boxImgY || 0) * (H / 400);
+
+      const boxW  = W * bxW;
+      const boxH  = H * bxH;
+      const boxX  = (W - boxW) / 2;
+      const boxY  = H * bxY;
+
+      // Scale image to cover the box
+      const scale = Math.max(boxW / img.naturalWidth, boxH / img.naturalHeight);
+      const rW = img.naturalWidth  * scale;
+      const rH = img.naturalHeight * scale;
+      const dx = boxX + (boxW - rW) / 2 + bxIX;
+      const dy = boxY + (boxH - rH) / 2 + bxIY;
+
+      ctx.save();
+      // Clip to box rect with slight rounding (matches preview border-radius:4px → 4*SC)
+      const r = Math.round(4 * SC);
+      roundedRect(ctx, boxX, boxY, boxW, boxH, r);
       ctx.clip();
       ctx.drawImage(img, dx, dy, rW, rH);
       ctx.restore();
