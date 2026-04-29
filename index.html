@@ -4697,8 +4697,8 @@ function renderCardHtml(card, idx, total) {
     </div>`;
   }
 
-  // Layer: overlay gradient (hidden in box mode)
-  if (card.overlay.visible && !card.bg.boxMode) {
+  // Layer: overlay gradient
+  if (card.overlay.visible) {
     const dirs = {
       'bottom-up': 'to top',
       'top-down': 'to bottom',
@@ -4715,8 +4715,7 @@ function renderCardHtml(card, idx, total) {
   // Layer: header (brand)
   if (card.header.visible) {
     const _hMode = card.header.colorMode || 'auto';
-    // 'light' = texto claro (branco) para fundos escuros; 'dark' = texto escuro para fundos claros
-    const _hDark = _hMode==='light' ? true : _hMode==='dark' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
+    const _hDark = _hMode==='dark' ? true : _hMode==='light' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
     layers += brandHeaderHtml(_hDark, num, total);
   }
 
@@ -4735,10 +4734,8 @@ function renderCardHtml(card, idx, total) {
     const avPlacement = card.avatar.placement || 'bottom';
     const avTop = avPlacement === 'top' ? (card.header.visible ? '44px' : '12px') : 'auto';
     const avBottom = avPlacement === 'bottom' ? (card.cta.visible?'80px':'20px') : 'auto';
-    const avOX = card.avatar.offsetX || 0;
-    const avOY = card.avatar.offsetY || 0;
     // Instagram gradient ring
-    layers += `<div style="position:absolute;top:${avTop};bottom:${avBottom};left:20px;right:20px;z-index:6;display:flex;align-items:center;gap:10px;transform:translate(${avOX}px,${avOY}px);">
+    layers += `<div style="position:absolute;top:${avTop};bottom:${avBottom};left:20px;right:20px;z-index:6;display:flex;align-items:center;gap:10px;">
       <div style="width:41px;height:41px;border-radius:50%;background:conic-gradient(from 30deg,#5f46d2,#cd3b72,#e33960,#f59756,#fec053,#5f46d2);padding:1.5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
         <div style="width:37px;height:37px;border-radius:50%;background:${bv.primary||'#141210'};display:flex;align-items:center;justify-content:center;overflow:hidden;">
           ${bv.avatarImg ? `<img src="${bv.avatarImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>` : `<span style="font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:700;color:#fff;">${initials}</span>`}
@@ -5003,7 +5000,7 @@ function renderCardSidebar() {
     `}
   `);
 
-  const overlaySection = card.bg.boxMode ? '' : section('Overlay / Gradiente', `
+  const overlaySection = section('Overlay / Gradiente', `
     ${toggle('Visível', card.overlay.visible, `toggleOverlay(${idx})`)}
     ${card.overlay.visible ? `
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px;">
@@ -5099,9 +5096,6 @@ function renderCardSidebar() {
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Header / Marca</div>
         ${toggle('Visível', card.header.visible, `toggleHeader(${idx})`)}
-        ${card.header.visible ? `<div style="display:flex;gap:4px;margin-top:2px;">
-          ${['auto','light','dark'].map(m=>`<button onclick="setHeaderColorMode(${idx},'${m}')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ${(card.header.colorMode||'auto')===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.58rem;cursor:pointer;color:${(card.header.colorMode||'auto')===m?'var(--accent)':'var(--muted)'};">${m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro'}</button>`).join('')}
-        </div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Avatar + Handle</div>
@@ -5250,12 +5244,20 @@ function _applyBoxTextLayout(idx, layout) {
     card.body.offsetY  = 0;
 
   } else if (layout === 'middle') {
-    // Box no meio — valores exatos definidos pelo usuário
-    card.bg.boxY       = 52;
-    card.bg.boxH       = 50;
-    card.bg.boxW       = 100;
-    card.title.offsetY = -128;
-    card.body.offsetY  = -64;
+    // Box no meio — título acima do box, corpo abaixo do box
+    // boxY=30% → boxTop=120px, boxBot = 120 + (boxH%*400)
+    // título: queremos que apareça na zona 44px..120px → centro ≈ 82px
+    // offsetY = centroDesejado - cardMid(200) = 82 - 200 = -118
+    // corpo: queremos que apareça logo abaixo do box
+    // boxBot = 120 + (45/100*400) = 120 + 180 = 300px
+    // centro do corpo ≈ 300 + 30 = 330px → offsetY relativo = 330 - 200 = 130
+    // Mas body.offsetY é deslocamento adicional dentro do bloco de texto (que já está em offsetY do título)
+    // Para independência total, precisamos que o corpo fique visível separado do título
+    const boxY = 30;
+    card.bg.boxY       = boxY;
+    card.bg.boxH       = bxH > 0 ? bxH : 45;
+    card.title.offsetY = -118;
+    card.body.offsetY  = 130;
 
   } else if (layout === 'bottom') {
     // Box na base — título+corpo acima do box
@@ -5349,7 +5351,6 @@ function toggleHeader(idx) { S.cards[idx].header.visible = !S.cards[idx].header.
 function toggleAvatar(idx) { S.cards[idx].avatar.visible = !S.cards[idx].avatar.visible; refreshCard(idx); renderCardSidebar(); }
 function togglePageNum(idx) { S.cards[idx].pageNum.visible = !S.cards[idx].pageNum.visible; refreshCard(idx); renderCardSidebar(); }
 function setPageNumColor(idx, mode) { S.cards[idx].pageNum.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
-function setHeaderColorMode(idx, mode) { S.cards[idx].header.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
 function toggleCta(idx) { S.cards[idx].cta.visible = !S.cards[idx].cta.visible; refreshCard(idx); renderCardSidebar(); }
 function setCtaBg(idx, color) { S.cards[idx].cta.bgColor = color; refreshCard(idx); renderCardSidebar(); }
 function setCtaText(idx, color) { S.cards[idx].cta.textColor = color; refreshCard(idx); renderCardSidebar(); }
@@ -5646,7 +5647,7 @@ async function exportCardToCanvas(card, idx) {
   }
 
   // ── Layer 2: Overlay ──
-  if (card.overlay.visible && !card.bg.boxMode) {
+  if (card.overlay.visible) {
     const dirs = {
       'bottom-up':  [EXPORT_W/2, EXPORT_H, EXPORT_W/2, 0],
       'top-down':   [EXPORT_W/2, 0, EXPORT_W/2, EXPORT_H],
@@ -5672,8 +5673,7 @@ async function exportCardToCanvas(card, idx) {
     const hY    = Math.round(10 * SC); // 34px
     const hFS   = Math.round(7  * SC); // 24px
     const hMode = card.header.colorMode || 'auto';
-    // 'light' = texto claro (branco); 'dark' = texto escuro
-    const hDark = hMode==='light' ? true : hMode==='dark' ? false
+    const hDark = hMode==='dark' ? true : hMode==='light' ? false
                 : (isColorDark(card.bg.color) || card.bg.type==='image');
     const hHandleCol  = hDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
     const hTaglineCol = hDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
