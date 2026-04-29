@@ -4648,15 +4648,10 @@ function renderCardHtml(card, idx, total) {
   } else if (card.bg.type === 'gradient') {
     bgStyle = `background:linear-gradient(${card.bg.gradAngle}deg, ${card.bg.gradColors[0]}, ${card.bg.gradColors[1]});`;
   } else if (card.bg.type === 'image' && card.bg.imageSrc) {
-    if (card.bg.boxMode) {
-      if (card.bg.gradColors && card.bg.gradColors[1]) {
-        bgStyle = `background:linear-gradient(${card.bg.gradAngle||180}deg, ${card.bg.gradColors[0]||'#111'}, ${card.bg.gradColors[1]||'#000'});`;
-      } else {
-        bgStyle = `background:${card.bg.color||'#141210'};`;
-      }
-    } else {
-      bgStyle = `background:#111;`;
-    }
+    // Box mode: always solid bg color behind the box; Full mode: dark base under image
+    bgStyle = card.bg.boxMode
+      ? `background:${card.bg.color||'#141210'};`
+      : `background:#111;`;
   }
 
   // Build layers HTML
@@ -4774,12 +4769,24 @@ function renderCardHtml(card, idx, total) {
       onblur="updateCardText(${idx},'title',this.innerText)"
       style="font-family:${card.title.fontFamily};font-weight:${card.title.weight};font-size:${card.title.size}px;line-height:1.1;color:${card.title.color};text-align:${card.title.align};outline:none;cursor:text;"
     >${titleHtml}</div>
-    ${card.body.visible && card.body.text ? `<div contenteditable="true" spellcheck="false"
+    ${(!card.bg.boxMode && card.body.visible && card.body.text) ? `<div contenteditable="true" spellcheck="false"
       data-field="body" data-idx="${idx}"
       onblur="updateCardText(${idx},'body',this.innerText)"
       style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyOffY}px;margin-left:${bodyOffX}px;"
     >${bodyHtml}</div>` : ''}
   </div>`;
+
+  // In box mode, body is a fully independent layer (not nested under title transform)
+  if (card.bg.boxMode && card.body.visible && card.body.text) {
+    const bodyAbsY = 200 + (card.body.offsetY || 0); // center(200) + offsetY
+    layers += `<div style="position:absolute;top:0;left:20px;right:20px;z-index:6;transform:translateY(${bodyAbsY}px);">
+      <div contenteditable="true" spellcheck="false"
+        data-field="body" data-idx="${idx}"
+        onblur="updateCardText(${idx},'body',this.innerText)"
+        style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;"
+      >${bodyHtml}</div>
+    </div>`;
+  }
 
   // Layer: CTA button
   if (card.cta.visible) {
@@ -5044,7 +5051,10 @@ function renderCardSidebar() {
       </div>
       <div>
         <div class="field-label" style="margin-bottom:6px;">Posição do bloco de texto</div>
-        ${slider('↕ Vertical', card.title.offsetY||0, -120, 120, 2, `(v)=>setCardTitleOffsetY(${idx},v)`)}
+        ${card.bg.boxMode
+          ? slider('↕ Vertical', card.title.offsetY||0, -200, 200, 2, `(v)=>setCardTitleOffsetY(${idx},v)`)
+          : slider('↕ Vertical', card.title.offsetY||0, -120, 120, 2, `(v)=>setCardTitleOffsetY(${idx},v)`)
+        }
         ${slider('↔ Horizontal', card.title.offsetX||0, -80, 80, 2, `(v)=>setCardTitleOffsetX(${idx},v)`)}
       </div>
     </div>
@@ -5059,7 +5069,10 @@ function renderCardSidebar() {
           ${colorSwatches('body', card.body.color, `(c)=>setCardBodyColor(${idx},c)`)}
         </div>
         ${slider('Tamanho', card.body.size, 10, 28, 1, `(v)=>setCardBodySize(${idx},v)`)}
-        ${slider('↕ Deslocamento vertical', card.body.offsetY||0, -60, 60, 2, `(v)=>setCardBodyOffsetY(${idx},v)`)}
+        ${card.bg.boxMode
+          ? slider('↕ Posição vertical (absoluta)', card.body.offsetY||0, -200, 200, 2, `(v)=>setCardBodyOffsetY(${idx},v)`)
+          : slider('↕ Deslocamento vertical', card.body.offsetY||0, -60, 60, 2, `(v)=>setCardBodyOffsetY(${idx},v)`)
+        }
         <div>
           <div class="field-label" style="margin-bottom:6px;">Alinhamento</div>
           <div style="display:flex;gap:5px;">
@@ -5214,57 +5227,42 @@ function setBoxTextLayout(idx, layout) {
 
 function _applyBoxTextLayout(idx, layout) {
   const card = S.cards[idx];
-  const CARD_H = 400; // preview height px
-  const GAP    = 14;  // gap between box edge and text block (px)
+  const bxH = card.bg.boxH != null ? card.bg.boxH : 45;
 
-  // Defaults for each layout — also reposition the box itself
   if (layout === 'top') {
-    // Box fixed at top (e.g. Y=5%), text block starts just below box
-    const boxY = 5;
-    const boxH = card.bg.boxH || 42;
-    card.bg.boxY = boxY;
-
-    const boxBottomPx = (boxY + boxH) / 100 * CARD_H; // px where box ends
-    // Default text container: centered vertically in full card → center at 200px
-    // We want title top ≈ boxBottomPx + GAP
-    // Title container center = boxBottomPx + GAP + ~30 (half of typical title block)
-    const targetCenterY = boxBottomPx + GAP + 30;
-    card.title.offsetY = Math.round(targetCenterY - CARD_H / 2);
-    card.body.offsetY  = 0; // body offset is relative to title block, keep default
+    // Box no topo — cabeçalho sobre o box, título abaixo
+    card.bg.boxY       = 0;
+    card.bg.boxH       = bxH > 0 ? bxH : 45;
+    card.title.offsetY = 96;
+    card.body.offsetY  = 0;
 
   } else if (layout === 'middle') {
-    // Box in center; headline above box, body below box
+    // Box no meio — título acima do box, corpo abaixo do box
+    // boxY=30% → boxTop=120px, boxBot = 120 + (boxH%*400)
+    // título: queremos que apareça na zona 44px..120px → centro ≈ 82px
+    // offsetY = centroDesejado - cardMid(200) = 82 - 200 = -118
+    // corpo: queremos que apareça logo abaixo do box
+    // boxBot = 120 + (45/100*400) = 120 + 180 = 300px
+    // centro do corpo ≈ 300 + 30 = 330px → offsetY relativo = 330 - 200 = 130
+    // Mas body.offsetY é deslocamento adicional dentro do bloco de texto (que já está em offsetY do título)
+    // Para independência total, precisamos que o corpo fique visível separado do título
     const boxY = 30;
-    const boxH = card.bg.boxH || 42;
-    card.bg.boxY = boxY;
-
-    const boxTopPx = boxY / 100 * CARD_H;
-    const boxBotPx = (boxY + boxH) / 100 * CARD_H;
-
-    // Title: want its center in the upper zone → center of [topPad..boxTopPx]
-    const topPad = 44; // approximate header height
-    const titleZoneMid = topPad + (boxTopPx - topPad) / 2;
-    card.title.offsetY = Math.round(titleZoneMid - CARD_H / 2);
-
-    // Body: want it just below box bottom
-    // Body is offset relative to title position — use body.offsetY as absolute shift from title block
-    const bodyTargetTop = boxBotPx + GAP;
-    const bodyTargetCenter = bodyTargetTop + 20;
-    // body.offsetY is additional Y shift inside the text layer div
-    card.body.offsetY = Math.round(bodyTargetCenter - CARD_H / 2) - card.title.offsetY + 40;
+    card.bg.boxY       = boxY;
+    card.bg.boxH       = bxH > 0 ? bxH : 45;
+    card.title.offsetY = -118;
+    card.body.offsetY  = 130;
 
   } else if (layout === 'bottom') {
-    // Box at bottom; headline + body above box
-    const boxH = card.bg.boxH || 42;
-    const boxY = Math.max(1, 95 - boxH); // place near bottom
-    card.bg.boxY = boxY;
-
-    const boxTopPx = boxY / 100 * CARD_H;
-    // Text block center: middle of [topPad..boxTopPx - GAP]
-    const topPad = 44;
-    const textZoneBot = boxTopPx - GAP;
-    const textZoneMid = topPad + (textZoneBot - topPad) / 2;
-    card.title.offsetY = Math.round(textZoneMid - CARD_H / 2);
+    // Box na base — título+corpo acima do box
+    // boxY = 95 - boxH  (box toca o fundo)
+    const boxY = Math.max(1, 55 - (bxH > 0 ? bxH : 45));
+    card.bg.boxY       = boxY;
+    card.bg.boxH       = bxH > 0 ? bxH : 45;
+    // título: centralizado na zona 44px..boxTop
+    // boxTop = boxY/100*400
+    const boxTopPx  = boxY / 100 * 400;
+    const titleCenterY = 44 + (boxTopPx - 44) / 2;
+    card.title.offsetY = Math.round(titleCenterY - 200);
     card.body.offsetY  = 0;
   }
 }
@@ -5625,20 +5623,8 @@ async function exportCardToCanvas(card, idx) {
   } else {
     // Determine background for image cards
     if (card.bg.boxMode) {
-      // Box mode: draw solid/gradient background first
-      if (card.bg.gradColors && card.bg.gradColors[1]) {
-        const angle = (card.bg.gradAngle || 180) * Math.PI / 180;
-        const cx2 = EXPORT_W/2, cy2 = EXPORT_H/2;
-        const grad = ctx.createLinearGradient(
-          cx2 - Math.cos(angle)*EXPORT_W/2, cy2 - Math.sin(angle)*EXPORT_H/2,
-          cx2 + Math.cos(angle)*EXPORT_W/2, cy2 + Math.sin(angle)*EXPORT_H/2
-        );
-        grad.addColorStop(0, card.bg.gradColors[0]);
-        grad.addColorStop(1, card.bg.gradColors[1]);
-        ctx.fillStyle = grad;
-      } else {
-        ctx.fillStyle = card.bg.color || '#141210';
-      }
+      // Box mode: always solid color background
+      ctx.fillStyle = card.bg.color || '#141210';
       ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
       // Draw image in box mask
       if (card.bg.imageSrc) {
