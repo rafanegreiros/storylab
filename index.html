@@ -3040,6 +3040,39 @@ function applyBrandToCards() {
   `;
 }
 
+// Loads fonts and returns a Promise that resolves when fonts are ready
+async function loadBrandFontsAndWait(fontDisplay, fontBody) {
+  const fontsNeeded = new Set();
+  [fontDisplay, fontBody].forEach(f => {
+    const m = (f||'').match(/'([^']+)'/);
+    if (m) fontsNeeded.add(m[1]);
+  });
+  const links = [];
+  fontsNeeded.forEach(name => {
+    const id = 'gf-' + name.replace(/\s/g,'-');
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link');
+      link.id = id; link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;600;700;900&display=swap`;
+      document.head.appendChild(link);
+      links.push(new Promise(res => { link.onload = res; link.onerror = res; }));
+    }
+  });
+  // Update CSS vars immediately so layout is computed with new font
+  if (fontDisplay) document.documentElement.style.setProperty('--brand-font-display', fontDisplay);
+  if (fontBody)    document.documentElement.style.setProperty('--brand-font-body', fontBody);
+  // Wait for font sheets to load, then wait for font face to be ready
+  if (links.length) {
+    await Promise.all(links);
+    // Give browser time to parse and load actual font files
+    await new Promise(res => setTimeout(res, 300));
+  }
+  // Use FontFace API if available to ensure font is actually loaded
+  if (document.fonts && document.fonts.ready) {
+    try { await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 500))]); } catch(e) {}
+  }
+}
+
 function loadBrandFonts(b) {
   const fontsNeeded = new Set();
   [b.fontDisplay, b.fontBody].forEach(f => {
@@ -3136,14 +3169,22 @@ function openBrand() {
     });
   });
   document.getElementById('brand-font-display').addEventListener('change', () => {
-    const val = document.getElementById('brand-font-display').value;
-    if (val) loadBrandFonts({ fontDisplay: val, fontBody: document.getElementById('brand-font-body').value });
-    updateBrandPreview();
+    const fd = document.getElementById('brand-font-display').value;
+    const fb = document.getElementById('brand-font-body').value;
+    if (fd) {
+      loadBrandFontsAndWait(fd, fb).then(() => updateBrandPreview());
+    } else {
+      updateBrandPreview();
+    }
   });
   document.getElementById('brand-font-body').addEventListener('change', () => {
-    const val = document.getElementById('brand-font-body').value;
-    if (val) loadBrandFonts({ fontDisplay: document.getElementById('brand-font-display').value, fontBody: val });
-    updateBrandPreview();
+    const fd = document.getElementById('brand-font-display').value;
+    const fb = document.getElementById('brand-font-body').value;
+    if (fb) {
+      loadBrandFontsAndWait(fd, fb).then(() => updateBrandPreview());
+    } else {
+      updateBrandPreview();
+    }
   });
 }
 
@@ -4638,12 +4679,16 @@ function renderCardHtml(card, idx, total) {
 
   // Layer: header (brand)
   if (card.header.visible) {
-    layers += brandHeaderHtml(isColorDark(card.bg.color), num, total);
+    const _hMode = card.header.colorMode || 'auto';
+    const _hDark = _hMode==='dark' ? true : _hMode==='light' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
+    layers += brandHeaderHtml(_hDark, num, total);
   }
 
   // Layer: page number
   if (card.pageNum.visible) {
-    layers += brandCounterHtml(isColorDark(card.bg.color), num, total);
+    const _pnMode = card.pageNum.colorMode || 'auto';
+    const _pnDark = _pnMode==='dark' ? true : _pnMode==='light' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
+    layers += brandCounterHtml(_pnDark, num, total);
   }
 
   // Layer: avatar + handle
@@ -5156,6 +5201,8 @@ function setCardTitleOffsetX(idx, v) { S.cards[idx].title.offsetX = parseInt(v);
 function setCardTitleOffsetY(idx, v) { S.cards[idx].title.offsetY = parseInt(v); refreshCard(idx); }
 function setCardBodyOffsetY(idx, v) { S.cards[idx].body.offsetY = parseInt(v); refreshCard(idx); }
 function setAvatarPlacement(idx, placement) { S.cards[idx].avatar.placement = placement; refreshCard(idx); renderCardSidebar(); }
+function setAvatarOffsetX(idx, v) { if (!S.cards[idx]) return; S.cards[idx].avatar.offsetX = parseInt(v); refreshCard(idx); }
+function setAvatarOffsetY(idx, v) { if (!S.cards[idx]) return; S.cards[idx].avatar.offsetY = parseInt(v); refreshCard(idx); }
 
 // Add/Remove/Duplicate
 function duplicateCard(idx) {
