@@ -4792,6 +4792,9 @@ function updateCardText(idx, field, text) {
   if (field === 'title') S.cards[idx].title.text = text;
   else if (field === 'body') S.cards[idx].body.text = text;
   else if (field === 'cta') S.cards[idx].cta.text = text;
+  // Save text edits with debounce
+  clearTimeout(_cardEditSaveTimer);
+  _cardEditSaveTimer = setTimeout(() => { autoSave(); }, 1500);
 }
 
 // ── SCROLL CAROUSEL ──
@@ -5064,6 +5067,8 @@ function renderCardSidebar() {
 }
 
 // ── CARD CONTROL FUNCTIONS ──
+let _cardEditSaveTimer = null;
+
 function refreshCard(idx) {
   const scroll = document.getElementById('carousel-scroll');
   if (!scroll) return;
@@ -5082,6 +5087,9 @@ function refreshCard(idx) {
   });
   // Keep selection highlight
   if (idx === S.activeCardIdx) newCard.style.outline = '3px solid var(--accent)';
+  // Debounced autoSave — fires 1.5s after last edit
+  clearTimeout(_cardEditSaveTimer);
+  _cardEditSaveTimer = setTimeout(() => { autoSave(); }, 1500);
 }
 
 function setCardBgType(idx, type) {
@@ -5213,6 +5221,7 @@ function duplicateCard(idx) {
   S.cards.forEach((c,i) => c.idx = i);
   renderFinal();
   setTimeout(() => selectCard(idx + 1), 60);
+  autoSave();
 }
 
 function deleteCard(idx) {
@@ -5222,6 +5231,7 @@ function deleteCard(idx) {
   const newIdx = Math.min(idx, S.cards.length - 1);
   renderFinal();
   setTimeout(() => selectCard(newIdx), 60);
+  autoSave();
 }
 
 function addCardAfter(idx) {
@@ -5231,6 +5241,7 @@ function addCardAfter(idx) {
   S.cards.forEach((c,i) => c.idx = i);
   renderFinal();
   setTimeout(() => selectCard(idx + 1), 60);
+  autoSave();
 }
 
 // ── HELPER: hex with alpha ──
