@@ -4661,13 +4661,19 @@ function renderCardHtml(card, idx, total) {
   if (card.bg.type === 'image' && card.bg.imageSrc) {
     if (card.bg.boxMode) {
       // ── BOX MODE ── image in a positioned rectangular mask
-      const bxW  = card.bg.boxW  || 100;  // % of card width
-      const bxH  = card.bg.boxH  || 42;   // % of card height
-      const bxY  = card.bg.boxY  || 10;   // % from top
-      const bxIX = card.bg.boxImgX || 0;  // px offset inside box
-      const bxIY = card.bg.boxImgY || 0;  // px offset inside box
+      const bxW  = card.bg.boxW  != null ? card.bg.boxW  : 100;  // % of card width
+      const bxH  = card.bg.boxH  != null ? card.bg.boxH  : 42;   // % of card height
+      const bxY  = card.bg.boxY  != null ? card.bg.boxY  : 10;   // % from top — use != null to allow 0
+      const bxIX = card.bg.boxImgX != null ? card.bg.boxImgX : 0;
+      const bxIY = card.bg.boxImgY != null ? card.bg.boxImgY : 0;
       const boxLeft = ((100 - bxW) / 2).toFixed(2);
-      layers += `<div style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:4px;">
+      // Smart border-radius: remove radius on edges that touch the card boundary
+      const rTop    = bxY  <= 0.5            ? '0'  : '4px';
+      const rBottom = (bxY + bxH) >= 99.5   ? '0'  : '4px';
+      const rLeft   = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
+      const rRight  = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
+      const boxRadius = `${rTop} ${rRight} ${rBottom} ${rLeft}`;
+      layers += `<div style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};">
         <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;min-width:100%;min-height:100%;transform:translate(calc(-50% + ${bxIX}px), calc(-50% + ${bxIY}px));object-fit:cover;pointer-events:none;user-select:none;" draggable="false"/>
       </div>
       <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
@@ -4716,7 +4722,8 @@ function renderCardHtml(card, idx, total) {
   // Layer: page number
   if (card.pageNum.visible) {
     const _pnMode = card.pageNum.colorMode || 'auto';
-    const _pnDark = _pnMode==='dark' ? true : _pnMode==='light' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
+    // 'light' = texto claro (branco) para fundos escuros; 'dark' = texto escuro para fundos claros
+    const _pnDark = _pnMode==='light' ? true : _pnMode==='dark' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
     layers += brandCounterHtml(_pnDark, num, total);
   }
 
@@ -6008,11 +6015,11 @@ async function drawBoxImageOnCanvas(ctx, src, bgState, W, H, SC) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      const bxW  = (bgState.boxW  != null ? bgState.boxW  : 100) / 100;   // fraction of W
-      const bxH  = (bgState.boxH  || 42)  / 100;   // fraction of H
-      const bxY  = (bgState.boxY  != null ? bgState.boxY  : 10)  / 100;   // fraction of H from top
-      const bxIX = (bgState.boxImgX || 0) * (W / 320);
-      const bxIY = (bgState.boxImgY || 0) * (H / 400);
+      const bxW  = (bgState.boxW  != null ? bgState.boxW  : 100) / 100;
+      const bxH  = (bgState.boxH  != null ? bgState.boxH  : 42)  / 100;
+      const bxY  = (bgState.boxY  != null ? bgState.boxY  : 10)  / 100;
+      const bxIX = (bgState.boxImgX != null ? bgState.boxImgX : 0) * (W / 320);
+      const bxIY = (bgState.boxImgY != null ? bgState.boxImgY : 0) * (H / 400);
 
       const boxW  = W * bxW;
       const boxH  = H * bxH;
@@ -6027,9 +6034,26 @@ async function drawBoxImageOnCanvas(ctx, src, bgState, W, H, SC) {
       const dy = boxY + (boxH - rH) / 2 + bxIY;
 
       ctx.save();
-      // Clip to box rect with slight rounding (matches preview border-radius:4px → 4*SC)
-      const r = Math.round(4 * SC);
-      roundedRect(ctx, boxX, boxY, boxW, boxH, r);
+      // Smart border-radius: no radius on edges touching card boundary
+      const baseR = Math.round(4 * SC);
+      const rTop    = bgState.boxY  <= 0.5                                  ? 0 : baseR;
+      const rBottom = (bgState.boxY + bgState.boxH * 100 / 100) >= 99.5    ? 0 : baseR;
+      const rSide   = (100 - (bgState.boxW != null ? bgState.boxW : 100)) < 0.4 ? 0 : baseR;
+      // Use roundedRect with per-corner radii via manual path
+      const x = boxX, y = boxY, bw = boxW, bh = boxH;
+      const tl = rTop, tr = rTop, br = rBottom, bl = rBottom;
+      const sl = rSide, sr = rSide;
+      ctx.beginPath();
+      ctx.moveTo(x + (sl||tl), y);
+      ctx.lineTo(x + bw - (sr||tr), y);
+      ctx.arcTo(x + bw, y,      x + bw, y + bh,      Math.min(tr, sr));
+      ctx.lineTo(x + bw, y + bh - (sr||br));
+      ctx.arcTo(x + bw, y + bh, x,      y + bh,      Math.min(br, sr));
+      ctx.lineTo(x + (sl||bl), y + bh);
+      ctx.arcTo(x,      y + bh, x,      y,            Math.min(bl, sl));
+      ctx.lineTo(x,      y + (sl||tl));
+      ctx.arcTo(x,      y,      x + bw, y,            Math.min(tl, sl));
+      ctx.closePath();
       ctx.clip();
       ctx.drawImage(img, dx, dy, rW, rH);
       ctx.restore();
