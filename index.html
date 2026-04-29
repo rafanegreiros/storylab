@@ -4968,7 +4968,7 @@ function renderCardSidebar() {
               <div class="field-label">Cor de fundo (trás do box)</div>
               ${colorSwatches('bg', card.bg.color, `(c)=>setCardBgColor(${idx},c)`)}
             </div>
-            ${slider('↕ Posição Y do box %', card.bg.boxY != null ? card.bg.boxY : 10, 0, 80, 1, `(v)=>setBoxY(${idx},v)`)}
+            ${slider('↕ Posição Y do box %', card.bg.boxY != null ? card.bg.boxY : 10, 0, 95, 1, `(v)=>setBoxY(${idx},v)`)}
             ${slider('↕ Altura do box %', card.bg.boxH || 42, 15, 90, 1, `(v)=>setBoxH(${idx},v)`)}
             ${slider('↔ Largura do box %', card.bg.boxW != null ? card.bg.boxW : 100, 40, 100, 1, `(v)=>setBoxW(${idx},v)`)}
             ${slider('↔ Imagem X (dentro)', card.bg.boxImgX || 0, -400, 400, 4, `(v)=>setBoxImgX(${idx},v)`)}
@@ -5214,36 +5214,57 @@ function setBoxTextLayout(idx, layout) {
 
 function _applyBoxTextLayout(idx, layout) {
   const card = S.cards[idx];
-  const bxY  = card.bg.boxY  != null ? card.bg.boxY  : 10;
-  const bxH  = card.bg.boxH  || 42;
-  // Card height = 400px (preview). Convert % to px then to offset
-  // Text block sits in the remaining space. We use offsetY to nudge into position.
-  // The text container by default is centered in the full card area.
-  // For each preset we shift offsetY so text appears above or below the box.
-  const boxTopPx  = (bxY / 100) * 400;       // px from top
-  const boxBotPx  = boxTopPx + (bxH / 100) * 400; // px from top to box bottom
-  const cardMid   = 200;
+  const CARD_H = 400; // preview height px
+  const GAP    = 14;  // gap between box edge and text block (px)
+
+  // Defaults for each layout — also reposition the box itself
   if (layout === 'top') {
-    // Box at top — text below box, centered in lower half
-    card.bg.boxY = bxY;
-    const lowerMid = boxBotPx + (400 - boxBotPx) / 2;
-    card.title.offsetY = Math.round(lowerMid - cardMid);
-    card.body.offsetY  = 0;
+    // Box fixed at top (e.g. Y=5%), text block starts just below box
+    const boxY = 5;
+    const boxH = card.bg.boxH || 42;
+    card.bg.boxY = boxY;
+
+    const boxBottomPx = (boxY + boxH) / 100 * CARD_H; // px where box ends
+    // Default text container: centered vertically in full card → center at 200px
+    // We want title top ≈ boxBottomPx + GAP
+    // Title container center = boxBottomPx + GAP + ~30 (half of typical title block)
+    const targetCenterY = boxBottomPx + GAP + 30;
+    card.title.offsetY = Math.round(targetCenterY - CARD_H / 2);
+    card.body.offsetY  = 0; // body offset is relative to title block, keep default
+
   } else if (layout === 'middle') {
-    // Box in center — headline above, body below
-    const midBoxTop = 29;
-    card.bg.boxY = midBoxTop;
-    const boxTopPx2 = (midBoxTop / 100) * 400;
-    const aboveMid = boxTopPx2 / 2;
-    card.title.offsetY = Math.round(aboveMid - cardMid - 20);
-    card.body.offsetY  = Math.round(((midBoxTop / 100 * 400) + (bxH / 100 * 400) + (400 - (midBoxTop + bxH) / 100 * 400) / 2) - cardMid + 10);
+    // Box in center; headline above box, body below box
+    const boxY = 30;
+    const boxH = card.bg.boxH || 42;
+    card.bg.boxY = boxY;
+
+    const boxTopPx = boxY / 100 * CARD_H;
+    const boxBotPx = (boxY + boxH) / 100 * CARD_H;
+
+    // Title: want its center in the upper zone → center of [topPad..boxTopPx]
+    const topPad = 44; // approximate header height
+    const titleZoneMid = topPad + (boxTopPx - topPad) / 2;
+    card.title.offsetY = Math.round(titleZoneMid - CARD_H / 2);
+
+    // Body: want it just below box bottom
+    // Body is offset relative to title position — use body.offsetY as absolute shift from title block
+    const bodyTargetTop = boxBotPx + GAP;
+    const bodyTargetCenter = bodyTargetTop + 20;
+    // body.offsetY is additional Y shift inside the text layer div
+    card.body.offsetY = Math.round(bodyTargetCenter - CARD_H / 2) - card.title.offsetY + 40;
+
   } else if (layout === 'bottom') {
-    // Box at bottom — text above box
-    const botBoxY = 100 - bxH - 5;
-    card.bg.boxY = Math.max(0, botBoxY);
-    const boxTopPx3 = (card.bg.boxY / 100) * 400;
-    const aboveMid2 = boxTopPx3 / 2;
-    card.title.offsetY = Math.round(aboveMid2 - cardMid);
+    // Box at bottom; headline + body above box
+    const boxH = card.bg.boxH || 42;
+    const boxY = Math.max(1, 95 - boxH); // place near bottom
+    card.bg.boxY = boxY;
+
+    const boxTopPx = boxY / 100 * CARD_H;
+    // Text block center: middle of [topPad..boxTopPx - GAP]
+    const topPad = 44;
+    const textZoneBot = boxTopPx - GAP;
+    const textZoneMid = topPad + (textZoneBot - topPad) / 2;
+    card.title.offsetY = Math.round(textZoneMid - CARD_H / 2);
     card.body.offsetY  = 0;
   }
 }
