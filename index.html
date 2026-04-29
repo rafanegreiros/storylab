@@ -5240,35 +5240,27 @@ function setBoxTextLayout(idx, layout) {
 
 function _applyBoxTextLayout(idx, layout) {
   const card = S.cards[idx];
-  const bxH = card.bg.boxH != null ? card.bg.boxH : 45;
 
   if (layout === 'top') {
-    // Box no topo — cabeçalho sobre o box, título abaixo
     card.bg.boxY       = 0;
-    card.bg.boxH       = bxH > 0 ? bxH : 45;
-    card.title.offsetY = 96;
-    card.body.offsetY  = 0;
-
-  } else if (layout === 'middle') {
-    // Box no meio — valores exatos definidos pelo usuário
-    card.bg.boxY       = 52;
     card.bg.boxH       = 50;
     card.bg.boxW       = 100;
+    card.title.offsetY = 58;
+    card.body.offsetY  = 122;
+
+  } else if (layout === 'middle') {
+    card.bg.boxY       = 31;
+    card.bg.boxH       = 43;
+    card.bg.boxW       = 89;
     card.title.offsetY = -128;
-    card.body.offsetY  = -64;
+    card.body.offsetY  = 104;
 
   } else if (layout === 'bottom') {
-    // Box na base — título+corpo acima do box
-    // boxY = 95 - boxH  (box toca o fundo)
-    const boxY = Math.max(1, 55 - (bxH > 0 ? bxH : 45));
-    card.bg.boxY       = boxY;
-    card.bg.boxH       = bxH > 0 ? bxH : 45;
-    // título: centralizado na zona 44px..boxTop
-    // boxTop = boxY/100*400
-    const boxTopPx  = boxY / 100 * 400;
-    const titleCenterY = 44 + (boxTopPx - 44) / 2;
-    card.title.offsetY = Math.round(titleCenterY - 200);
-    card.body.offsetY  = 0;
+    card.bg.boxY       = 50;
+    card.bg.boxH       = 50;
+    card.bg.boxW       = 100;
+    card.title.offsetY = -132;
+    card.body.offsetY  = -84;
   }
 }
 
