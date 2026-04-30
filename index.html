@@ -5909,13 +5909,13 @@ async function exportCardToCanvas(card, idx) {
       } else {
         ctx.fillText(line, tX, y);
       }
-      y += tFS * 1.12;
+      y += tFS * 1.1; // match preview line-height:1.1
     }
     ctx.restore();
 
     // Body (normal mode — rendered as part of title block)
     if (bodyClean2 && bodyLines2.length) {
-      y += Math.round(4 * SC); // ~4px gap between title and body
+      y += Math.round(6 * SC); // match preview flex gap:6px
       ctx.save();
       ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       ctx.fillStyle = card.body.color;
