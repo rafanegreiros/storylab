@@ -5942,11 +5942,17 @@ async function exportCardToCanvas(card, idx) {
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
     // gap matches preview flex gap:6px only — bodyOffY is applied separately during render
     const gapSC = Math.round(6 * SC);
+    // totalTextH = N lines * tFS*1.1, but last line doesn't need the trailing advance
+    // so effective title height = (N-1)*tFS*1.1 + tFS (baseline of last line)
+    // gap = 6px flex gap
+    const effectiveTitleH = titleLines.length > 0
+      ? (titleLines.length - 1) * tFS * 1.1 + tFS
+      : 0;
     const totalBodyH = bodyLines2.length > 0 ? gapSC + bodyLines2.length * bFS2 * 1.42 : 0;
-    const totalBlockH = totalTextH + totalBodyH;
+    const totalBlockH = effectiveTitleH + totalBodyH;
 
-    // y: first baseline = top of block + one line's line-height (matches CSS line-height:1.1)
-    let y = CARD_CENTER_Y + tOffY - totalBlockH / 2 + tFS * 1.1;
+    // y: first baseline = top of block + tFS (first line baseline from top)
+    let y = CARD_CENTER_Y + tOffY - totalBlockH / 2 + tFS;
 
     // Draw title lines
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
@@ -5992,9 +5998,9 @@ async function exportCardToCanvas(card, idx) {
 
     // Body (normal mode — rendered as part of title block)
     if (bodyClean2 && bodyLines2.length) {
-      // gap:6px (flex) + body.offsetY as margin-top (both match preview HTML)
+      // After title loop, y is one line ahead — subtract it, then add flex gap only
       const bOffYsc = (card.body.offsetY || 0) * SC;
-      y += gapSC + bOffYsc;
+      y = y - tFS * 1.1 + gapSC + bOffYsc;
       ctx.save();
       ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       ctx.fillStyle = card.body.color;
