@@ -5653,6 +5653,9 @@ async function exportAllCards() {
 
 // ── EXPORT SINGLE CARD TO CANVAS 2D ──
 async function exportCardToCanvas(card, idx) {
+  // Ensure fonts are loaded before drawing — prevents fallback font metrics
+  await document.fonts.ready;
+
   const canvas = document.createElement('canvas');
   canvas.width  = EXPORT_W; // 1080
   canvas.height = EXPORT_H; // 1350
@@ -5912,7 +5915,7 @@ async function exportCardToCanvas(card, idx) {
     const titleClean = card.title.text.replace(/\*\*(.*?)\*\*/g, '$1');
     const titleLines = wrapText(ctx, titleClean, availW, tFS * 1.15);
 
-    const totalTextH = titleLines.length * tFS * 1.12;
+    const totalTextH = titleLines.length * tFS * 1.1; // match CSS line-height:1.1
 
     // In box mode: body is independent layer — don't include in title block height
     const bodyClean2 = !card.bg.boxMode && card.body.visible && card.body.text
@@ -5930,8 +5933,8 @@ async function exportCardToCanvas(card, idx) {
     const totalBodyH = bodyLines2.length > 0 ? gapSC + bodyLines2.length * bFS2 * 1.42 : 0;
     const totalBlockH = totalTextH + totalBodyH;
 
-    // y: start of first title baseline = card_center + titleOffY - half of total block + one line height
-    let y = CARD_CENTER_Y + tOffY - totalBlockH / 2 + tFS;
+    // y: first baseline = top of block + one line's line-height (matches CSS line-height:1.1)
+    let y = CARD_CENTER_Y + tOffY - totalBlockH / 2 + tFS * 1.1;
 
     // Draw title lines
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
