@@ -5815,33 +5815,21 @@ async function exportCardToCanvas(card, idx) {
   }
 
   // ── Layer 6: Text (title + body) ──
-  // Preview layout: padX=20px, top boundary depends on header/avatar-top,
-  // bottom boundary depends on cta/avatar-bottom/pagenum
+  // Reference: EXPORT_H/2 = card center, matching preview HTML where
+  // the text container is centered in the full card with transform:translateY(offsetY)
   const tPad  = Math.round(20 * SC); // 68px
-  const avIsTop = (card.avatar.placement || 'bottom') === 'top' && card.avatar.visible;
-  const avIsBot =  card.avatar.visible && !avIsTop;
+  const availW = EXPORT_W - tPad * 2;
 
-  // Available text area top/bottom (mirrors renderCardHtml logic exactly)
-  const tAreaTop = avIsTop
-    ? Math.round(90 * SC)                                           // avatar above
-    : (card.header.visible ? Math.round(28 * SC) : Math.round(14 * SC)); // just header
-  const tAreaBot = card.cta.visible
-    ? Math.round(68 * SC)                                           // CTA reserve
-    : (avIsBot ? Math.round(78 * SC)                                // avatar below
-    : (card.pageNum.visible ? Math.round(22 * SC) : Math.round(14 * SC)));
+  // Card center — same reference as preview HTML (200px * SC)
+  const CARD_CENTER_Y = EXPORT_H / 2;
 
-  const availW   = EXPORT_W - tPad * 2;
-  const tAreaH   = EXPORT_H - tAreaTop - tAreaBot;
-  const tCenterY = tAreaTop + tAreaH / 2;
-
-  // offsetY/X from user controls
+  // offsetY/X from user controls — same scale as preview (px * SC)
   const tOffY = (card.title.offsetY || 0) * SC;
   const tOffX = (card.title.offsetX || 0) * SC;
 
   if (card.title.text) {
     ctx.save();
-    const tFS = Math.round(card.title.size * SC); // e.g. 28px * 3.375 = 94px
-    ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
+    const tFS = Math.round(card.title.size * SC);
     ctx.fillStyle = card.title.color;
     const tAlign = card.title.align || 'left';
     ctx.textAlign = tAlign;
@@ -5854,9 +5842,10 @@ async function exportCardToCanvas(card, idx) {
     const titleClean = card.title.text.replace(/\*\*(.*?)\*\*/g, '$1');
     const titleLines = wrapText(ctx, titleClean, availW, tFS * 1.15);
 
-    // Vertically center the whole text block
     const totalTextH = titleLines.length * tFS * 1.12;
-    const bodyClean2 = card.body.visible && card.body.text
+
+    // In box mode: body is independent layer — don't include in title block height
+    const bodyClean2 = !card.bg.boxMode && card.body.visible && card.body.text
       ? card.body.text.replace(/\*\*(.*?)\*\*/g, '$1') : '';
     const bFS2 = Math.round(card.body.size * SC);
     let bodyLines2 = [];
@@ -5868,7 +5857,9 @@ async function exportCardToCanvas(card, idx) {
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
     const totalBodyH = bodyLines2.length > 0 ? Math.round(4 * SC) + bodyLines2.length * bFS2 * 1.42 : 0;
     const totalBlockH = totalTextH + totalBodyH;
-    let y = tCenterY - totalBlockH / 2 + tFS + tOffY;
+
+    // y: start of first title baseline = card_center + offsetY - half of total block + one line height
+    let y = CARD_CENTER_Y + tOffY - totalBlockH / 2 + tFS;
 
     // Draw title lines
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
@@ -5912,7 +5903,7 @@ async function exportCardToCanvas(card, idx) {
     }
     ctx.restore();
 
-    // Body
+    // Body (normal mode — rendered as part of title block)
     if (bodyClean2 && bodyLines2.length) {
       y += Math.round(4 * SC); // ~4px gap between title and body
       ctx.save();
@@ -5927,6 +5918,27 @@ async function exportCardToCanvas(card, idx) {
       }
       ctx.restore();
     }
+  }
+
+  // Body in box mode — independent layer, position from card center (mirrors preview HTML)
+  if (card.bg.boxMode && card.body.visible && card.body.text) {
+    const bFS3 = Math.round(card.body.size * SC);
+    const bodyClean3 = card.body.text.replace(/\*\*(.*?)\*\*/g, '$1');
+    ctx.save();
+    ctx.font = `400 ${bFS3}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
+    const bodyLines3 = wrapText(ctx, bodyClean3, availW, bFS3 * 1.6);
+    ctx.fillStyle = card.body.color;
+    const bAlign3 = card.body.align || 'left';
+    ctx.textAlign = bAlign3;
+    const bX3 = bAlign3==='center' ? EXPORT_W/2 : bAlign3==='right' ? EXPORT_W - tPad : tPad;
+    const bOffY3 = (card.body.offsetY || 0) * SC;
+    // Position: card center + body offsetY — matches translateY(bodyAbsY) in HTML
+    let by = CARD_CENTER_Y + bOffY3 + bFS3;
+    for (const line of bodyLines3) {
+      ctx.fillText(line, bX3, by);
+      by += bFS3 * 1.42;
+    }
+    ctx.restore();
   }
 
   // ── Layer 7: CTA button ──
