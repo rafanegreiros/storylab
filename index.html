@@ -5877,22 +5877,26 @@ async function exportCardToCanvas(card, idx) {
         const lineLower = line.toLowerCase();
         const hlStart = lineLower.indexOf(hlWord);
         if (hlStart >= 0) {
-          // Measure text before highlight
+          // Draw word-by-word — must use textAlign='left' with absolute coords
+          ctx.textAlign = 'left';
           const before = line.slice(0, hlStart);
           const highlighted = line.slice(hlStart, hlStart + hlWord.length);
           const after = line.slice(hlStart + hlWord.length);
-          let wx = tX;
+          // Calculate starting x based on original alignment
+          ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
+          let wx = tPad + tOffX;
           if (tAlign !== 'left') {
             const lineW = ctx.measureText(line).width;
-            wx = tAlign==='center' ? tX - lineW/2 : tX - lineW;
+            wx = tAlign==='center' ? (EXPORT_W - lineW) / 2 + tOffX : EXPORT_W - tPad - lineW + tOffX;
           }
           // Draw before
           if (before) { ctx.fillStyle = card.title.color; ctx.fillText(before, wx, y); wx += ctx.measureText(before).width; }
-          // Draw highlighted
+          // Draw highlighted word
           ctx.fillStyle = card.title.highlight.color;
           ctx.fillText(highlighted, wx, y); wx += ctx.measureText(highlighted).width;
           // Draw after
           if (after) { ctx.fillStyle = card.title.color; ctx.fillText(after, wx, y); }
+          ctx.textAlign = tAlign; // restore
         } else {
           ctx.fillStyle = card.title.color; ctx.fillText(line, tX, y);
         }
