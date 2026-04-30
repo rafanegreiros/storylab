@@ -5653,8 +5653,20 @@ async function exportAllCards() {
 
 // ── EXPORT SINGLE CARD TO CANVAS 2D ──
 async function exportCardToCanvas(card, idx) {
-  // Ensure fonts are loaded before drawing — prevents fallback font metrics
+  // Force load all fonts used in canvas before measuring/drawing
   await document.fonts.ready;
+  try {
+    await Promise.all([
+      document.fonts.load("700 48px 'Fraunces'"),
+      document.fonts.load("400 48px 'Fraunces'"),
+      document.fonts.load("600 48px 'Fraunces'"),
+      document.fonts.load("900 48px 'Fraunces'"),
+      document.fonts.load("400 48px 'Syne'"),
+      document.fonts.load("600 48px 'Syne'"),
+      document.fonts.load("700 48px 'Poppins'"),
+      document.fonts.load("400 48px 'Poppins'"),
+    ]);
+  } catch(e) { /* fonts may already be loaded */ }
 
   const canvas = document.createElement('canvas');
   canvas.width  = EXPORT_W; // 1080
