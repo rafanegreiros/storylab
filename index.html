@@ -5676,9 +5676,10 @@ async function exportCardToCanvas(card, idx) {
     ctx.textBaseline = 'top';
     ctx.fillText(b.handle || '', hPad, hY);
     if (b.tagline) {
+      const hFSTag = Math.round(hFS * 0.75); // tagline smaller than handle (~0.42rem vs 0.56rem)
       ctx.textAlign = 'center';
       ctx.fillStyle = hTaglineCol;
-      ctx.font = `400 ${hFS}px 'Syne', sans-serif`;
+      ctx.font = `400 ${hFSTag}px 'Syne', sans-serif`;
       ctx.fillText((b.tagline||'').toUpperCase(), EXPORT_W/2, hY);
     }
     if (b.year) {
