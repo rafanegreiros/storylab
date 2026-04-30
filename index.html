@@ -5815,13 +5815,23 @@ async function exportCardToCanvas(card, idx) {
   }
 
   // ── Layer 6: Text (title + body) ──
-  // Reference: EXPORT_H/2 = card center, matching preview HTML where
-  // the text container is centered in the full card with transform:translateY(offsetY)
+  // Mirror renderCardHtml: text container has top/bottom boundaries,
+  // center is middle of that container — exactly like the HTML div with top+bottom set
   const tPad  = Math.round(20 * SC); // 68px
   const availW = EXPORT_W - tPad * 2;
 
-  // Card center — same reference as preview HTML (200px * SC)
-  const CARD_CENTER_Y = EXPORT_H / 2;
+  // Replicate textTop / textBottom from renderCardHtml exactly
+  const _avVisible = card.avatar.visible;
+  const _avIsTop   = _avVisible && (card.avatar.placement || 'bottom') === 'top';
+  const _avIsBot   = _avVisible && !_avIsTop;
+  const _textTopPx    = _avIsTop ? 80 : (card.header.visible ? 44 : 20);
+  const _textBottomPx = card.cta.visible ? 70
+                      : (_avIsBot ? 80
+                      : (card.pageNum.visible ? 28 : 20));
+  const _textTopSC    = Math.round(_textTopPx    * SC);
+  const _textBotSC    = Math.round(_textBottomPx * SC);
+  // Center of the text container — same as HTML
+  const CARD_CENTER_Y = _textTopSC + (EXPORT_H - _textTopSC - _textBotSC) / 2;
 
   // offsetY/X from user controls — same scale as preview (px * SC)
   const tOffY = (card.title.offsetY || 0) * SC;
