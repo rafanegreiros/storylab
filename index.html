@@ -5865,14 +5865,12 @@ async function exportCardToCanvas(card, idx) {
     }
     // Restore title font after body wrapText
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
-    // gap = flex gap(6px) + body.offsetY margin (matches preview HTML exactly)
-    const bodyOffYpx = (card.body.offsetY || 0);
-    const gapPx = 6 + bodyOffYpx;
-    const gapSC = gapPx * SC;
+    // gap matches preview flex gap:6px only — bodyOffY is applied separately during render
+    const gapSC = Math.round(6 * SC);
     const totalBodyH = bodyLines2.length > 0 ? gapSC + bodyLines2.length * bFS2 * 1.42 : 0;
     const totalBlockH = totalTextH + totalBodyH;
 
-    // y: start of first title baseline = card_center + offsetY - half of total block + one line height
+    // y: start of first title baseline = card_center + titleOffY - half of total block + one line height
     let y = CARD_CENTER_Y + tOffY - totalBlockH / 2 + tFS;
 
     // Draw title lines
@@ -5919,7 +5917,9 @@ async function exportCardToCanvas(card, idx) {
 
     // Body (normal mode — rendered as part of title block)
     if (bodyClean2 && bodyLines2.length) {
-      y += gapSC; // flex gap(6px) + body.offsetY margin — matches preview HTML
+      // gap:6px (flex) + body.offsetY as margin-top (both match preview HTML)
+      const bOffYsc = (card.body.offsetY || 0) * SC;
+      y += gapSC + bOffYsc;
       ctx.save();
       ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       ctx.fillStyle = card.body.color;
