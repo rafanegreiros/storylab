@@ -5944,7 +5944,7 @@ async function exportCardToCanvas(card, idx) {
     // Restore title font after body wrapText
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
     // gap matches preview flex gap:6px only — bodyOffY is applied separately during render
-    const gapSC = Math.round(8 * SC); // flex gap — body starts right after title block
+    const gapSC = Math.round(14 * SC); // flex gap calibrated to match preview spacing
     // totalTextH = N lines * tFS*1.1, but last line doesn't need the trailing advance
     // so effective title height = (N-1)*tFS*1.1 + tFS (baseline of last line)
     // gap = 6px flex gap
