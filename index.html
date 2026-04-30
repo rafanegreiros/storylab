@@ -5849,6 +5849,8 @@ async function exportCardToCanvas(card, idx) {
               : tAlign==='right' ? EXPORT_W - tPad + tOffX
               : tPad + tOffX;
 
+    // Set title font BEFORE wrapText so measureText is accurate
+    ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
     const titleClean = card.title.text.replace(/\*\*(.*?)\*\*/g, '$1');
     const titleLines = wrapText(ctx, titleClean, availW, tFS * 1.15);
 
@@ -5862,6 +5864,8 @@ async function exportCardToCanvas(card, idx) {
       ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
       bodyLines2 = wrapText(ctx, bodyClean2, availW, bFS2 * 1.6);
     }
+    // Restore title font after body wrapText
+    ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
     const totalBodyH = bodyLines2.length > 0 ? Math.round(4 * SC) + bodyLines2.length * bFS2 * 1.42 : 0;
     const totalBlockH = totalTextH + totalBodyH;
     let y = tCenterY - totalBlockH / 2 + tFS + tOffY;
