@@ -5912,6 +5912,9 @@ async function exportCardToCanvas(card, idx) {
   const tOffY = (card.title.offsetY || 0) * SC;
   const tOffX = (card.title.offsetX || 0) * SC;
 
+  // DEBUG — remove after calibration
+  console.log(`[EXPORT card${idx}] SC=${SC.toFixed(3)} CARD_CENTER_Y=${CARD_CENTER_Y.toFixed(1)} textTop=${_textTopPx}px textBot=${_textBottomPx}px tOffY=${(card.title.offsetY||0)}`);
+
   if (card.title.text) {
     ctx.save();
     const tFS = Math.round(card.title.size * SC);
