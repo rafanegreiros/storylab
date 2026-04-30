@@ -5912,9 +5912,6 @@ async function exportCardToCanvas(card, idx) {
   const tOffY = (card.title.offsetY || 0) * SC;
   const tOffX = (card.title.offsetX || 0) * SC;
 
-  // DEBUG — remove after calibration
-  console.log(`[EXPORT card${idx}] SC=${SC.toFixed(3)} CARD_CENTER_Y=${CARD_CENTER_Y.toFixed(1)} textTop=${_textTopPx}px textBot=${_textBottomPx}px tOffY=${(card.title.offsetY||0)}`);
-
   if (card.title.text) {
     ctx.save();
     const tFS = Math.round(card.title.size * SC);
@@ -6145,24 +6142,25 @@ async function drawBoxImageOnCanvas(ctx, src, bgState, W, H, SC) {
 
       ctx.save();
       // Smart border-radius: no radius on edges touching card boundary
-      const baseR = Math.round(4 * SC);
-      const rTop    = bgState.boxY  <= 0.5                                  ? 0 : baseR;
-      const rBottom = (bgState.boxY + bgState.boxH * 100 / 100) >= 99.5    ? 0 : baseR;
-      const rSide   = (100 - (bgState.boxW != null ? bgState.boxW : 100)) < 0.4 ? 0 : baseR;
-      // Use roundedRect with per-corner radii via manual path
+      const baseR = Math.round(10 * SC); // matches preview border-radius:4px scaled
+      const boxYpct  = bgState.boxY  != null ? bgState.boxY  : 10;
+      const boxHpct  = bgState.boxH  != null ? bgState.boxH  : 42;
+      const boxWpct  = bgState.boxW  != null ? bgState.boxW  : 100;
+      const rTop    = boxYpct <= 0.5                    ? 0 : baseR;
+      const rBottom = (boxYpct + boxHpct) >= 99.5       ? 0 : baseR;
+      const rLeft   = (100 - boxWpct) < 0.4             ? 0 : baseR;
+      const rRight  = rLeft;
       const x = boxX, y = boxY, bw = boxW, bh = boxH;
-      const tl = rTop, tr = rTop, br = rBottom, bl = rBottom;
-      const sl = rSide, sr = rSide;
       ctx.beginPath();
-      ctx.moveTo(x + (sl||tl), y);
-      ctx.lineTo(x + bw - (sr||tr), y);
-      ctx.arcTo(x + bw, y,      x + bw, y + bh,      Math.min(tr, sr));
-      ctx.lineTo(x + bw, y + bh - (sr||br));
-      ctx.arcTo(x + bw, y + bh, x,      y + bh,      Math.min(br, sr));
-      ctx.lineTo(x + (sl||bl), y + bh);
-      ctx.arcTo(x,      y + bh, x,      y,            Math.min(bl, sl));
-      ctx.lineTo(x,      y + (sl||tl));
-      ctx.arcTo(x,      y,      x + bw, y,            Math.min(tl, sl));
+      ctx.moveTo(x + rLeft, y);
+      ctx.lineTo(x + bw - rRight, y);
+      ctx.arcTo(x + bw, y,      x + bw, y + bh, rRight > 0 ? Math.min(rRight, rTop)    : 0);
+      ctx.lineTo(x + bw, y + bh - rBottom);
+      ctx.arcTo(x + bw, y + bh, x,      y + bh, rRight > 0 ? Math.min(rRight, rBottom) : 0);
+      ctx.lineTo(x + rLeft, y + bh);
+      ctx.arcTo(x,      y + bh, x,      y,       rLeft  > 0 ? Math.min(rLeft,  rBottom) : 0);
+      ctx.lineTo(x,      y + rTop);
+      ctx.arcTo(x,      y,      x + bw, y,       rLeft  > 0 ? Math.min(rLeft,  rTop)    : 0);
       ctx.closePath();
       ctx.clip();
       ctx.drawImage(img, dx, dy, rW, rH);
