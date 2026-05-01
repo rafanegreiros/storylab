@@ -4937,8 +4937,8 @@ function renderCardSidebar() {
   function section(id, icon, title, content, badge) {
     const isOpen = window._sidebarOpen[id] !== false; // default open
     const badgeHtml = badge ? `<span style="font-family:'Poppins',sans-serif;font-size:0.5rem;padding:1px 6px;border-radius:20px;background:var(--accent);color:#fff;margin-left:6px;">${badge}</span>` : '';
-    return `<div style="border-radius:10px;border:1.5px solid var(--border);overflow:hidden;background:#ededed;">
-      <button onclick="toggleSidebarSection('${id}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:transparent;border:none;cursor:pointer;gap:8px;text-align:left;">
+    return `<div style="border-radius:10px;border:1.5px solid var(--border);overflow:hidden;background:var(--bg);">
+      <button onclick="toggleSidebarSection('${id}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border:none;cursor:pointer;gap:8px;text-align:left;">
         <span style="font-family:'Poppins',sans-serif;font-size:0.62rem;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink);">${title}${badgeHtml}</span>
         <span id="chevron-${id}" style="font-size:0.6rem;color:var(--muted);flex-shrink:0;">${isOpen?'▲':'▼'}</span>
       </button>
