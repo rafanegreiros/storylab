@@ -4569,6 +4569,9 @@ function renderFinal() {
         ${isAdmin() ? `<button class="copy-btn" onclick="openSaveTemplateModal()" style="background:rgba(255,170,0,0.1);border-color:rgba(255,170,0,0.3);color:#ffaa00">
           ★ Salvar template
         </button>` : ''}
+        <button class="copy-btn" onclick="openTemplateManager()" style="background:rgba(0,113,227,0.08);border-color:rgba(0,113,227,0.3);color:var(--accent)">
+          ☰ Templates
+        </button>
         <button class="export-btn" onclick="exportAllCards()" id="export-btn">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
           Exportar ZIP
@@ -5513,38 +5516,68 @@ function renderSaveTemplateModal() {
 
 function openSaveTemplateModal() {
   const modal = document.getElementById('save-template-modal');
-  if (modal) modal.style.display = 'flex';
+  if (!modal) return;
+  // Reset to create mode
+  modal.dataset.editId = '';
+  document.getElementById('tpl-name').value = '';
+  document.getElementById('tpl-headline').value = '';
+  document.getElementById('tpl-desc').value = '';
+  const saveBtn = modal.querySelector('button[onclick^="confirmSaveTemplate"]');
+  if (saveBtn) saveBtn.setAttribute('onclick', 'confirmSaveTemplate()');
+  modal.style.display = 'flex';
 }
 
-function confirmSaveTemplate() {
+function _extractCardStyle(card) {
+  // Extract only visual style — no text, no images
+  const c = JSON.parse(JSON.stringify(card));
+  c.bg.imageSrc = null; c.bg.imageMime = null;
+  c.title.text = ''; c.body.text = '';
+  return c;
+}
+
+function confirmSaveTemplate(editId) {
   const name = document.getElementById('tpl-name')?.value?.trim();
   const headline = document.getElementById('tpl-headline')?.value?.trim();
   const desc = document.getElementById('tpl-desc')?.value?.trim();
   if (!name) { alert('Nome obrigatório.'); return; }
 
-  // Save snapshot of S.cards[] without image data (just structure + styles)
-  const snapshot = S.cards.map(c => {
-    const copy = JSON.parse(JSON.stringify(c));
-    copy.bg.imageSrc = null; copy.bg.imageMime = null; // don't store images
-    copy.title.text = ''; copy.body.text = ''; copy.cta.text = c.cta.text;
-    return copy;
-  });
+  const cards = S.cards;
+  const n = cards.length;
+
+  // Extract 3 style types: cover (first), content (middle), closing (last)
+  const coverStyle   = _extractCardStyle(cards[0]);
+  const closingStyle = _extractCardStyle(cards[n - 1]);
+  const contentStyle = _extractCardStyle(cards[Math.floor(n / 2)] || cards[1] || cards[0]);
+
+  const tpls = getTemplates();
+
+  if (editId) {
+    // Editing existing template
+    const idx = tpls.findIndex(t => t.id === editId);
+    if (idx >= 0) {
+      tpls[idx] = { ...tpls[idx], name, headline: headline||'', description: desc||'',
+        coverStyle, contentStyle, closingStyle,
+        updatedAt: new Date().toISOString() };
+      saveTemplates(tpls);
+      document.getElementById('save-template-modal').style.display = 'none';
+      openTemplateManager();
+      return;
+    }
+  }
 
   const tpl = {
     id: 'tpl_' + Date.now(),
-    name, headline: headline || '', description: desc || '',
+    name, headline: headline||'', description: desc||'',
     author: currentSession?.user?.email || '',
     createdAt: new Date().toISOString(),
-    cards: snapshot,
+    coverStyle, contentStyle, closingStyle,
   };
 
-  const tpls = getTemplates();
   tpls.unshift(tpl);
   saveTemplates(tpls);
   localStorage.setItem('storylab_active_template', tpl.id);
-
   document.getElementById('save-template-modal').style.display = 'none';
-  alert(`Template "${name}" salvo com sucesso!`);
+  alert(`Template "${name}" salvo!`);
 }
 
 function applyTemplate(tplId) {
@@ -5552,19 +5585,94 @@ function applyTemplate(tplId) {
   const tpl = tpls.find(t => t.id === tplId);
   if (!tpl || !S.cards.length) return;
 
-  // Apply template structure to current cards (preserve texts)
-  const texts = S.cards.map(c => ({ title: c.title.text, body: c.body.text }));
-  S.cards = tpl.cards.map((tc, i) => {
-    const restored = JSON.parse(JSON.stringify(tc));
-    restored.title.text = texts[i]?.title || tc.title.text || '';
-    restored.body.text = texts[i]?.body || tc.body.text || '';
+  const n = S.cards.length;
+  S.cards = S.cards.map((card, i) => {
+    let style;
+    if (i === 0)     style = tpl.coverStyle   || tpl.contentStyle;
+    else if (i === n-1) style = tpl.closingStyle || tpl.contentStyle;
+    else             style = tpl.contentStyle;
+
+    if (!style) return card;
+    const restored = JSON.parse(JSON.stringify(style));
+    restored.title.text = card.title.text;
+    restored.body.text  = card.body.text;
+    restored.cta.text   = card.cta.text;
     restored.idx = i;
     return restored;
   });
 
   localStorage.setItem('storylab_active_template', tplId);
+  document.getElementById('template-manager-modal')?.remove();
   renderFinal();
   setTimeout(() => selectCard(0), 60);
+}
+
+function deleteTemplate(tplId) {
+  if (!confirm('Deletar este template?')) return;
+  const tpls = getTemplates().filter(t => t.id !== tplId);
+  saveTemplates(tpls);
+  openTemplateManager();
+}
+
+function editTemplate(tplId) {
+  const tpls = getTemplates();
+  const tpl = tpls.find(t => t.id === tplId);
+  if (!tpl) return;
+  document.getElementById('template-manager-modal')?.remove();
+  const modal = document.getElementById('save-template-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.getElementById('tpl-name').value = tpl.name || '';
+    document.getElementById('tpl-headline').value = tpl.headline || '';
+    document.getElementById('tpl-desc').value = tpl.description || '';
+    // Store edit id
+    modal.dataset.editId = tplId;
+    // Update save button
+    const saveBtn = modal.querySelector('button[onclick^="confirmSaveTemplate"]');
+    if (saveBtn) saveBtn.setAttribute('onclick', `confirmSaveTemplate('${tplId}')`);
+  }
+}
+
+function openTemplateManager() {
+  document.getElementById('template-manager-modal')?.remove();
+  const tpls = getTemplates();
+
+  const listHtml = tpls.length === 0
+    ? `<div style="text-align:center;color:var(--muted);font-family:'Poppins',sans-serif;font-size:0.8rem;padding:24px 0;">Nenhum template salvo ainda.</div>`
+    : tpls.map(t => `
+      <div style="border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+          <div>
+            <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.82rem;color:var(--ink);">${t.name}</div>
+            ${t.headline ? `<div style="font-family:'Poppins',sans-serif;font-size:0.7rem;color:var(--muted);margin-top:2px;">${t.headline}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button onclick="editTemplate('${t.id}')" style="padding:5px 10px;border-radius:6px;border:1.5px solid var(--border);background:transparent;font-size:0.65rem;cursor:pointer;color:var(--ink2);font-family:'Poppins',sans-serif;">✏ Editar</button>
+            <button onclick="deleteTemplate('${t.id}')" style="padding:5px 10px;border-radius:6px;border:1.5px solid rgba(220,60,60,0.3);background:transparent;font-size:0.65rem;cursor:pointer;color:#dc3c3c;font-family:'Poppins',sans-serif;">✕</button>
+          </div>
+        </div>
+        ${t.description ? `<div style="font-family:'Poppins',sans-serif;font-size:0.68rem;color:var(--muted);">${t.description}</div>` : ''}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+          <span style="font-family:'Poppins',sans-serif;font-size:0.6rem;color:var(--muted);">${new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
+          <button onclick="applyTemplate('${t.id}')" style="padding:6px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:0.7rem;cursor:pointer;font-family:'Poppins',sans-serif;font-weight:600;">▶ Aplicar</button>
+        </div>
+      </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'template-manager-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:24px;width:440px;max-width:100%;max-height:80vh;display:flex;flex-direction:column;gap:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink);">Meus Templates</div>
+        <button onclick="document.getElementById('template-manager-modal').remove()" style="background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:1.2rem;">✕</button>
+      </div>
+      <div style="overflow-y:auto;display:flex;flex-direction:column;gap:10px;flex:1;">
+        ${listHtml}
+      </div>
+      <button onclick="document.getElementById('template-manager-modal').remove();openSaveTemplateModal();" style="width:100%;padding:10px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;font-size:0.78rem;color:var(--muted);font-family:'Poppins',sans-serif;">+ Criar novo template do carrossel atual</button>
+    </div>`;
+  document.body.appendChild(modal);
 }
 
 // ── COPY CARDS TEXT ──
