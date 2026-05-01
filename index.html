@@ -6133,8 +6133,12 @@ async function drawBoxImageOnCanvas(ctx, src, bgState, W, H, SC) {
       const boxX  = (W - boxW) / 2;
       const boxY  = H * bxY;
 
-      // Scale image to cover the box
-      const scale = Math.max(boxW / img.naturalWidth, boxH / img.naturalHeight);
+      // Scale image to cover the box — matches CSS min-width:100%;min-height:100%
+      // Apply imageScale if set (matches full mode behavior)
+      const imgScale = bgState.imageScale || 1;
+      const scaleW = boxW / img.naturalWidth;
+      const scaleH = boxH / img.naturalHeight;
+      const scale = Math.max(scaleW, scaleH) * imgScale;
       const rW = img.naturalWidth  * scale;
       const rH = img.naturalHeight * scale;
       const dx = boxX + (boxW - rW) / 2 + bxIX;
