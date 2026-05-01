@@ -4937,14 +4937,13 @@ function renderCardSidebar() {
   function section(id, icon, title, content, badge) {
     const isOpen = window._sidebarOpen[id] !== false; // default open
     const badgeHtml = badge ? `<span style="font-family:'Poppins',sans-serif;font-size:0.5rem;padding:1px 6px;border-radius:20px;background:var(--accent);color:#fff;margin-left:6px;">${badge}</span>` : '';
-    return `<div style="border-radius:10px;border:1.5px solid var(--border);overflow:hidden;background:var(--bg2);">
+    return `<div style="border-radius:10px;border:1.5px solid var(--border);overflow:hidden;background:#ededed;">
       <button onclick="toggleSidebarSection('${id}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:transparent;border:none;cursor:pointer;gap:8px;">
         <div style="display:flex;align-items:center;gap:7px;">
-          <span style="font-size:0.85rem;">${icon}</span>
           <span style="font-family:'Poppins',sans-serif;font-size:0.62rem;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink);">${title}</span>
           ${badgeHtml}
         </div>
-        <span style="font-size:0.7rem;color:var(--muted);transition:transform 0.2s;display:inline-block;transform:rotate(${isOpen?'0':'180'}deg);">▲</span>
+        <span style="font-size:0.6rem;color:var(--muted);display:inline-block;transform:rotate(${isOpen?'180':'0'}deg);">▼</span>
       </button>
       <div id="sidebar-section-${id}" style="display:${isOpen?'block':'none'};padding:0 12px 12px 12px;border-top:1px solid var(--border);">
         <div style="padding-top:10px;">${content}</div>
@@ -4952,7 +4951,7 @@ function renderCardSidebar() {
     </div>`;
   }
 
-  const bgSection = section('bg', '🎨', 'Fundo', `
+  const bgSection = section('bg', '', 'Background', `
     <div style="display:flex;gap:6px;margin-bottom:10px;">
       ${['solid','gradient','image'].map(t => `<button onclick="setCardBgType(${idx},'${t}')"
         style="flex:1;padding:6px 4px;border-radius:6px;border:1.5px solid ${card.bg.type===t?'var(--accent)':'var(--border)'};background:${card.bg.type===t?'rgba(0,113,227,0.1)':'transparent'};font-size:0.65rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${card.bg.type===t?'var(--accent)':'var(--muted)'};">
@@ -5017,7 +5016,7 @@ function renderCardSidebar() {
     `}
   `);
 
-  const overlaySection = card.bg.boxMode ? '' : section('overlay', '✨', 'Overlay / Gradiente', `
+  const overlaySection = card.bg.boxMode ? '' : section('overlay', '', 'Overlay / Gradiente', `
     ${toggle('Visível', card.overlay.visible, `toggleOverlay(${idx})`)}
     ${card.overlay.visible ? `
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px;">
@@ -5039,7 +5038,7 @@ function renderCardSidebar() {
       </div>` : ''}
   `);
 
-  const titleSection = section('title', 'T', 'Título', `
+  const titleSection = section('title', '', 'Headline / Título', `
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div>
         <div class="field-label">Cor</div>
@@ -5084,7 +5083,7 @@ function renderCardSidebar() {
     </div>
   `);
 
-  const bodySection = section('body', '¶', 'Corpo', `
+  const bodySection = section('body', '', 'Corpo / Texto', `
     <div style="display:flex;flex-direction:column;gap:10px;">
       ${toggle('Visível', card.body.visible, `toggleBodyVisible(${idx})`)}
       ${card.body.visible ? `
@@ -5108,7 +5107,7 @@ function renderCardSidebar() {
     </div>
   `);
 
-  const componentsSection = section('components', '⚙', 'Componentes', `
+  const componentsSection = section('components', '', 'Componentes', `
     <div style="display:flex;flex-direction:column;gap:12px;">
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Header / Marca</div>
@@ -5433,7 +5432,7 @@ function toggleSidebarSection(id) {
   const btn = el.previousElementSibling;
   if (btn) {
     const chevron = btn.querySelector('span:last-child');
-    if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
   }
 }
 function togglePageNum(idx) { S.cards[idx].pageNum.visible = !S.cards[idx].pageNum.visible; refreshCard(idx); renderCardSidebar(); }
