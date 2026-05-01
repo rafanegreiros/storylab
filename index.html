@@ -4746,7 +4746,7 @@ function renderCardHtml(card, idx, total) {
       </div>
       <div>
         <div style="display:flex;align-items:center;gap:4px;">
-          <span style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.78rem;color:${card.title.color || '#fff'};">${bv.handle||'@handle'}</span>
+          <span style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.78rem;color:${(()=>{const m=card.avatar.colorMode||'auto';return m==='light'?'#ffffff':m==='dark'?'#141210':(isColorDark(card.bg.color)||card.bg.type==='image')?'#ffffff':'#141210';})()};">${bv.handle||'@handle'}</span>
           <svg width="15" height="15" viewBox="0 0 25.06 25.06" fill="none" style="flex-shrink:0;vertical-align:middle;display:inline-block;"><path d="M24.24,11.89l-1.12-.76c-.42-.28-.52-.85-.22-1.26l.79-1.09c.83-1.15.36-2.21-1.05-2.36l-1.34-.14c-.5-.05-.86-.51-.79-1.01l.19-1.34c.2-1.41-.72-2.12-2.03-1.59l-.71.28c-.49.2-1.04-.07-1.19-.58l-.21-.73c-.39-1.36-1.52-1.65-2.5-.62l-.94.97c-.35.36-.93.36-1.28,0l-.94-.97c-.99-1.02-2.11-.74-2.5.62l-.37,1.3c-.14.48-.65.75-1.13.6l-1.28-.42c-1.35-.44-2.21.34-1.92,1.73l.28,1.32c.1.49-.22.97-.71,1.06l-1.33.23c-1.4.25-1.8,1.34-.88,2.43l.87,1.03c.32.38.26.96-.13,1.27l-1.06.83c-1.12.87-.96,2.02.36,2.56l1.25.51c.47.19.68.73.48,1.18l-.55,1.23c-.58,1.3.11,2.24,1.52,2.09l1.34-.14c.5-.05.94.32.98.82l.09,1.35c.1,1.42,1.14,1.93,2.32,1.13l1.12-.76c.42-.28.98-.16,1.25.27l.72,1.15c.75,1.2,1.91,1.16,2.58-.09l.63-1.19c.24-.44.79-.6,1.23-.35l1.17.68c1.23.71,2.24.13,2.24-1.29v-1.35c0-.5.42-.9.92-.89l1.35.05c1.42.05,2.03-.94,1.37-2.19l-.63-1.19c-.24-.44-.06-.99.39-1.21l1.21-.59c1.28-.62,1.36-1.78.18-2.57Z" fill="#0096fb"/><path d="M11.65,17.57c-.29,0-.58-.12-.78-.32l-4.22-4.22c-.43-.43-.43-1.13,0-1.57.43-.43,1.13-.43,1.57,0l2.81,2.81c.35.35.91.35,1.26,0l4.85-4.85c.43-.43,1.13-.43,1.57,0,.43.43.43,1.13,0,1.57l-6.26,6.26c-.21.21-.49.32-.78.32Z" fill="#fff"/></svg>
         </div>
       </div>
@@ -5115,6 +5115,12 @@ function renderCardSidebar() {
           </div>
           ${slider('↕ Y (cima/baixo)', card.avatar.offsetY||0, -120, 120, 2, `(v)=>setAvatarOffsetY(${idx},v)`)}
           ${slider('↔ X (esq/dir)', card.avatar.offsetX||0, -80, 80, 2, `(v)=>setAvatarOffsetX(${idx},v)`)}
+          <div>
+            <div class="field-label" style="margin-bottom:5px;">Cor do texto</div>
+            <div style="display:flex;gap:4px;">
+              ${['auto','light','dark'].map(m=>`<button onclick="setAvatarColorMode(${idx},'${m}')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ${(card.avatar.colorMode||'auto')===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.58rem;cursor:pointer;color:${(card.avatar.colorMode||'auto')===m?'var(--accent)':'var(--muted)'};">${m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro'}</button>`).join('')}
+            </div>
+          </div>
         </div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
@@ -5399,6 +5405,7 @@ function setCardBodyAlign(idx, align) { S.cards[idx].body.align = align; refresh
 // Component controls
 function toggleHeader(idx) { S.cards[idx].header.visible = !S.cards[idx].header.visible; refreshCard(idx); renderCardSidebar(); }
 function toggleAvatar(idx) { S.cards[idx].avatar.visible = !S.cards[idx].avatar.visible; refreshCard(idx); renderCardSidebar(); }
+function setAvatarColorMode(idx, mode) { S.cards[idx].avatar.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
 function togglePageNum(idx) { S.cards[idx].pageNum.visible = !S.cards[idx].pageNum.visible; refreshCard(idx); renderCardSidebar(); }
 function setPageNumColor(idx, mode) { S.cards[idx].pageNum.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
 function setHeaderColorMode(idx, mode) { S.cards[idx].header.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
@@ -5862,7 +5869,12 @@ async function exportCardToCanvas(card, idx) {
     const handleY = avY - Math.round(3 * SC);
     ctx.save();
     ctx.font = `700 ${hFS2}px 'Poppins', sans-serif`;
-    ctx.fillStyle = card.title.color || '#ffffff';
+    // Avatar colorMode: 'light'=white, 'dark'=dark, 'auto'=based on bg
+    const avColorMode = card.avatar.colorMode || 'auto';
+    const avTextColor = avColorMode === 'light' ? '#ffffff'
+      : avColorMode === 'dark' ? '#141210'
+      : (isColorDark(card.bg.color) || card.bg.type === 'image') ? '#ffffff' : '#141210';
+    ctx.fillStyle = avTextColor;
     ctx.textBaseline = 'middle';
     ctx.fillText(b.handle || '@handle', hX, handleY);
     // Draw Instagram badge inline after handle text
@@ -5879,12 +5891,6 @@ async function exportCardToCanvas(card, idx) {
       bi.onerror = res;
       bi.src = badgeUrl;
     });
-    if (b.tagline) {
-      const tFS = Math.round(5.5 * SC);
-      ctx.font = `400 ${tFS}px 'Poppins', sans-serif`;
-      ctx.fillStyle = hexAlpha(card.title.color || '#ffffff', 0.55);
-      ctx.fillText(b.tagline, hX, avY + Math.round(6 * SC));
-    }
     ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
