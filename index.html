@@ -5002,10 +5002,9 @@ function renderCardSidebar() {
             ${slider('↕ Imagem Y (dentro)', card.bg.boxImgY || 0, -400, 400, 4, `(v)=>setBoxImgY(${idx},v)`)}
           </div>
         ` : `
-          <div style="display:flex;gap:6px;margin-bottom:8px;">
-            ${['cover','contain','fill'].map(m => `<button onclick="setCardImgMode(${idx},'${m}')" style="flex:1;padding:5px;border-radius:5px;border:1.5px solid ${card.bg.imageMode===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.6rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${card.bg.imageMode===m?'var(--accent)':'var(--muted)'}">${m==='cover'?'Full':m==='contain'?'Conter':'Preencher'}</button>`).join('')}
-          </div>
-          ${slider('Zoom', Math.round((card.bg.imageScale||1)*100), 50, 300, 5, `(v)=>setCardImgScale(${idx},v/100)`)}
+          ${slider('↔ Posição X', card.bg.imageX||0, -400, 400, 4, `(v)=>setCardImgX(${idx},v)`)}
+          ${slider('↕ Posição Y', card.bg.imageY||0, -400, 400, 4, `(v)=>setCardImgY(${idx},v)`)}
+          ${slider('🔍 Zoom %', Math.round((card.bg.imageScale||1)*100), 50, 300, 5, `(v)=>setCardImgScale(${idx},v/100)`)}
         `}` : `
         <button onclick="triggerBgImageUpload(${idx})" style="width:100%;padding:10px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;color:var(--muted);font-size:0.78rem;">
           + Adicionar imagem
@@ -5285,6 +5284,8 @@ function setCardImgMode(idx, mode) {
   S.cards[idx].bg.imageMode = mode;
   refreshCard(idx); renderCardSidebar();
 }
+function setCardImgX(idx, v) { S.cards[idx].bg.imageX = parseInt(v); refreshCard(idx); }
+function setCardImgY(idx, v) { S.cards[idx].bg.imageY = parseInt(v); refreshCard(idx); }
 
 function setCardImgScale(idx, scale) {
   S.cards[idx].bg.imageScale = parseFloat(scale);
