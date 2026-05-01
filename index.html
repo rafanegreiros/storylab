@@ -5950,8 +5950,11 @@ async function exportCardToCanvas(card, idx) {
     const totalBodyH = bodyLines2.length > 0 ? gapSC + bodyLines2.length * bFS2 * 1.42 : 0;
     const totalBlockH = effectiveTitleH + totalBodyH;
 
+    // In box mode: text positioned from pure card center (EXPORT_H/2), not text area center
+    // In normal mode: use CARD_CENTER_Y (accounts for header/footer/avatar)
+    const textCenterY = card.bg.boxMode ? (EXPORT_H / 2) : CARD_CENTER_Y;
     // y: first baseline = top of block + tFS*1.1 (consistent with effectiveTitleH)
-    let y = CARD_CENTER_Y + tOffY - totalBlockH / 2 + tFS * 1.1;
+    let y = textCenterY + tOffY - totalBlockH / 2 + tFS * 1.1;
 
     // Draw title lines
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
@@ -6026,8 +6029,8 @@ async function exportCardToCanvas(card, idx) {
     ctx.textAlign = bAlign3;
     const bX3 = bAlign3==='center' ? EXPORT_W/2 : bAlign3==='right' ? EXPORT_W - tPad : tPad;
     const bOffY3 = (card.body.offsetY || 0) * SC;
-    // Position: card center + body offsetY — matches translateY(bodyAbsY) in HTML
-    let by = CARD_CENTER_Y + bOffY3 + bFS3;
+    // In box mode preview HTML: bodyAbsY = 200 + offsetY (pure card center, not text area center)
+    let by = (EXPORT_H / 2) + bOffY3 + bFS3;
     for (const line of bodyLines3) {
       ctx.fillText(line, bX3, by);
       by += bFS3 * 1.42;
