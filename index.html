@@ -5585,14 +5585,26 @@ function applyTemplate(tplId) {
   const tpl = tpls.find(t => t.id === tplId);
   if (!tpl || !S.cards.length) return;
 
+  // Handle legacy format (cards[]) and new format (coverStyle/contentStyle/closingStyle)
+  let coverStyle, contentStyle, closingStyle;
+  if (tpl.coverStyle || tpl.contentStyle || tpl.closingStyle) {
+    // New format
+    coverStyle   = tpl.coverStyle   || tpl.contentStyle;
+    contentStyle = tpl.contentStyle || tpl.coverStyle;
+    closingStyle = tpl.closingStyle || tpl.contentStyle;
+  } else if (tpl.cards && tpl.cards.length > 0) {
+    // Legacy format — extract styles from cards array
+    const nc = tpl.cards.length;
+    coverStyle   = _extractCardStyle(tpl.cards[0]);
+    closingStyle = _extractCardStyle(tpl.cards[nc - 1]);
+    contentStyle = _extractCardStyle(tpl.cards[Math.floor(nc / 2)] || tpl.cards[1] || tpl.cards[0]);
+  }
+
+  if (!contentStyle) { alert('Template inválido ou sem estilos.'); return; }
+
   const n = S.cards.length;
   S.cards = S.cards.map((card, i) => {
-    let style;
-    if (i === 0)     style = tpl.coverStyle   || tpl.contentStyle;
-    else if (i === n-1) style = tpl.closingStyle || tpl.contentStyle;
-    else             style = tpl.contentStyle;
-
-    if (!style) return card;
+    const style = i === 0 ? coverStyle : (i === n - 1 ? closingStyle : contentStyle);
     const restored = JSON.parse(JSON.stringify(style));
     restored.title.text = card.title.text;
     restored.body.text  = card.body.text;
