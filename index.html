@@ -5616,9 +5616,23 @@ function applyTemplate(tplId) {
     restored.title.text = card.title.text;
     restored.body.text  = card.body.text;
     restored.cta.text   = card.cta.text;
-    // Restore image if card had one
-    restored.bg.imageSrc  = imageData[i].imageSrc;
-    restored.bg.imageMime = imageData[i].imageMime;
+    // Handle image: use current card's image if available
+    // If template requires image but none available, fallback to solid color
+    if (restored.bg.type === 'image') {
+      if (imageData[i].imageSrc) {
+        restored.bg.imageSrc  = imageData[i].imageSrc;
+        restored.bg.imageMime = imageData[i].imageMime;
+      } else {
+        // No image available — fallback to solid with template color
+        restored.bg.type = 'solid';
+        restored.bg.imageSrc  = null;
+        restored.bg.imageMime = null;
+        restored.bg.boxMode   = false;
+      }
+    } else {
+      restored.bg.imageSrc  = null;
+      restored.bg.imageMime = null;
+    }
     restored.idx = i;
     return restored;
   });
