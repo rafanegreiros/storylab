@@ -5625,24 +5625,37 @@ Deseja aplicar mesmo assim? Os cards extras manterão o estilo atual.`;
 
   // ── Apply brand colors/fonts to all cards ──
   const b = getBrand();
+  const palette = { primary: b.primary, dark: b.dark, light: b.light, accent: b.accent, cta: b.cta || b.accent };
+  const roles = b.colorRoles || { text: 'light', ctaRole: 'cta', titleColor: 'primary', bodyColor: 'dark' };
+  const brandTitleColor = palette[roles.titleColor] || b.primary;
+  const brandBodyColor  = palette[roles.bodyColor]  || b.dark;
+  const brandCtaColor   = palette[roles.ctaRole]    || b.cta || b.accent;
+  const brandTitleFont  = b.fontDisplay ? `'${b.fontDisplay}', serif`      : null;
+  const brandBodyFont   = b.fontBody    ? `'${b.fontBody}', sans-serif`    : null;
+
+  // Map background colors: detect which palette color was used and remap to same role
+  const knownColors = [b.primary, b.dark, b.light, b.accent];
+
   S.cards = S.cards.map((card, i) => {
-    // Background color — map to brand palette based on role
     if (card.bg.type === 'solid') {
-      // First card → primary, others → light/secondary
-      card.bg.color = i === 0 ? (b.primary || card.bg.color) : (b.light || card.bg.color);
+      card.bg.color = i === 0 ? b.primary : (b.light || b.primary);
     } else if (card.bg.type === 'gradient') {
-      card.bg.gradColors = [b.primary || card.bg.gradColors[0], b.dark || card.bg.gradColors[1]];
+      card.bg.gradColors = [b.primary, b.dark];
     }
-    // Title color and font
-    card.title.color = b.light || card.title.color;
-    card.title.fontFamily = b.fontDisplay ? `'${b.fontDisplay}', serif` : card.title.fontFamily;
-    // Body color and font
-    card.body.color = b.light ? `rgba(${hexToRgb(b.light)},0.85)` : card.body.color;
-    card.body.fontFamily = b.fontBody ? `'${b.fontBody}', sans-serif` : card.body.fontFamily;
-    // CTA colors
+    // Box mode background color
+    if (card.bg.boxMode) {
+      card.bg.color = i === 0 ? b.primary : (b.light || b.primary);
+    }
+    // Title
+    card.title.color = brandTitleColor;
+    if (brandTitleFont) card.title.fontFamily = brandTitleFont;
+    // Body
+    card.body.color = brandBodyColor;
+    if (brandBodyFont) card.body.fontFamily = brandBodyFont;
+    // CTA
     if (card.cta.visible) {
-      card.cta.bgColor   = b.accent   || card.cta.bgColor;
-      card.cta.textColor = b.dark     || card.cta.textColor;
+      card.cta.bgColor   = brandCtaColor;
+      card.cta.textColor = b.dark || '#141210';
     }
     return card;
   });
