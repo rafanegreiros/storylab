@@ -2614,7 +2614,7 @@ textarea { min-height: 120px; }
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div>
           <div class="modal-label">Fonte Títulos</div>
-          <select id="brand-font-display" class="modal-input" style="cursor:pointer;padding:8px 10px;font-size:0.78rem;">
+          <select id="brand-font-display" class="modal-input" style="cursor:pointer;padding:8px 10px;font-size:0.78rem;" onchange="previewFont('display')">
             <optgroup label="── Serifadas ──" style="color:var(--muted)">
               <option value="'Fraunces', serif">Fraunces — editorial clássico</option>
               <option value="'Libre Baskerville', serif">Libre Baskerville — autoridade</option>
@@ -2642,7 +2642,7 @@ textarea { min-height: 120px; }
         </div>
         <div>
           <div class="modal-label">Fonte Corpo</div>
-          <select id="brand-font-body" class="modal-input" style="cursor:pointer;padding:8px 10px;font-size:0.78rem;">
+          <select id="brand-font-body" class="modal-input" style="cursor:pointer;padding:8px 10px;font-size:0.78rem;" onchange="previewFont('body')">
             <optgroup label="── Sem serifa ──" style="color:var(--muted)">
               <option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans — leve e moderno</option>
               <option value="'Space Grotesk', sans-serif">Space Grotesk — contemporâneo</option>
@@ -3182,6 +3182,12 @@ function openBrand() {
   });
 }
 
+function previewFont(type) {
+  const fd = document.getElementById('brand-font-display').value;
+  const fb = document.getElementById('brand-font-body').value;
+  loadBrandFontsAndWait(fd, fb).then(() => updateBrandPreview());
+}
+
 function updateBrandPreview() {
   const fd = document.getElementById('brand-font-display').value;
   const fb = document.getElementById('brand-font-body').value;
@@ -3302,15 +3308,8 @@ function applyBrandToNewCards() {
     if (!prev.dark || card.cta.textColor === prev.dark)
       card.cta.textColor = b.dark || '#141210';
 
-    // Overlay color — update if matches old primary or if forced (prev is null)
-    if (card.overlay.visible && card.overlay.color) {
-      if (!prev.primary || card.overlay.color === prev.primary)
-        card.overlay.color = b.primary;
-      else if (card.overlay.color === prev.dark)
-        card.overlay.color = b.dark;
-      else if (card.overlay.color === prev.accent)
-        card.overlay.color = b.accent;
-    }
+    // Overlay color — always reset to black when applying template
+    // User can customize after if needed
 
     // Box mode background
     if (card.bg.boxMode && card.bg.type === 'image') {
@@ -5558,6 +5557,8 @@ function _extractCardStyle(card) {
   const c = JSON.parse(JSON.stringify(card));
   c.bg.imageSrc = null; c.bg.imageMime = null;
   c.title.text = ''; c.body.text = '';
+  // Overlay color always resets to black — user customizes after
+  if (c.overlay) c.overlay.color = '#000000';
   return c;
 }
 
