@@ -3168,23 +3168,17 @@ function openBrand() {
       if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) { pick.value = hex.value; updateBrandPreview(); renderColorRoleSwatches(); }
     });
   });
-  document.getElementById('brand-font-display').addEventListener('change', () => {
-    const fd = document.getElementById('brand-font-display').value;
-    const fb = document.getElementById('brand-font-body').value;
-    if (fd) {
+  ['change','input'].forEach(evt => {
+    document.getElementById('brand-font-display').addEventListener(evt, () => {
+      const fd = document.getElementById('brand-font-display').value;
+      const fb = document.getElementById('brand-font-body').value;
       loadBrandFontsAndWait(fd, fb).then(() => updateBrandPreview());
-    } else {
-      updateBrandPreview();
-    }
-  });
-  document.getElementById('brand-font-body').addEventListener('change', () => {
-    const fd = document.getElementById('brand-font-display').value;
-    const fb = document.getElementById('brand-font-body').value;
-    if (fb) {
+    });
+    document.getElementById('brand-font-body').addEventListener(evt, () => {
+      const fd = document.getElementById('brand-font-display').value;
+      const fb = document.getElementById('brand-font-body').value;
       loadBrandFontsAndWait(fd, fb).then(() => updateBrandPreview());
-    } else {
-      updateBrandPreview();
-    }
+    });
   });
 }
 
