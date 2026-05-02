@@ -5649,12 +5649,11 @@ function applyTemplate(tplId) {
   localStorage.setItem('storylab_active_template', tplId);
   document.getElementById('template-manager-modal')?.remove();
 
-  // Ensure we're on step 4 and re-render
+  // Ensure we're on step 4 and re-render via renderStep to update DOM visibility
   S.step = 4;
-  console.log('[applyTemplate] calling renderFinal...');
-  renderFinal();
+  console.log('[applyTemplate] calling renderStep(4)...');
+  renderStep(4);
   autoSave();
-  setTimeout(() => selectCard(0), 60);
   console.log('[applyTemplate] done.');
 }
 
