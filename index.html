@@ -3301,6 +3301,24 @@ function applyBrandToNewCards() {
       card.cta.bgColor = b.accent || b.cta || '#c8f05a';
     if (!prev.dark || card.cta.textColor === prev.dark)
       card.cta.textColor = b.dark || '#141210';
+
+    // Overlay color — update if matches old primary or if forced (prev is null)
+    if (card.overlay.visible && card.overlay.color) {
+      if (!prev.primary || card.overlay.color === prev.primary)
+        card.overlay.color = b.primary;
+      else if (card.overlay.color === prev.dark)
+        card.overlay.color = b.dark;
+      else if (card.overlay.color === prev.accent)
+        card.overlay.color = b.accent;
+    }
+
+    // Box mode background
+    if (card.bg.boxMode && card.bg.type === 'image') {
+      if (!prev.primary || card.bg.color === prev.primary)
+        card.bg.color = isFirst ? b.primary : b.light;
+      else if (card.bg.color === prev.dark)  card.bg.color = b.dark;
+      else if (card.bg.color === prev.light) card.bg.color = b.light;
+    }
   });
 
   _lastAppliedBrand = { ...b };
@@ -5624,41 +5642,9 @@ Deseja aplicar mesmo assim? Os cards extras manterão o estilo atual.`;
   }
 
   // ── Apply brand colors/fonts to all cards ──
-  const b = getBrand();
-  const palette = { primary: b.primary, dark: b.dark, light: b.light, accent: b.accent, cta: b.cta || b.accent };
-  const roles = b.colorRoles || { text: 'light', ctaRole: 'cta', titleColor: 'primary', bodyColor: 'dark' };
-  const brandTitleColor = palette[roles.titleColor] || b.primary;
-  const brandBodyColor  = palette[roles.bodyColor]  || b.dark;
-  const brandCtaColor   = palette[roles.ctaRole]    || b.cta || b.accent;
-  const brandTitleFont  = b.fontDisplay ? `'${b.fontDisplay}', serif`      : null;
-  const brandBodyFont   = b.fontBody    ? `'${b.fontBody}', sans-serif`    : null;
-
-  // Map background colors: detect which palette color was used and remap to same role
-  const knownColors = [b.primary, b.dark, b.light, b.accent];
-
-  S.cards = S.cards.map((card, i) => {
-    if (card.bg.type === 'solid') {
-      card.bg.color = i === 0 ? b.primary : (b.light || b.primary);
-    } else if (card.bg.type === 'gradient') {
-      card.bg.gradColors = [b.primary, b.dark];
-    }
-    // Box mode background color
-    if (card.bg.boxMode) {
-      card.bg.color = i === 0 ? b.primary : (b.light || b.primary);
-    }
-    // Title
-    card.title.color = brandTitleColor;
-    if (brandTitleFont) card.title.fontFamily = brandTitleFont;
-    // Body
-    card.body.color = brandBodyColor;
-    if (brandBodyFont) card.body.fontFamily = brandBodyFont;
-    // CTA
-    if (card.cta.visible) {
-      card.cta.bgColor   = brandCtaColor;
-      card.cta.textColor = b.dark || '#141210';
-    }
-    return card;
-  });
+  // Reset _lastAppliedBrand so applyBrandToNewCards forces full update
+  _lastAppliedBrand = null;
+  applyBrandToNewCards();
 
   localStorage.setItem('storylab_active_template', tplId);
   document.getElementById('template-manager-modal')?.remove();
