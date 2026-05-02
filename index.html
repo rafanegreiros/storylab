@@ -4629,23 +4629,7 @@ function renderFinal() {
         <div class="post-card-body" id="post-comentario"><div class="post-card-loading"><div class="post-generating"></div> Gerando...</div></div>
       </div>
     </div>
-    <div style="margin-top:8px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-family:'Poppins',sans-serif;font-size:0.58rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);">Texto completo dos cards</div>
-        <button class="copy-btn" onclick="copyCardsText()" style="font-size:0.65rem;">Copiar tudo</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px;" id="cards-text-list">
-        ${S.cards.map((c,i) => `
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">
-            <div style="font-family:'Poppins',sans-serif;font-size:0.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Card ${i+1} ${c.layout==='cover'?'· Capa':c.layout==='cta'?'· CTA':''}</div>
-            <div style="font-size:0.82rem;font-weight:600;color:var(--ink);line-height:1.4;margin-bottom:${c.body.text?'4px':'0'}">${c.title.text}</div>
-            ${c.body.text ? `<div style="font-size:0.78rem;color:var(--muted);line-height:1.5;">${c.body.text}</div>` : ''}
-          </div>`).join('')}
-      </div>
-    </div>
-    <div class="code-block" id="code-output" style="display:none">${codeText}</div>
-
-    <!-- Guia de Imagens -->
+    <!-- Guia de Imagens — vem antes do texto completo -->
     <div class="post-section" id="image-guide-section" style="display:none;">
       <div class="post-card">
         <div class="post-card-header">
@@ -4657,6 +4641,16 @@ function renderFinal() {
         </div>
       </div>
     </div>
+
+    <!-- Texto completo dos cards em markdown -->
+    <div style="margin-top:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-family:'Poppins',sans-serif;font-size:0.58rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);">Texto completo dos cards</div>
+        <button class="copy-btn" onclick="copyCardsText()" style="font-size:0.65rem;">Copiar tudo</button>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:0.78rem;line-height:1.8;color:var(--ink);white-space:pre-wrap;font-family:'Syne',sans-serif;" id="cards-text-markdown">${S.cards.map((c,i) => `texto ${i+1} - ${c.title.text}${c.body.text ? '\n' + c.body.text : ''}`).join('\n')}</div>
+    </div>
+    <div class="code-block" id="code-output" style="display:none">${codeText}</div>
 
     ${isAdmin() ? renderSaveTemplateModal() : ''}`;
 
@@ -5892,7 +5886,10 @@ Responda em JSON sem markdown:
     autoSave();
 
   } catch(err) {
-    el.innerHTML = '<p style="color:var(--muted);">Não foi possível gerar as sugestões. Tente novamente.</p>';
+    el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0;">
+      <p style="color:var(--muted);margin:0;font-size:0.78rem;">Não foi possível gerar as sugestões.</p>
+      <button onclick="_imageGuideGenerated=false;generateImageGuide()" style="padding:7px 16px;border-radius:6px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:600;cursor:pointer;">↻ Tentar novamente</button>
+    </div>`;
     _imageGuideGenerated = false; // allow retry
   }
 }
