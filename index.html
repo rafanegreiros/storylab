@@ -5613,6 +5613,8 @@ function applyTemplate(tplId) {
   }
 
   console.log('[applyTemplate] coverStyle:', !!coverStyle, 'contentStyle:', !!contentStyle, 'closingStyle:', !!closingStyle);
+  console.log('[applyTemplate] contentStyle.bg:', contentStyle ? {type: contentStyle.bg.type, boxMode: contentStyle.bg.boxMode, boxY: contentStyle.bg.boxY} : null);
+  console.log('[applyTemplate] coverStyle.bg:', coverStyle ? {type: coverStyle.bg.type, boxMode: coverStyle.bg.boxMode} : null);
   if (!contentStyle) { alert('Template inválido ou sem estilos.'); return; }
 
   const n = S.cards.length;
