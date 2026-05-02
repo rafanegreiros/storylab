@@ -5546,22 +5546,17 @@ function confirmSaveTemplate(editId) {
   const desc = document.getElementById('tpl-desc')?.value?.trim();
   if (!name) { alert('Nome obrigatório.'); return; }
 
-  const cards = S.cards;
-  const n = cards.length;
-
-  // Extract 3 style types: cover (first), content (middle), closing (last)
-  const coverStyle   = _extractCardStyle(cards[0]);
-  const closingStyle = _extractCardStyle(cards[n - 1]);
-  const contentStyle = _extractCardStyle(cards[Math.floor(n / 2)] || cards[1] || cards[0]);
+  const n = S.cards.length;
+  // Save every card's style individually — exact match by card count
+  const cardStyles = S.cards.map(c => _extractCardStyle(c));
 
   const tpls = getTemplates();
 
   if (editId) {
-    // Editing existing template
     const idx = tpls.findIndex(t => t.id === editId);
     if (idx >= 0) {
       tpls[idx] = { ...tpls[idx], name, headline: headline||'', description: desc||'',
-        coverStyle, contentStyle, closingStyle,
+        cardCount: n, cardStyles,
         updatedAt: new Date().toISOString() };
       saveTemplates(tpls);
       document.getElementById('save-template-modal').style.display = 'none';
@@ -5575,92 +5570,64 @@ function confirmSaveTemplate(editId) {
     name, headline: headline||'', description: desc||'',
     author: currentSession?.user?.email || '',
     createdAt: new Date().toISOString(),
-    coverStyle, contentStyle, closingStyle,
+    cardCount: n,
+    cardStyles,
   };
 
   tpls.unshift(tpl);
   saveTemplates(tpls);
   localStorage.setItem('storylab_active_template', tpl.id);
   document.getElementById('save-template-modal').style.display = 'none';
-  alert(`Template "${name}" salvo!`);
+  alert(`Template "${name}" salvo para ${n} cards!`);
 }
 
 function applyTemplate(tplId) {
   const tpls = getTemplates();
   const tpl = tpls.find(t => t.id === tplId);
-  console.log('[applyTemplate] tplId:', tplId);
-  console.log('[applyTemplate] tpl found:', !!tpl, tpl ? tpl.name : 'NOT FOUND');
-  console.log('[applyTemplate] S.cards.length:', S.cards.length);
-  console.log('[applyTemplate] S.step:', S.step);
-  if (!tpl || !S.cards.length) {
-    console.warn('[applyTemplate] ABORTED — tpl:', !!tpl, 'cards:', S.cards.length);
+  if (!tpl || !S.cards.length) return;
+
+  const n = S.cards.length;
+
+  // New format: cardStyles array (one per card, exact match by count)
+  if (tpl.cardStyles && tpl.cardStyles.length > 0) {
+    if (tpl.cardCount !== n) {
+      const msg = `Este template foi criado para ${tpl.cardCount} cards.
+Seu carrossel tem ${n} cards.
+
+Deseja aplicar mesmo assim? Os cards extras manterão o estilo atual.`;
+      if (!confirm(msg)) return;
+    }
+
+    const imageData = S.cards.map(c => ({ imageSrc: c.bg.imageSrc||null, imageMime: c.bg.imageMime||null }));
+
+    S.cards = S.cards.map((card, i) => {
+      // Use exact card style if available, otherwise use last style in template
+      const style = tpl.cardStyles[i] || tpl.cardStyles[tpl.cardStyles.length - 1];
+      const restored = JSON.parse(JSON.stringify(style));
+      restored.title.text = card.title.text;
+      restored.body.text  = card.body.text;
+      restored.cta.text   = card.cta.text;
+      if (restored.bg.type === 'image') {
+        restored.bg.imageSrc  = imageData[i].imageSrc  || TEMPLATE_PLACEHOLDER_SRC;
+        restored.bg.imageMime = imageData[i].imageMime || TEMPLATE_PLACEHOLDER_MIME;
+      } else {
+        restored.bg.imageSrc  = null;
+        restored.bg.imageMime = null;
+      }
+      restored.idx = i;
+      return restored;
+    });
+
+  } else {
+    alert('Template no formato antigo — por favor delete e crie um novo.');
     return;
   }
 
-  // Handle legacy format (cards[]) and new format (coverStyle/contentStyle/closingStyle)
-  let coverStyle, contentStyle, closingStyle;
-  if (tpl.coverStyle || tpl.contentStyle || tpl.closingStyle) {
-    // New format
-    coverStyle   = tpl.coverStyle   || tpl.contentStyle;
-    contentStyle = tpl.contentStyle || tpl.coverStyle;
-    closingStyle = tpl.closingStyle || tpl.contentStyle;
-  } else if (tpl.cards && tpl.cards.length > 0) {
-    // Legacy format — extract styles from cards array
-    const nc = tpl.cards.length;
-    coverStyle   = _extractCardStyle(tpl.cards[0]);
-    closingStyle = _extractCardStyle(tpl.cards[nc - 1]);
-    contentStyle = _extractCardStyle(tpl.cards[Math.floor(nc / 2)] || tpl.cards[1] || tpl.cards[0]);
-  }
-
-  console.log('[applyTemplate] coverStyle:', !!coverStyle, 'contentStyle:', !!contentStyle, 'closingStyle:', !!closingStyle);
-  console.log('[applyTemplate] contentStyle.bg:', contentStyle ? {type: contentStyle.bg.type, boxMode: contentStyle.bg.boxMode, boxY: contentStyle.bg.boxY} : null);
-  console.log('[applyTemplate] coverStyle.bg:', coverStyle ? {type: coverStyle.bg.type, boxMode: coverStyle.bg.boxMode} : null);
-  if (!contentStyle) { alert('Template inválido ou sem estilos.'); return; }
-
-  const n = S.cards.length;
-  // Preserve image data from current cards before applying style
-  const imageData = S.cards.map(c => ({
-    imageSrc:  c.bg.imageSrc  || null,
-    imageMime: c.bg.imageMime || null,
-  }));
-
-  S.cards = S.cards.map((card, i) => {
-    const style = i === 0 ? coverStyle : (i === n - 1 ? closingStyle : contentStyle);
-    const restored = JSON.parse(JSON.stringify(style));
-    // Restore texts
-    restored.title.text = card.title.text;
-    restored.body.text  = card.body.text;
-    restored.cta.text   = card.cta.text;
-    // Handle image: use current card's image if available
-    // If template requires image but none available, fallback to solid color
-    if (restored.bg.type === 'image') {
-      if (imageData[i].imageSrc) {
-        // Use card's existing image
-        restored.bg.imageSrc  = imageData[i].imageSrc;
-        restored.bg.imageMime = imageData[i].imageMime;
-      } else {
-        // No image — use Storylab placeholder so structure stays intact
-        restored.bg.imageSrc  = TEMPLATE_PLACEHOLDER_SRC;
-        restored.bg.imageMime = TEMPLATE_PLACEHOLDER_MIME;
-      }
-    } else {
-      restored.bg.imageSrc  = null;
-      restored.bg.imageMime = null;
-    }
-    restored.idx = i;
-    return restored;
-  });
-
-  console.log('[applyTemplate] S.cards after apply:', S.cards.map(c => c.bg.type));
   localStorage.setItem('storylab_active_template', tplId);
   document.getElementById('template-manager-modal')?.remove();
-
-  // Ensure we're on step 4 and re-render via renderStep to update DOM visibility
   S.step = 4;
-  console.log('[applyTemplate] calling renderStep(4)...');
   renderStep(4);
   autoSave();
-  console.log('[applyTemplate] done.');
 }
 
 function deleteTemplate(tplId) {
@@ -5709,7 +5676,10 @@ function openTemplateManager() {
         </div>
         ${t.description ? `<div style="font-family:'Poppins',sans-serif;font-size:0.68rem;color:var(--muted);">${t.description}</div>` : ''}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-          <span style="font-family:'Poppins',sans-serif;font-size:0.6rem;color:var(--muted);">${new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-family:'Poppins',sans-serif;font-size:0.6rem;color:var(--muted);">${new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
+            ${t.cardCount ? `<span style="font-family:'Poppins',sans-serif;font-size:0.6rem;padding:2px 7px;border-radius:20px;background:rgba(0,113,227,0.1);color:var(--accent);border:1px solid rgba(0,113,227,0.2);">${t.cardCount} cards</span>` : ''}
+          </div>
           <button onclick="applyTemplate('${t.id}')" style="padding:6px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:0.7rem;cursor:pointer;font-family:'Poppins',sans-serif;font-weight:600;">▶ Aplicar</button>
         </div>
       </div>`).join('');
