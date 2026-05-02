@@ -5603,19 +5603,33 @@ function applyTemplate(tplId) {
   if (!contentStyle) { alert('Template inválido ou sem estilos.'); return; }
 
   const n = S.cards.length;
+  // Preserve image data from current cards before applying style
+  const imageData = S.cards.map(c => ({
+    imageSrc:  c.bg.imageSrc  || null,
+    imageMime: c.bg.imageMime || null,
+  }));
+
   S.cards = S.cards.map((card, i) => {
     const style = i === 0 ? coverStyle : (i === n - 1 ? closingStyle : contentStyle);
     const restored = JSON.parse(JSON.stringify(style));
+    // Restore texts
     restored.title.text = card.title.text;
     restored.body.text  = card.body.text;
     restored.cta.text   = card.cta.text;
+    // Restore image if card had one
+    restored.bg.imageSrc  = imageData[i].imageSrc;
+    restored.bg.imageMime = imageData[i].imageMime;
     restored.idx = i;
     return restored;
   });
 
   localStorage.setItem('storylab_active_template', tplId);
   document.getElementById('template-manager-modal')?.remove();
+
+  // Ensure we're on step 4 and re-render
+  S.step = 4;
   renderFinal();
+  autoSave();
   setTimeout(() => selectCard(0), 60);
 }
 
