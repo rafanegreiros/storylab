@@ -5583,7 +5583,14 @@ function confirmSaveTemplate(editId) {
 function applyTemplate(tplId) {
   const tpls = getTemplates();
   const tpl = tpls.find(t => t.id === tplId);
-  if (!tpl || !S.cards.length) return;
+  console.log('[applyTemplate] tplId:', tplId);
+  console.log('[applyTemplate] tpl found:', !!tpl, tpl ? tpl.name : 'NOT FOUND');
+  console.log('[applyTemplate] S.cards.length:', S.cards.length);
+  console.log('[applyTemplate] S.step:', S.step);
+  if (!tpl || !S.cards.length) {
+    console.warn('[applyTemplate] ABORTED — tpl:', !!tpl, 'cards:', S.cards.length);
+    return;
+  }
 
   // Handle legacy format (cards[]) and new format (coverStyle/contentStyle/closingStyle)
   let coverStyle, contentStyle, closingStyle;
@@ -5600,6 +5607,7 @@ function applyTemplate(tplId) {
     contentStyle = _extractCardStyle(tpl.cards[Math.floor(nc / 2)] || tpl.cards[1] || tpl.cards[0]);
   }
 
+  console.log('[applyTemplate] coverStyle:', !!coverStyle, 'contentStyle:', !!contentStyle, 'closingStyle:', !!closingStyle);
   if (!contentStyle) { alert('Template inválido ou sem estilos.'); return; }
 
   const n = S.cards.length;
@@ -5637,14 +5645,17 @@ function applyTemplate(tplId) {
     return restored;
   });
 
+  console.log('[applyTemplate] S.cards after apply:', S.cards.map(c => c.bg.type));
   localStorage.setItem('storylab_active_template', tplId);
   document.getElementById('template-manager-modal')?.remove();
 
   // Ensure we're on step 4 and re-render
   S.step = 4;
+  console.log('[applyTemplate] calling renderFinal...');
   renderFinal();
   autoSave();
   setTimeout(() => selectCard(0), 60);
+  console.log('[applyTemplate] done.');
 }
 
 function deleteTemplate(tplId) {
