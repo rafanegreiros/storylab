@@ -3216,11 +3216,17 @@ function updateBrandPreview() {
   // Cover card — title always auto-contrasts against cover background
   const cover = document.getElementById('prev-cover');
   if (cover) { cover.style.background = coverColor; cover.style.color = isLight(coverColor) ? dark : '#fff'; }
+  // Helper to force font with high specificity
+  function setFont(el, font) {
+    if (!el) return;
+    el.style.cssText += `;font-family:${font} !important`;
+  }
+
   const pt = document.getElementById('prev-title');
   const coverTitleColor = isLight(coverColor) ? dark : '#ffffff';
-  if (pt) { pt.style.fontFamily = fd; pt.style.color = coverTitleColor; }
+  if (pt) { setFont(pt, fd); pt.style.color = coverTitleColor; }
   const ps = document.getElementById('prev-sub');
-  if (ps) { ps.style.fontFamily = fb; }
+  if (ps) { setFont(ps, fb); }
 
   // Text card
   const textCard = document.getElementById('prev-text');
@@ -3228,22 +3234,22 @@ function updateBrandPreview() {
   const divider = textCard?.querySelector('div');
   if (divider) { divider.style.background = accentColor; }
   const pt2 = document.getElementById('prev-title2');
-  if (pt2) { pt2.style.fontFamily = fd; pt2.style.color = titleColor; }
+  if (pt2) { setFont(pt2, fd); pt2.style.color = titleColor; }
   const pb = document.getElementById('prev-body');
-  if (pb) { pb.style.fontFamily = fb; pb.style.color = bodyColor; }
+  if (pb) { setFont(pb, fb); pb.style.color = bodyColor; }
 
   // Accent/data card
   const accentCard = document.getElementById('prev-accent');
   if (accentCard) { accentCard.style.background = accentColor; accentCard.style.color = isLight(accentColor) ? dark : '#fff'; }
   const pbig = document.getElementById('prev-big');
-  if (pbig) { pbig.style.fontFamily = fd; }
+  if (pbig) { setFont(pbig, fd); }
 
   // CTA card — title auto-contrasts, button uses accent
   const ctaCard = document.getElementById('prev-cta');
   if (ctaCard) { ctaCard.style.background = coverColor; ctaCard.style.color = isLight(coverColor) ? dark : '#fff'; }
   const ctaTitle = document.getElementById('prev-cta-title');
   const ctaTitleColor = isLight(coverColor) ? dark : '#ffffff';
-  if (ctaTitle) { ctaTitle.style.fontFamily = fd; ctaTitle.style.color = ctaTitleColor; }
+  if (ctaTitle) { setFont(ctaTitle, fd); ctaTitle.style.color = ctaTitleColor; }
   const pill = document.getElementById('prev-pill');
   if (pill) { pill.style.background = accent; pill.style.color = isLight(accent) ? dark : '#fff'; }
 
