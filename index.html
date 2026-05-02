@@ -5855,8 +5855,7 @@ async function generateImageGuide() {
       ? `box ${card.bg.boxTextLayout === 'top' ? 'no topo' : card.bg.boxTextLayout === 'bottom' ? 'na base' : 'no meio'}`
       : 'fundo completo';
     return `Card ${idx + 1} (imagem ${layout}): "${card.title.text}"${card.body.text ? ` — ${card.body.text}` : ''}`;
-  }).join('
-');
+  }).join('\n');
 
   const prompt = `Você é um diretor de fotografia e curador de imagens para Instagram.
 
