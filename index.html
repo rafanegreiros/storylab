@@ -4644,13 +4644,39 @@ function renderFinal() {
       </div>
     </div>
     <div class="code-block" id="code-output" style="display:none">${codeText}</div>
+
+    <!-- Guia de Imagens -->
+    <div class="post-section" id="image-guide-section" style="display:none;">
+      <div class="post-card">
+        <div class="post-card-header">
+          <div class="post-card-title">🖼 Guia de Imagens por Card</div>
+          <button class="post-card-copy" onclick="copyPostText('image-guide-body')">Copiar tudo</button>
+        </div>
+        <div class="post-card-body" id="image-guide-body" style="font-size:0.78rem;line-height:1.7;">
+          <div class="post-card-loading"><div class="post-generating"></div> Gerando sugestões...</div>
+        </div>
+      </div>
+    </div>
+
     ${isAdmin() ? renderSaveTemplateModal() : ''}`;
 
   setTimeout(() => {
     attachCardClickHandlers();
-    // Auto-select first card in sidebar
     selectCard(0);
     generatePostContent();
+    // Init image guide — lazy load via IntersectionObserver
+    initImageGuide();
+    // Restore cached guide if exists
+    if (S.imageGuide && S.imageGuide.length) {
+      _imageGuideGenerated = true;
+      const el = document.getElementById('image-guide-body');
+      if (el) el.innerHTML = S.imageGuide.map(item => `
+        <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
+          <div style="font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Card ${item.card} — ${item.titulo || ''}</div>
+          <div style="color:var(--ink);line-height:1.65;">${item.descricao}</div>
+        </div>
+      `).join('');
+    }
   }, 50);
 }
 
@@ -5779,6 +5805,96 @@ JSON sem markdown:
   } catch(err) {
     if (descEl) descEl.textContent = 'Erro ao gerar.';
     if (commEl) commEl.textContent = 'Erro ao gerar.';
+  }
+}
+
+// ── GUIA DE IMAGENS ──
+let _imageGuideGenerated = false;
+
+function initImageGuide() {
+  _imageGuideGenerated = false;
+  const section = document.getElementById('image-guide-section');
+  if (!section) return;
+
+  // Show section
+  section.style.display = 'block';
+
+  // Use IntersectionObserver to generate lazily when user scrolls to it
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !_imageGuideGenerated) {
+        _imageGuideGenerated = true;
+        observer.disconnect();
+        generateImageGuide();
+      }
+    });
+  }, { threshold: 0.1 });
+
+  observer.observe(section);
+}
+
+async function generateImageGuide() {
+  const el = document.getElementById('image-guide-body');
+  if (!el) return;
+
+  // Only generate for cards that have image type (full or box)
+  const imageCards = S.cards
+    .map((c, i) => ({ card: c, idx: i }))
+    .filter(({ card }) => card.bg.type === 'image' || card.bg.boxMode);
+
+  if (imageCards.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:0.78rem;">Nenhum card com imagem neste carrossel.</p>';
+    return;
+  }
+
+  const tema = S.renderAnalysis?.tema || S.triagem?.tema_central || '';
+  const tom = S.tom || '';
+
+  const cardsContext = imageCards.map(({ card, idx }) => {
+    const layout = card.bg.boxMode
+      ? `box ${card.bg.boxTextLayout === 'top' ? 'no topo' : card.bg.boxTextLayout === 'bottom' ? 'na base' : 'no meio'}`
+      : 'fundo completo';
+    return `Card ${idx + 1} (imagem ${layout}): "${card.title.text}"${card.body.text ? ` — ${card.body.text}` : ''}`;
+  }).join('
+');
+
+  const prompt = `Você é um diretor de fotografia e curador de imagens para Instagram.
+
+Com base neste carrossel:
+Tema: ${tema}
+Tom de voz: ${tom}
+
+Para cada card abaixo, escreva uma descrição narrativa da imagem ideal. 
+NÃO é um prompt de IA — é uma descrição humana e rica que o criador pode usar para buscar ou criar a imagem perfeita.
+Inclua: o que aparece, atmosfera, composição, luz, emoção transmitida.
+Seja específico e inspirador. Máximo 3 linhas por card.
+
+Cards:
+${cardsContext}
+
+Responda em JSON sem markdown:
+{"guia":[{"card":1,"titulo":"...","descricao":"..."},...]}`;
+
+  try {
+    el.innerHTML = '<div class="post-card-loading"><div class="post-generating"></div> Gerando sugestões de imagem...</div>';
+    const data = extractJSON(await callClaude(prompt, 1200));
+    
+    if (!data.guia || !data.guia.length) throw new Error('sem dados');
+
+    el.innerHTML = data.guia.map(item => `
+      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
+        <div style="font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Card ${item.card} — ${item.titulo || ''}</div>
+        <div style="color:var(--ink);line-height:1.65;">${item.descricao}</div>
+      </div>
+    `).join('');
+
+    // Cache in S
+    S.imageGuide = data.guia;
+    autoSave();
+
+  } catch(err) {
+    el.innerHTML = '<p style="color:var(--muted);">Não foi possível gerar as sugestões. Tente novamente.</p>';
+    _imageGuideGenerated = false; // allow retry
   }
 }
 
