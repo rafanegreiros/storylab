@@ -2935,8 +2935,21 @@ let _userPlan = null; // { plan: 'individual'|'agency_starter'|'agency_pro', max
 const PLAN_LIMITS = { individual: 1, agency_starter: 5, agency_pro: 10 };
 const PLAN_LABELS = { individual: 'Individual', agency_starter: 'Agência Starter', agency_pro: 'Agência Pro' };
 
+// Emails with unrestricted access (no plan limits)
+const SUPERADMIN_EMAILS = ['rafanegreiros@gmail.com'];
+
+function isSuperAdmin() {
+  const email = currentSession?.user?.email || '';
+  return SUPERADMIN_EMAILS.includes(email.toLowerCase());
+}
+
 async function fetchUserPlan() {
   if (_userPlan) return _userPlan;
+  // Superadmin bypasses backend check entirely
+  if (isSuperAdmin()) {
+    _userPlan = { plan: 'agency_pro', max_brands: 999 };
+    return _userPlan;
+  }
   try {
     const token = getAuthToken();
     if (!token) return null;
@@ -2953,7 +2966,7 @@ async function fetchUserPlan() {
 }
 
 function getMaxBrandsAllowed() {
-  // Optimistic local read — backend validates on save if needed
+  if (isSuperAdmin()) return 999;
   if (_userPlan) return _userPlan.max_brands;
   // Default: allow at least 1
   return 1;
@@ -3272,7 +3285,10 @@ function clearBrandAvatar() {
 
 function openBrand() {
   _pendingAvatarImg = undefined; // reset pending on open
-  renderBrandSwitcher(); // render brand list at top of modal
+  // Ensure plan is loaded before rendering switcher (so limits are accurate)
+  fetchUserPlan().finally(() => {
+    renderBrandSwitcher();
+  });
   const b = getBrand();
   const nameInput = document.getElementById('brand-name-input');
   if (nameInput) nameInput.value = b.name || 'Minha Marca';
