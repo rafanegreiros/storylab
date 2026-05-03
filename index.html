@@ -438,6 +438,26 @@ textarea { min-height: 120px; }
 .color-role-swatch:hover { transform: scale(1.15); }
 .color-role-swatch.active { border-color: var(--ink); transform: scale(1.1); }
 
+/* ── BRAND CHIPS ── */
+.brand-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 5px; border-radius: 20px;
+  border: 1.5px solid var(--border); background: var(--surface);
+  cursor: pointer; font-family: 'Roboto', sans-serif; font-size: 0.72rem;
+  color: var(--ink2); transition: border-color 0.15s, color 0.15s, background 0.15s;
+  user-select: none;
+}
+.brand-chip:hover { border-color: var(--accent); color: var(--ink); }
+.brand-chip.active { border-color: var(--accent); background: rgba(0,113,227,0.08); color: var(--ink); font-weight: 600; }
+.brand-chip-add {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-radius: 20px;
+  border: 1.5px dashed var(--border); background: none;
+  cursor: pointer; font-family: 'Roboto', sans-serif; font-size: 0.72rem;
+  color: var(--muted); transition: border-color 0.15s, color 0.15s;
+}
+.brand-chip-add:hover { border-color: var(--accent); color: var(--accent); }
+
 
 /* ── IMERSIVO themes ── */
 .theme-imer-cover, .theme-imer-overlay, .theme-imer-cta { background: #1a1a1a; color: #fff; }
@@ -2574,6 +2594,18 @@ textarea { min-height: 120px; }
     <!-- Corpo com scroll -->
     <div style="padding:18px 22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;">
 
+      <!-- Brand switcher -->
+      <div>
+        <div class="modal-label" style="margin-bottom:8px">Identidades</div>
+        <div id="brand-switcher-area" style="min-height:32px"></div>
+      </div>
+
+      <!-- Nome da identidade ativa -->
+      <div>
+        <div class="modal-label" style="margin-bottom:6px">Nome desta identidade</div>
+        <input class="modal-input" id="brand-name-input" type="text" placeholder="ex: Cliente XYZ, Marca Pessoal..." style="margin-bottom:0;padding:8px 10px;"/>
+      </div>
+
       <!-- Cores em grid 2x2 compacto -->
       <div>
         <div class="modal-label" style="margin-bottom:8px">Paleta de Cores</div>
@@ -2849,6 +2881,125 @@ const BRAND_DEFAULTS = {
   colorRoles: { text: 'light', ctaRole: 'cta', titleColor: 'dark', bodyColor: 'dark' }
 };
 
+// ── MULTI-BRAND SYSTEM ──
+// Brands stored as: [{ id, name, ...brandProps }] in localStorage 'storylab_brands'
+// Active brand id: 'storylab_active_brand_id'
+
+function _genBrandId() {
+  return 'brand_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+}
+
+function getAllBrands() {
+  try {
+    const raw = localStorage.getItem('storylab_brands');
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length) return arr;
+    }
+  } catch(e) {}
+  // Migration: if old single brand exists, import it
+  try {
+    const old = localStorage.getItem('storylab_brand');
+    if (old) {
+      const b = JSON.parse(old);
+      const brand = { ...b, id: _genBrandId(), name: b.handle ? b.handle.replace('@','') : 'Minha Marca' };
+      localStorage.setItem('storylab_brands', JSON.stringify([brand]));
+      localStorage.setItem('storylab_active_brand_id', brand.id);
+      return [brand];
+    }
+  } catch(e) {}
+  return [];
+}
+
+function saveAllBrands(brands) {
+  localStorage.setItem('storylab_brands', JSON.stringify(brands));
+}
+
+function getActiveBrandId() {
+  const id = localStorage.getItem('storylab_active_brand_id');
+  if (id) return id;
+  const brands = getAllBrands();
+  if (brands.length) {
+    localStorage.setItem('storylab_active_brand_id', brands[0].id);
+    return brands[0].id;
+  }
+  return null;
+}
+
+function setActiveBrandId(id) {
+  localStorage.setItem('storylab_active_brand_id', id);
+}
+
+// Plan limits (checked locally with backend as source of truth)
+let _userPlan = null; // { plan: 'individual'|'agency_starter'|'agency_pro', max_brands: 1|5|10 }
+const PLAN_LIMITS = { individual: 1, agency_starter: 5, agency_pro: 10 };
+const PLAN_LABELS = { individual: 'Individual', agency_starter: 'Agência Starter', agency_pro: 'Agência Pro' };
+
+async function fetchUserPlan() {
+  if (_userPlan) return _userPlan;
+  try {
+    const token = getAuthToken();
+    if (!token) return null;
+    const res = await fetch(BACKEND_URL + '/api/user/plan', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    _userPlan = { plan: data.plan || 'individual', max_brands: data.max_brands || 1 };
+    return _userPlan;
+  } catch(e) {
+    return null;
+  }
+}
+
+function getMaxBrandsAllowed() {
+  // Optimistic local read — backend validates on save if needed
+  if (_userPlan) return _userPlan.max_brands;
+  // Default: allow at least 1
+  return 1;
+}
+
+function createNewBrand(name) {
+  const id = _genBrandId();
+  const brand = { ...BRAND_DEFAULTS, id, name: name || 'Nova Marca', avatarImg: null };
+  const brands = getAllBrands();
+  brands.push(brand);
+  saveAllBrands(brands);
+  setActiveBrandId(id);
+  return brand;
+}
+
+function updateBrand(brandId, props) {
+  const brands = getAllBrands();
+  const idx = brands.findIndex(b => b.id === brandId);
+  if (idx === -1) {
+    // create as new entry
+    brands.push({ ...BRAND_DEFAULTS, ...props, id: brandId });
+  } else {
+    brands[idx] = { ...brands[idx], ...props };
+  }
+  saveAllBrands(brands);
+}
+
+function deleteBrand(brandId) {
+  let brands = getAllBrands();
+  brands = brands.filter(b => b.id !== brandId);
+  saveAllBrands(brands);
+  // If deleted active brand, switch to first
+  if (getActiveBrandId() === brandId) {
+    if (brands.length) setActiveBrandId(brands[0].id);
+    else localStorage.removeItem('storylab_active_brand_id');
+  }
+}
+
+function getActiveBrand() {
+  const id = getActiveBrandId();
+  const brands = getAllBrands();
+  let b = brands.find(b => b.id === id);
+  if (!b && brands.length) b = brands[0];
+  return b || null;
+}
+
 // Returns the avatar inner HTML: image if saved, else initials div
 function avatarHtml(b, initials) {
   if (b && b.avatarImg) {
@@ -2866,28 +3017,22 @@ function verifiedBadgeSvg(size) {
 
 function getBrand() {
   try {
+    const active = getActiveBrand();
+    if (active) {
+      if (!active.colorRoles) active.colorRoles = { text: 'light', ctaRole: 'cta', titleColor: 'primary', bodyColor: 'dark' };
+      else {
+        if (!active.colorRoles.titleColor) active.colorRoles.titleColor = 'dark';
+        if (!active.colorRoles.bodyColor) active.colorRoles.bodyColor = 'dark';
+        if (!active.colorRoles.ctaRole) active.colorRoles.ctaRole = 'cta';
+      }
+      if (!active.cta) active.cta = '#e3fe03';
+      return active;
+    }
+    // Legacy single-brand fallback
     const stored = JSON.parse(localStorage.getItem('storylab_brand'));
     if (!stored) return {...BRAND_DEFAULTS};
-    // Migrate old palettes to new defaults if they still have old colors
-    if (stored.accent === '#c8f05a' || stored.dark === '#141210' || stored.light === '#f5f2eb') {
-      const migrated = {
-        ...stored,
-        accent: stored.accent === '#c8f05a' ? BRAND_DEFAULTS.accent : stored.accent,
-        dark:   stored.dark   === '#141210' ? BRAND_DEFAULTS.dark   : stored.dark,
-        light:  stored.light  === '#f5f2eb' ? BRAND_DEFAULTS.light  : stored.light,
-      };
-      localStorage.setItem('storylab_brand', JSON.stringify(migrated));
-      return migrated;
-    }
-    // Ensure colorRoles always present
     if (!stored.colorRoles) stored.colorRoles = { text: 'light', ctaRole: 'cta', titleColor: 'primary', bodyColor: 'dark' };
-    else {
-      if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'dark';
-      if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark';
-      if (!stored.colorRoles.ctaRole) stored.colorRoles.ctaRole = 'cta';
-    }
     if (!stored.cta) stored.cta = '#e3fe03';
-    else { if (!stored.colorRoles.titleColor) stored.colorRoles.titleColor = 'dark'; if (!stored.colorRoles.bodyColor) stored.colorRoles.bodyColor = 'dark'; }
     return stored;
   } catch { return {...BRAND_DEFAULTS}; }
 }
@@ -3127,7 +3272,10 @@ function clearBrandAvatar() {
 
 function openBrand() {
   _pendingAvatarImg = undefined; // reset pending on open
+  renderBrandSwitcher(); // render brand list at top of modal
   const b = getBrand();
+  const nameInput = document.getElementById('brand-name-input');
+  if (nameInput) nameInput.value = b.name || 'Minha Marca';
   document.getElementById('brand-primary').value = b.primary;
   document.getElementById('brand-primary-hex').value = b.primary;
   document.getElementById('brand-accent').value = b.accent;
@@ -3180,6 +3328,70 @@ function openBrand() {
       loadBrandFontsAndWait(fd, fb).then(() => updateBrandPreview());
     });
   });
+}
+
+function renderBrandSwitcher() {
+  const container = document.getElementById('brand-switcher-area');
+  if (!container) return;
+  const brands = getAllBrands();
+  const activeId = getActiveBrandId();
+  const maxAllowed = getMaxBrandsAllowed();
+  const canAdd = brands.length < maxAllowed;
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      ${brands.map(br => {
+        const isActive = br.id === activeId;
+        const initials = (br.name || '?').slice(0,2).toUpperCase();
+        const avatarContent = br.avatarImg
+          ? `<img src="${br.avatarImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />`
+          : `<span style="font-size:0.55rem;font-weight:700;color:#fff">${initials}</span>`;
+        return `<div class="brand-chip ${isActive ? 'active' : ''}" onclick="switchBrand('${br.id}')" title="${br.name}">
+          <div style="width:20px;height:20px;border-radius:50%;background:${br.primary || '#0071e3'};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">${avatarContent}</div>
+          <span style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${br.name}</span>
+          ${brands.length > 1 ? `<button onclick="event.stopPropagation();confirmDeleteBrand('${br.id}')" style="background:none;border:none;cursor:pointer;padding:0;margin-left:2px;color:var(--muted);line-height:1;font-size:0.75rem;opacity:0.6" title="Remover identidade">×</button>` : ''}
+        </div>`;
+      }).join('')}
+      ${canAdd
+        ? `<button class="brand-chip-add" onclick="createBrandFromModal()">+ Nova identidade</button>`
+        : `<div style="font-size:0.65rem;color:var(--muted);padding:4px 8px;border:1.5px dashed var(--border);border-radius:20px;cursor:default" title="Limite do plano atingido (${maxAllowed} identidades). Faça upgrade para adicionar mais.">
+            🔒 Limite: ${maxAllowed}
+           </div>`
+      }
+    </div>`;
+}
+
+function switchBrand(id) {
+  setActiveBrandId(id);
+  applyBrandToCards();
+  openBrand(); // re-render modal with new brand
+}
+
+function confirmDeleteBrand(id) {
+  const brands = getAllBrands();
+  if (brands.length <= 1) { alert('Você precisa ter ao menos uma identidade.'); return; }
+  const br = brands.find(b => b.id === id);
+  if (!confirm(`Remover a identidade "${br?.name || id}"? Esta ação não pode ser desfeita.`)) return;
+  deleteBrand(id);
+  applyBrandToCards();
+  openBrand();
+}
+
+async function createBrandFromModal() {
+  // Re-check limit with backend before creating
+  const plan = await fetchUserPlan();
+  const brands = getAllBrands();
+  const maxAllowed = plan ? plan.max_brands : 1;
+  if (brands.length >= maxAllowed) {
+    const planLabel = plan ? PLAN_LABELS[plan.plan] || plan.plan : 'Individual';
+    alert(`Limite de ${maxAllowed} identidade${maxAllowed > 1 ? 's' : ''} atingido no plano ${planLabel}.\n\nFaça upgrade para adicionar mais identidades.`);
+    return;
+  }
+  const name = prompt('Nome da nova identidade (ex: nome do cliente):');
+  if (!name || !name.trim()) return;
+  createNewBrand(name.trim());
+  applyBrandToCards();
+  openBrand();
 }
 
 function previewFont(type) {
@@ -3328,7 +3540,11 @@ let _lastAppliedBrand = null;
 
 function saveBrand() {
   const existing = getBrand();
+  const activeBrandId = getActiveBrandId();
+  const nameEl = document.getElementById('brand-name-input');
   const b = {
+    id: activeBrandId || _genBrandId(),
+    name: nameEl ? nameEl.value.trim() || 'Sem nome' : (existing.name || 'Minha Marca'),
     primary: document.getElementById('brand-primary').value,
     accent:  document.getElementById('brand-accent').value,
     dark:    document.getElementById('brand-dark').value,
@@ -3343,7 +3559,8 @@ function saveBrand() {
     avatarImg: _pendingAvatarImg !== undefined ? _pendingAvatarImg : (existing.avatarImg || null),
   };
   _pendingAvatarImg = undefined;
-  localStorage.setItem('storylab_brand', JSON.stringify(b));
+  updateBrand(b.id, b);
+  setActiveBrandId(b.id);
   applyBrandToCards();
   document.getElementById('brand-modal').style.display = 'none';
   // Re-apply brand to existing cards if on step 4
@@ -3417,7 +3634,11 @@ function renderColorRoleSwatches() {
 
 
 function resetBrand() {
-  localStorage.removeItem('storylab_brand');
+  const id = getActiveBrandId();
+  const brands = getAllBrands();
+  const idx = brands.findIndex(b => b.id === id);
+  const name = idx !== -1 ? brands[idx].name : 'Minha Marca';
+  if (idx !== -1) { brands[idx] = { ...BRAND_DEFAULTS, id, name }; saveAllBrands(brands); }
   applyBrandToCards();
   openBrand();
 }
@@ -6745,6 +6966,8 @@ function hideLoginScreen() {
   document.getElementById('login-screen').style.display = 'none';
   document.querySelector('.app') && (document.querySelector('.app').style.visibility = 'visible');
   document.querySelector('header') && (document.querySelector('header').style.visibility = 'visible');
+  // Fetch plan in background so brand limits are accurate
+  fetchUserPlan().catch(() => {});
 }
 
 async function doMagicLink() {
@@ -6820,6 +7043,7 @@ function getSessionSnapshot() {
     postDescricao: S.postDescricao || '',
     postComentario: S.postComentario || '',
     brand: getBrand(),
+    brandId: getActiveBrandId(),
     savedAt: new Date().toISOString(),
   };
 }
@@ -7148,7 +7372,32 @@ function restoreSnap(snap, sessionId) {
     postComentario: snap.postComentario || '',
   });
   if (snap.brand) {
-    localStorage.setItem('storylab_brand', JSON.stringify(snap.brand));
+    // Multi-brand: if the saved brand has an id matching an existing brand, just activate it.
+    // Otherwise, upsert the saved brand into the brands list (preserves history fidelity).
+    if (snap.brandId) {
+      const brands = getAllBrands();
+      const existing = brands.find(b => b.id === snap.brandId);
+      if (existing) {
+        setActiveBrandId(snap.brandId);
+      } else {
+        // Brand was deleted or doesn't exist — re-import it from snapshot
+        const imported = { ...snap.brand, id: snap.brandId };
+        brands.push(imported);
+        saveAllBrands(brands);
+        setActiveBrandId(snap.brandId);
+      }
+    } else {
+      // Old snapshot (pre-multi-brand) — store as legacy in active brand
+      const brands = getAllBrands();
+      const activeId = getActiveBrandId();
+      const idx = brands.findIndex(b => b.id === activeId);
+      if (idx !== -1) {
+        brands[idx] = { ...snap.brand, id: activeId, name: brands[idx].name };
+        saveAllBrands(brands);
+      } else {
+        localStorage.setItem('storylab_brand', JSON.stringify(snap.brand));
+      }
+    }
     applyBrandToCards();
   }
   // Restore images from IndexedDB (async) — re-render when done
