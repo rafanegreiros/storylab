@@ -458,6 +458,24 @@ textarea { min-height: 120px; }
 }
 .brand-chip-add:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ── BRAND CHOOSE MODAL ── */
+.brand-choose-opt {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 10px;
+  border: 1.5px solid var(--border); cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.brand-choose-opt:hover { border-color: var(--accent); background: rgba(0,113,227,0.04); }
+.brand-choose-opt.selected { border-color: var(--accent); background: rgba(0,113,227,0.08); }
+.brand-choose-radio {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border); flex-shrink: 0; margin-left: auto;
+  transition: border-color 0.15s, background 0.15s;
+}
+.brand-choose-opt.selected .brand-choose-radio {
+  border-color: var(--accent); background: var(--accent);
+}
+
 
 /* ── IMERSIVO themes ── */
 .theme-imer-cover, .theme-imer-overlay, .theme-imer-cta { background: #1a1a1a; color: #fff; }
@@ -2581,6 +2599,30 @@ textarea { min-height: 120px; }
   </div>
 </div>
 
+<!-- BRAND CHOOSE MODAL (shown when restoring history with unknown brand) -->
+<div id="brand-choose-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:16px;padding:28px 28px 24px;width:420px;max-width:94vw;display:flex;flex-direction:column;gap:18px;box-shadow:0 8px 40px rgba(0,0,0,0.18);">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div>
+        <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1rem;color:var(--ink);margin-bottom:4px">Qual identidade aplicar?</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5" id="brand-choose-subtitle">Este carrossel foi salvo com uma identidade que não existe mais.</div>
+      </div>
+      <button onclick="brandChooseCancel()" style="background:none;border:1px solid var(--border);cursor:pointer;color:var(--muted);padding:5px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;" title="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+
+    <!-- Options -->
+    <div style="display:flex;flex-direction:column;gap:8px" id="brand-choose-options">
+      <!-- filled by JS -->
+    </div>
+
+    <!-- Action buttons -->
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px;border-top:1px solid var(--border);">
+      <button onclick="brandChooseCancel()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:none;cursor:pointer;font-size:0.8rem;color:var(--muted);">Cancelar</button>
+      <button onclick="brandChooseConfirm()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:0.8rem;font-weight:600;">Aplicar</button>
+    </div>
+  </div>
+</div>
+
 <!-- BRAND MODAL -->
 <div class="modal-overlay" id="brand-modal" style="display:none">
   <div class="modal-box" style="width:520px;max-height:90vh;overflow-y:auto;padding:0;display:flex;flex-direction:column;">
@@ -3558,9 +3600,25 @@ function saveBrand() {
   const existing = getBrand();
   const activeBrandId = getActiveBrandId();
   const nameEl = document.getElementById('brand-name-input');
+  const newName = nameEl ? nameEl.value.trim() : '';
+
+  if (!newName) {
+    alert('Dê um nome para esta identidade antes de salvar.');
+    nameEl && nameEl.focus();
+    return;
+  }
+
+  // Check for duplicate name (ignore current brand itself)
+  const allBrands = getAllBrands();
+  const duplicate = allBrands.find(b => b.id !== activeBrandId && b.name.toLowerCase() === newName.toLowerCase());
+  if (duplicate) {
+    alert(`Já existe uma identidade com o nome "${duplicate.name}".\nEscolha um nome diferente.`);
+    nameEl && nameEl.focus();
+    return;
+  }
   const b = {
     id: activeBrandId || _genBrandId(),
-    name: nameEl ? nameEl.value.trim() || 'Sem nome' : (existing.name || 'Minha Marca'),
+    name: newName,
     primary: document.getElementById('brand-primary').value,
     accent:  document.getElementById('brand-accent').value,
     dark:    document.getElementById('brand-dark').value,
@@ -5825,11 +5883,18 @@ function confirmSaveTemplate(editId) {
   const desc = document.getElementById('tpl-desc')?.value?.trim();
   if (!name) { alert('Nome obrigatório.'); return; }
 
-  const n = S.cards.length;
-  // Save every card's style individually — exact match by card count
-  const cardStyles = S.cards.map(c => _extractCardStyle(c));
-
   const tpls = getTemplates();
+
+  // Check for duplicate name (ignore current template if editing)
+  const duplicate = tpls.find(t => t.id !== editId && t.name.toLowerCase() === name.toLowerCase());
+  if (duplicate) {
+    alert(`Já existe um template com o nome "${duplicate.name}".\nEscolha um nome diferente.`);
+    document.getElementById('tpl-name')?.focus();
+    return;
+  }
+
+  const n = S.cards.length;
+  const cardStyles = S.cards.map(c => _extractCardStyle(c));
 
   if (editId) {
     const idx = tpls.findIndex(t => t.id === editId);
@@ -7265,6 +7330,124 @@ async function loadHistoryList() {
 let _currentHistSnap = null; // snap in memory for step navigation
 let _currentHistId = null;
 
+// ── BRAND CHOOSE MODAL ──
+let _brandChoosePendingSnap = null;
+let _brandChoosePendingId = null;
+let _brandChooseSelection = null; // 'existing:<id>' | 'import' | 'keep'
+
+function _needsBrandChoice(snap) {
+  if (!snap.brand) return false; // no brand in snap, nothing to choose
+  if (!snap.brandId) return true; // legacy snap, brand unknown
+  const brands = getAllBrands();
+  const exists = brands.find(b => b.id === snap.brandId);
+  return !exists; // brandId not found in current brands
+}
+
+function openBrandChooseModal(snap, sessionId, onConfirm) {
+  _brandChoosePendingSnap = snap;
+  _brandChoosePendingId = sessionId;
+  _brandChooseSelection = null;
+  _brandChooseOnConfirm = onConfirm;
+
+  const brands = getAllBrands();
+  const maxAllowed = getMaxBrandsAllowed();
+  const canImport = brands.length < maxAllowed;
+  const snapName = snap.brand?.name || snap.brand?.handle?.replace('@','') || snap.triagem?.tema_central || 'deste carrossel';
+
+  document.getElementById('brand-choose-subtitle').textContent =
+    `Este carrossel foi salvo com a identidade "${snapName}", que não está na sua lista atual.`;
+
+  const opts = document.getElementById('brand-choose-options');
+  opts.innerHTML = `
+    ${brands.map(b => `
+      <label class="brand-choose-opt" onclick="brandChooseSelect(this, 'existing:${b.id}')">
+        <div style="width:28px;height:28px;border-radius:50%;background:${b.primary||'#0071e3'};flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+          ${b.avatarImg ? `<img src="${b.avatarImg}" style="width:100%;height:100%;object-fit:cover"/>` : `<span style="font-size:0.6rem;color:#fff;font-weight:700">${(b.name||'?').slice(0,2).toUpperCase()}</span>`}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--ink)">${b.name}</div>
+          <div style="font-size:0.72rem;color:var(--muted)">${b.handle||''}</div>
+        </div>
+        <div class="brand-choose-radio"></div>
+      </label>`).join('')}
+    ${canImport ? `
+      <label class="brand-choose-opt" onclick="brandChooseSelect(this, 'import')">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem">📥</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--ink)">Importar "${snapName}"</div>
+          <div style="font-size:0.72rem;color:var(--muted)">Adiciona como nova identidade na sua lista</div>
+        </div>
+        <div class="brand-choose-radio"></div>
+      </label>` : `
+      <div style="font-size:0.75rem;color:var(--muted);padding:8px 10px;border:1.5px dashed var(--border);border-radius:8px;text-align:center">
+        🔒 Limite de identidades atingido — não é possível importar. Escolha uma existente ou continue sem trocar.
+      </div>`}
+    <label class="brand-choose-opt" onclick="brandChooseSelect(this, 'keep')">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem">↩️</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:0.82rem;font-weight:600;color:var(--ink)">Manter identidade ativa</div>
+        <div style="font-size:0.72rem;color:var(--muted)">Abre o carrossel sem trocar a identidade atual</div>
+      </div>
+      <div class="brand-choose-radio"></div>
+    </label>
+  `;
+
+  // Pre-select 'keep' as default
+  const keepOpt = opts.querySelector('[onclick*="keep"]');
+  if (keepOpt) brandChooseSelect(keepOpt, 'keep');
+
+  const modal = document.getElementById('brand-choose-modal');
+  modal.style.display = 'flex';
+}
+
+let _brandChooseOnConfirm = null;
+
+function brandChooseSelect(el, value) {
+  _brandChooseSelection = value;
+  document.querySelectorAll('.brand-choose-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function brandChooseCancel() {
+  document.getElementById('brand-choose-modal').style.display = 'none';
+  _brandChoosePendingSnap = null;
+  _brandChoosePendingId = null;
+  _brandChooseOnConfirm = null;
+}
+
+function brandChooseConfirm() {
+  const snap = _brandChoosePendingSnap;
+  const sessionId = _brandChoosePendingId;
+  const selection = _brandChooseSelection || 'keep';
+  document.getElementById('brand-choose-modal').style.display = 'none';
+
+  if (selection.startsWith('existing:')) {
+    const brandId = selection.replace('existing:', '');
+    setActiveBrandId(brandId);
+    applyBrandToCards();
+  } else if (selection === 'import') {
+    const snapName = snap.brand?.name || snap.brand?.handle?.replace('@','') || 'Importada do histórico';
+    const brands = getAllBrands();
+    // Check for name duplicate
+    let finalName = snapName;
+    let counter = 2;
+    while (brands.find(b => b.name.toLowerCase() === finalName.toLowerCase())) {
+      finalName = `${snapName} (${counter++})`;
+    }
+    const newId = snap.brandId || _genBrandId();
+    brands.push({ ...snap.brand, id: newId, name: finalName });
+    saveAllBrands(brands);
+    setActiveBrandId(newId);
+    applyBrandToCards();
+  }
+  // 'keep' → do nothing to brands
+
+  if (_brandChooseOnConfirm) _brandChooseOnConfirm();
+  _brandChoosePendingSnap = null;
+  _brandChoosePendingId = null;
+  _brandChooseOnConfirm = null;
+}
+
 async function loadSession(id) {
   const item = document.querySelector(`.history-item[onclick*="${id}"]`);
   if (item) item.style.opacity = '0.5';
@@ -7279,14 +7462,22 @@ async function loadSession(id) {
     _currentHistSnap = snap;
     _currentHistId = id;
 
-    // Restore state — images are re-injected by restoreSnap from localStorage
-    restoreSnap(snap, id);
-    closeHistory();
-    renderStep(snap.step || 1);
-    // If on carrossel step, re-render to show images after they're injected
-    if ((snap.step || 1) === 4 && S.cards.length) {
-      renderFinal();
-      setTimeout(() => selectCard(S.activeCardIdx || 0), 60);
+    if (item) item.style.opacity = '';
+
+    const doRestore = () => {
+      restoreSnap(snap, id);
+      closeHistory();
+      renderStep(snap.step || 1);
+      if ((snap.step || 1) === 4 && S.cards.length) {
+        renderFinal();
+        setTimeout(() => selectCard(S.activeCardIdx || 0), 60);
+      }
+    };
+
+    if (_needsBrandChoice(snap)) {
+      openBrandChooseModal(snap, id, doRestore);
+    } else {
+      doRestore();
     }
 
   } catch(e) {
@@ -7390,37 +7581,11 @@ function restoreSnap(snap, sessionId) {
   if (snap.brand) {
     const brands = getAllBrands();
     if (snap.brandId) {
-      // Multi-brand snapshot: activate by id if exists, otherwise import as new entry
       const existing = brands.find(b => b.id === snap.brandId);
-      if (existing) {
-        // Brand exists — just switch to it, never mutate it
-        setActiveBrandId(snap.brandId);
-      } else {
-        // Brand was deleted or from another device — re-import as new entry, don't touch existing ones
-        const snapName = snap.brand.name || snap.brand.handle?.replace('@','') || snap.triagem?.tema_central || 'Importada';
-        const imported = { ...snap.brand, id: snap.brandId, name: snapName };
-        brands.push(imported);
-        saveAllBrands(brands);
-        setActiveBrandId(snap.brandId);
-      }
-    } else {
-      // Legacy snapshot (pre-multi-brand, no brandId saved)
-      // Check if any existing brand matches by primary color + handle (avoid duplicates)
-      const match = brands.find(b =>
-        b.primary === snap.brand.primary && b.handle === snap.brand.handle
-      );
-      if (match) {
-        // Found a matching brand — just activate it
-        setActiveBrandId(match.id);
-      } else {
-        // Unknown brand — import as new entry, never overwrite existing ones
-        const snapName = snap.brand.handle?.replace('@','') || 'Importada do histórico';
-        const newId = _genBrandId();
-        brands.push({ ...snap.brand, id: newId, name: snapName });
-        saveAllBrands(brands);
-        setActiveBrandId(newId);
-      }
+      if (existing) setActiveBrandId(snap.brandId);
+      // If not found: brand-choose modal already resolved this before restoreSnap was called
     }
+    // Legacy snaps without brandId: also already resolved by modal
     applyBrandToCards();
   }
   // Restore images from IndexedDB (async) — re-render when done
