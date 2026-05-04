@@ -7388,30 +7388,37 @@ function restoreSnap(snap, sessionId) {
     postComentario: snap.postComentario || '',
   });
   if (snap.brand) {
-    // Multi-brand: if the saved brand has an id matching an existing brand, just activate it.
-    // Otherwise, upsert the saved brand into the brands list (preserves history fidelity).
+    const brands = getAllBrands();
     if (snap.brandId) {
-      const brands = getAllBrands();
+      // Multi-brand snapshot: activate by id if exists, otherwise import as new entry
       const existing = brands.find(b => b.id === snap.brandId);
       if (existing) {
+        // Brand exists — just switch to it, never mutate it
         setActiveBrandId(snap.brandId);
       } else {
-        // Brand was deleted or doesn't exist — re-import it from snapshot
-        const imported = { ...snap.brand, id: snap.brandId };
+        // Brand was deleted or from another device — re-import as new entry, don't touch existing ones
+        const snapName = snap.brand.name || snap.brand.handle?.replace('@','') || snap.triagem?.tema_central || 'Importada';
+        const imported = { ...snap.brand, id: snap.brandId, name: snapName };
         brands.push(imported);
         saveAllBrands(brands);
         setActiveBrandId(snap.brandId);
       }
     } else {
-      // Old snapshot (pre-multi-brand) — store as legacy in active brand
-      const brands = getAllBrands();
-      const activeId = getActiveBrandId();
-      const idx = brands.findIndex(b => b.id === activeId);
-      if (idx !== -1) {
-        brands[idx] = { ...snap.brand, id: activeId, name: brands[idx].name };
-        saveAllBrands(brands);
+      // Legacy snapshot (pre-multi-brand, no brandId saved)
+      // Check if any existing brand matches by primary color + handle (avoid duplicates)
+      const match = brands.find(b =>
+        b.primary === snap.brand.primary && b.handle === snap.brand.handle
+      );
+      if (match) {
+        // Found a matching brand — just activate it
+        setActiveBrandId(match.id);
       } else {
-        localStorage.setItem('storylab_brand', JSON.stringify(snap.brand));
+        // Unknown brand — import as new entry, never overwrite existing ones
+        const snapName = snap.brand.handle?.replace('@','') || 'Importada do histórico';
+        const newId = _genBrandId();
+        brands.push({ ...snap.brand, id: newId, name: snapName });
+        saveAllBrands(brands);
+        setActiveBrandId(newId);
       }
     }
     applyBrandToCards();
