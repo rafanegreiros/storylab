@@ -5032,8 +5032,8 @@ function renderCardHtml(card, idx, total) {
     </div>`;
   }
 
-  // Layer: overlay gradient (hidden in box mode)
-  if (card.overlay.visible && !card.bg.boxMode) {
+  // Layer: overlay gradient — normal mode covers full card; box mode covers box area only
+  if (card.overlay.visible) {
     const dirs = {
       'bottom-up': 'to top',
       'top-down': 'to bottom',
@@ -5044,7 +5044,16 @@ function renderCardHtml(card, idx, total) {
     const reach = card.overlay.reach || 60;
     const c1 = hexAlpha(card.overlay.color, card.overlay.opacityStart);
     const c2 = hexAlpha(card.overlay.color, card.overlay.opacityEnd);
-    layers += `<div style="position:absolute;inset:0;z-index:2;background:linear-gradient(${dir}, ${c1} 0%, ${c2} ${reach}%);pointer-events:none;"></div>`;
+    if (card.bg.boxMode && card.bg.imageSrc) {
+      // Clip to box bounds via absolute positioning
+      const bxW = card.bg.boxW != null ? card.bg.boxW : 100;
+      const bxH = card.bg.boxH != null ? card.bg.boxH : 42;
+      const bxY = card.bg.boxY != null ? card.bg.boxY : 10;
+      const left = ((100 - bxW) / 2).toFixed(2);
+      layers += `<div style="position:absolute;left:${left}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;z-index:2;background:linear-gradient(${dir}, ${c1} 0%, ${c2} ${reach}%);pointer-events:none;"></div>`;
+    } else {
+      layers += `<div style="position:absolute;inset:0;z-index:2;background:linear-gradient(${dir}, ${c1} 0%, ${c2} ${reach}%);pointer-events:none;"></div>`;
+    }
   }
 
   // Layer: header (brand)
@@ -6326,7 +6335,7 @@ async function exportCardToCanvas(card, idx) {
   }
 
   // ── Layer 2: Overlay ──
-  // Applied regardless of boxMode — overlay always sits on top of whatever bg/image is drawn
+  // Normal mode: full card. Box mode: clip to box area only (preserves solid bg outside).
   if (card.overlay.visible) {
     const dirs = {
       'bottom-up':  [EXPORT_W/2, EXPORT_H, EXPORT_W/2, 0],
@@ -6342,8 +6351,19 @@ async function exportCardToCanvas(card, idx) {
     oGrad.addColorStop(0,     `rgba(${r2},${g2},${b2},${card.overlay.opacityStart})`);
     oGrad.addColorStop(reach, `rgba(${r2},${g2},${b2},${card.overlay.opacityEnd})`);
     oGrad.addColorStop(1,     `rgba(${r2},${g2},${b2},${card.overlay.opacityEnd})`);
+    ctx.save();
+    if (card.bg.boxMode && card.bg.imageSrc) {
+      // Clip overlay to box area only
+      const bxW = (card.bg.boxW != null ? card.bg.boxW : 100) / 100;
+      const bxH = (card.bg.boxH != null ? card.bg.boxH : 42)  / 100;
+      const bxY = (card.bg.boxY != null ? card.bg.boxY : 10)  / 100;
+      const boxW = EXPORT_W * bxW, boxH = EXPORT_H * bxH;
+      const boxX = (EXPORT_W - boxW) / 2, boxY = EXPORT_H * bxY;
+      ctx.beginPath(); ctx.rect(boxX, boxY, boxW, boxH); ctx.clip();
+    }
     ctx.fillStyle = oGrad;
     ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+    ctx.restore();
   }
 
   // ── Layer 3: Header ──
@@ -6570,43 +6590,42 @@ async function exportCardToCanvas(card, idx) {
     let y = textCenterY + tOffY - totalBlockH / 2 + tFS * 1.1;
 
     // Draw title lines with highlight support
-    // Normalize helper: remove accents for matching only
-    const _norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const _norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\n/g, ' ');
     const hlWord = card.title.highlight?.word;
-    const hlNorm = hlWord ? _norm(hlWord) : null;
+    // Strip newlines from highlight word too before normalizing
+    const hlNorm = hlWord ? _norm(hlWord.replace(/\n/g, ' ').trim()) : null;
 
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
     ctx.fillStyle = card.title.color;
     ctx.textAlign = tAlign;
     for (const line of titleLines) {
-      const lineNorm = _norm(line);
+      const lineTrimmed = line.replace(/\n/g, ' ');
+      const lineNorm = _norm(lineTrimmed);
       const hlIdx = hlNorm ? lineNorm.indexOf(hlNorm) : -1;
 
       if (hlIdx >= 0 && hlNorm) {
-        // Find the actual character positions in the original line.
-        // Since NFD normalization can change char count, we need to map back carefully.
-        // Strategy: walk original line chars until normalized accumulated length reaches hlIdx.
-        let normCount = 0, origStart = 0;
-        for (let ci = 0; ci < line.length; ci++) {
-          if (normCount >= hlIdx) { origStart = ci; break; }
-          normCount += _norm(line[ci]).length;
+        // Map normalized index back to original string position char-by-char
+        // Walk original chars, accumulate their normalized lengths until we reach hlIdx
+        let normAcc = 0, origStart = lineTrimmed.length;
+        for (let ci = 0; ci < lineTrimmed.length; ci++) {
+          if (normAcc >= hlIdx) { origStart = ci; break; }
+          normAcc += _norm(lineTrimmed[ci]).length;
         }
-        let normCount2 = 0, origEnd = origStart;
-        for (let ci = origStart; ci < line.length; ci++) {
-          if (normCount2 >= hlNorm.length) { origEnd = ci; break; }
-          normCount2 += _norm(line[ci]).length;
-          if (ci === line.length - 1) origEnd = line.length;
+        let normAcc2 = 0, origEnd = lineTrimmed.length;
+        for (let ci = origStart; ci < lineTrimmed.length; ci++) {
+          if (normAcc2 >= hlNorm.length) { origEnd = ci; break; }
+          normAcc2 += _norm(lineTrimmed[ci]).length;
         }
 
-        const before = line.slice(0, origStart);
-        const highlighted = line.slice(origStart, origEnd);
-        const after = line.slice(origEnd);
+        const before      = lineTrimmed.slice(0, origStart);
+        const highlighted = lineTrimmed.slice(origStart, origEnd);
+        const after       = lineTrimmed.slice(origEnd);
 
         ctx.textAlign = 'left';
         ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
         let wx = tPad + tOffX;
         if (tAlign !== 'left') {
-          const lineW = ctx.measureText(line).width;
+          const lineW = ctx.measureText(lineTrimmed).width;
           wx = tAlign === 'center' ? (EXPORT_W - lineW) / 2 + tOffX : EXPORT_W - tPad - lineW + tOffX;
         }
         if (before) { ctx.fillStyle = card.title.color; ctx.fillText(before, wx, y); wx += ctx.measureText(before).width; }
@@ -6616,7 +6635,7 @@ async function exportCardToCanvas(card, idx) {
         ctx.textAlign = tAlign;
       } else {
         ctx.fillStyle = card.title.color;
-        ctx.fillText(line, tX, y);
+        ctx.fillText(lineTrimmed, tX, y);
       }
       ctx.fillStyle = card.title.color;
       y += tFS * 1.1;
@@ -6693,19 +6712,24 @@ async function exportCardToCanvas(card, idx) {
 
 // ── CANVAS HELPERS ──
 function wrapText(ctx, text, maxWidth, lineH) {
-  const words = text.split(' ');
+  // First split on hard line breaks (\n), then wrap each paragraph by word
+  const paragraphs = text.split('\n');
   const lines = [];
-  let current = '';
-  for (const word of words) {
-    const test = current ? current + ' ' + word : word;
-    if (ctx.measureText(test).width > maxWidth && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = test;
+  for (const para of paragraphs) {
+    if (!para.trim()) { lines.push(''); continue; }
+    const words = para.split(' ');
+    let current = '';
+    for (const word of words) {
+      const test = current ? current + ' ' + word : word;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
     }
+    if (current) lines.push(current);
   }
-  if (current) lines.push(current);
   return lines;
 }
 
