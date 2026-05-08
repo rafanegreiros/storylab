@@ -475,10 +475,13 @@ textarea { min-height: 120px; }
   transition: transform 0.1s;
 }
 .card-resize-handle:hover { transform: scale(1.3); }
+/* Full mode: corners of the card wrapper */
 .card-resize-handle[data-corner="tl"] { top: -5px; left: -5px; cursor: nwse-resize; }
 .card-resize-handle[data-corner="tr"] { top: -5px; right: -5px; cursor: nesw-resize; }
 .card-resize-handle[data-corner="bl"] { bottom: -5px; left: -5px; cursor: nesw-resize; }
 .card-resize-handle[data-corner="br"] { bottom: -5px; right: -5px; cursor: nwse-resize; }
+/* Box mode: handles are positioned via JS inline style (overrides the above) */
+.card-resize-handle.box-mode { right: unset; bottom: unset; }
 
 /* ── SLIDER number input — hide spinners ── */
 input[type=number]::-webkit-inner-spin-button,
@@ -5210,7 +5213,7 @@ function selectCard(idx) {
   // Move resize handles: remove from all wrappers, add to the selected one if it has an image
   document.querySelectorAll('.card-resize-handle').forEach(h => h.remove());
   const card = S.cards[idx];
-  const hasImg = card && card.bg.type === 'image' && card.bg.imageSrc && !card.bg.boxMode;
+  const hasImg = card && card.bg.type === 'image' && card.bg.imageSrc;
   if (hasImg) {
     const wraps = document.querySelectorAll('.c-card-wrap');
     if (wraps[idx]) {
@@ -5221,6 +5224,8 @@ function selectCard(idx) {
         h.onmousedown = (e) => startImgResize(e, idx, corner);
         wraps[idx].appendChild(h);
       });
+      // For box mode, position handles at box corners
+      if (card.bg.boxMode) _updateBoxHandlePositions(idx);
     }
   }
 
@@ -5743,7 +5748,7 @@ function refreshCard(idx) {
     innerCard.style.outline = '3px solid var(--accent)';
     // Re-add resize handles if selected card has image
     const card = S.cards[idx];
-    const hasImg = card && card.bg.type === 'image' && card.bg.imageSrc && !card.bg.boxMode;
+    const hasImg = card && card.bg.type === 'image' && card.bg.imageSrc;
     if (hasImg) {
       ['tl','tr','bl','br'].forEach(corner => {
         const h = document.createElement('div');
@@ -5752,6 +5757,7 @@ function refreshCard(idx) {
         h.onmousedown = (e) => startImgResize(e, idx, corner);
         newWrap.appendChild(h);
       });
+      if (card.bg.boxMode) _updateBoxHandlePositions(idx);
     }
   }
   clearTimeout(_cardEditSaveTimer);
@@ -8013,30 +8019,82 @@ function bcNavigate(targetStep) {
   };
 })();
 
-// ── IMAGE RESIZE (proportional scale via corner handles) ──
+// ── IMAGE RESIZE (full mode: scale | box mode: resize box dimensions) ──
 ;(function() {
-  let _rsz = null; // { idx, corner, startX, startY, origScale, cardRect }
+  let _rsz = null;
+  // _rsz for full mode: { mode:'full', idx, corner, startX, startY, origScale, cardRect }
+  // _rsz for box mode:  { mode:'box',  idx, corner, startX, startY, origBoxY, origBoxH, origBoxW, cardRect }
 
   function onRszMove(e) {
     if (!_rsz) return;
     e.preventDefault();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    const cw = _rsz.cardRect.width;
-    const ch = _rsz.cardRect.height;
-    const cx0 = _rsz.cardRect.left + cw/2;
-    const cy0 = _rsz.cardRect.top  + ch/2;
-    const distNow  = Math.sqrt((cx-cx0)**2 + (cy-cy0)**2);
-    const distOrig = Math.sqrt((_rsz.startX-cx0)**2 + (_rsz.startY-cy0)**2);
-    if (distOrig < 2) return;
-    const ratio = distNow / distOrig;
-    const newScale = Math.min(4, Math.max(0.3, _rsz.origScale * ratio));
-    const scale = parseFloat(newScale.toFixed(3));
-    S.cards[_rsz.idx].bg.imageScale = scale;
-    // Update transform directly — no DOM replacement during resize
-    const card = S.cards[_rsz.idx];
-    const imgEl = document.querySelector(`.c-card[data-idx="${_rsz.idx}"] img[data-card-img]`);
-    if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${scale})`;
+    const dx = cx - _rsz.startX;
+    const dy = cy - _rsz.startY;
+    const cw = _rsz.cardRect.width;   // px width of card
+    const ch = _rsz.cardRect.height;  // px height of card
+
+    if (_rsz.mode === 'full') {
+      // Scale proportionally from center
+      const cx0 = _rsz.cardRect.left + cw / 2;
+      const cy0 = _rsz.cardRect.top  + ch / 2;
+      const distNow  = Math.sqrt((cx - cx0) ** 2 + (cy - cy0) ** 2);
+      const distOrig = Math.sqrt((_rsz.startX - cx0) ** 2 + (_rsz.startY - cy0) ** 2);
+      if (distOrig < 2) return;
+      const scale = parseFloat(Math.min(4, Math.max(0.3, _rsz.origScale * distNow / distOrig)).toFixed(3));
+      S.cards[_rsz.idx].bg.imageScale = scale;
+      const card = S.cards[_rsz.idx];
+      const imgEl = document.querySelector(`.c-card[data-idx="${_rsz.idx}"] img[data-card-img]`);
+      if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${scale})`;
+      // Move handle visually
+      _updateBoxHandlePositions(_rsz.idx);
+
+    } else {
+      // Box mode — each corner adjusts different dimensions
+      const card = S.cards[_rsz.idx];
+      const corner = _rsz.corner;
+      // dy in px → dy/ch*100 in %
+      const dyPct = dy / ch * 100;
+      const dxPct = dx / cw * 100;
+
+      let newBoxY = _rsz.origBoxY;
+      let newBoxH = _rsz.origBoxH;
+      let newBoxW = _rsz.origBoxW;
+
+      if (corner === 'tl' || corner === 'tr') {
+        // Top edge: move top = change Y and shrink H
+        newBoxY = Math.min(_rsz.origBoxY + dyPct, _rsz.origBoxY + _rsz.origBoxH - 10);
+        newBoxH = _rsz.origBoxH - (newBoxY - _rsz.origBoxY);
+      }
+      if (corner === 'bl' || corner === 'br') {
+        // Bottom edge: extend/shrink H downward
+        newBoxH = Math.max(10, _rsz.origBoxH + dyPct);
+      }
+      if (corner === 'tl' || corner === 'bl') {
+        // Left edge → width grows leftward (box is centered, so dxPct shrinks width)
+        newBoxW = Math.max(20, _rsz.origBoxW - dxPct * 2);
+      }
+      if (corner === 'tr' || corner === 'br') {
+        // Right edge → width grows rightward
+        newBoxW = Math.max(20, _rsz.origBoxW + dxPct * 2);
+      }
+
+      card.bg.boxY = parseFloat(Math.min(95, Math.max(0, newBoxY)).toFixed(1));
+      card.bg.boxH = parseFloat(Math.min(100, Math.max(10, newBoxH)).toFixed(1));
+      card.bg.boxW = parseFloat(Math.min(100, Math.max(20, newBoxW)).toFixed(1));
+
+      // Update box div directly without full DOM replacement
+      const boxEl = document.querySelector(`.c-card[data-idx="${_rsz.idx}"] div[style*="overflow:hidden"][style*="z-index:1"]`);
+      if (boxEl) {
+        const boxLeft = ((100 - card.bg.boxW) / 2).toFixed(2);
+        boxEl.style.left   = `${boxLeft}%`;
+        boxEl.style.top    = `${card.bg.boxY}%`;
+        boxEl.style.width  = `${card.bg.boxW}%`;
+        boxEl.style.height = `${card.bg.boxH}%`;
+      }
+      _updateBoxHandlePositions(_rsz.idx);
+    }
   }
 
   function onRszEnd() {
@@ -8046,7 +8104,6 @@ function bcNavigate(targetStep) {
     document.removeEventListener('mouseup',   onRszEnd);
     document.removeEventListener('touchmove', onRszMove);
     document.removeEventListener('touchend',  onRszEnd);
-    // Re-render sidebar to update scale slider value
     renderCardSidebar();
   }
 
@@ -8059,16 +8116,65 @@ function bcNavigate(targetStep) {
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
     const cardEl = document.querySelectorAll('.c-card')[idx];
     const rect = cardEl ? cardEl.getBoundingClientRect() : { left:0, top:0, width:320, height:400 };
-    _rsz = {
-      idx, corner,
-      startX: cx, startY: cy,
-      origScale: card.bg.imageScale || 1,
-      cardRect: rect,
-    };
+
+    if (card.bg.boxMode) {
+      _rsz = {
+        mode: 'box', idx, corner,
+        startX: cx, startY: cy,
+        origBoxY: card.bg.boxY != null ? card.bg.boxY : 10,
+        origBoxH: card.bg.boxH != null ? card.bg.boxH : 42,
+        origBoxW: card.bg.boxW != null ? card.bg.boxW : 100,
+        cardRect: rect,
+      };
+    } else {
+      _rsz = {
+        mode: 'full', idx, corner,
+        startX: cx, startY: cy,
+        origScale: card.bg.imageScale || 1,
+        cardRect: rect,
+      };
+    }
     document.addEventListener('mousemove', onRszMove);
     document.addEventListener('mouseup',   onRszEnd);
     document.addEventListener('touchmove', onRszMove, { passive: false });
     document.addEventListener('touchend',  onRszEnd);
+  };
+
+  // Reposition handle elements to match current box dimensions
+  window._updateBoxHandlePositions = function(idx) {
+    const card = S.cards[idx];
+    if (!card) return;
+    const wrap = document.querySelectorAll('.c-card-wrap')[idx];
+    if (!wrap) return;
+    const handles = wrap.querySelectorAll('.card-resize-handle');
+    if (!handles.length) return;
+
+    if (!card.bg.boxMode) {
+      // Full mode: handles stay at card corners (CSS handles positioning)
+      return;
+    }
+
+    // Box mode: position handles at box corners in px
+    const cardW = 320; const cardH = 400; // CSS var values
+    const bxW = card.bg.boxW != null ? card.bg.boxW : 100;
+    const bxH = card.bg.boxH != null ? card.bg.boxH : 42;
+    const bxY = card.bg.boxY != null ? card.bg.boxY : 10;
+    const boxLeft = (100 - bxW) / 2;
+
+    const x0 = cardW * boxLeft / 100;      // left edge px
+    const x1 = cardW * (boxLeft + bxW) / 100; // right edge px
+    const y0 = cardH * bxY / 100;          // top edge px
+    const y1 = cardH * (bxY + bxH) / 100;  // bottom edge px
+
+    const positions = { tl: [x0, y0], tr: [x1, y0], bl: [x0, y1], br: [x1, y1] };
+    const cursors   = { tl: 'nwse-resize', tr: 'nesw-resize', bl: 'nesw-resize', br: 'nwse-resize' };
+    handles.forEach(h => {
+      const [px, py] = positions[h.dataset.corner] || [0, 0];
+      h.classList.add('box-mode');
+      h.style.left   = (px - 5) + 'px';
+      h.style.top    = (py - 5) + 'px';
+      h.style.cursor = cursors[h.dataset.corner] || 'nwse-resize';
+    });
   };
 })();
 
