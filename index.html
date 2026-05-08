@@ -438,7 +438,34 @@ textarea { min-height: 120px; }
 .color-role-swatch:hover { transform: scale(1.15); }
 .color-role-swatch.active { border-color: var(--ink); transform: scale(1.1); }
 
-/* ── BRAND CHIPS ── */
+/* ── IMAGE DRAG & RESIZE ── */
+.img-edit-mode { outline: 2px solid var(--accent) !important; outline-offset: -2px; cursor: grab !important; }
+.img-edit-mode:active { cursor: grabbing !important; }
+.img-resize-handle {
+  position: absolute; width: 12px; height: 12px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--accent);
+  z-index: 30; cursor: nwse-resize;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  transform: translate(-50%,-50%);
+  transition: transform 0.1s;
+}
+.img-resize-handle:hover { transform: translate(-50%,-50%) scale(1.3); }
+.img-edit-toolbar {
+  position: absolute; top: -32px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+  border-radius: 8px; padding: 4px 8px;
+  display: flex; align-items: center; gap: 8px;
+  z-index: 35; white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.img-edit-toolbar span { font-family:'Roboto',sans-serif; font-size:0.62rem; color:rgba(255,255,255,0.8); }
+.img-edit-toolbar button {
+  background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,0.7); font-size: 0.62rem;
+  padding: 2px 6px; border-radius: 4px;
+  font-family:'Roboto',sans-serif;
+}
+.img-edit-toolbar button:hover { background: rgba(255,255,255,0.15); color: #fff; }
 .brand-chip {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 10px 4px 5px; border-radius: 20px;
@@ -5014,12 +5041,23 @@ function renderCardHtml(card, idx, total) {
       <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
         <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
         <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;color:rgba(255,255,255,0.8);letter-spacing:0.8px;text-transform:uppercase;">Trocar</span>
+      </div>
+      <div onclick="enterImageEditMode(${idx})" title="Mover imagem" style="position:absolute;top:8px;left:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
+        <svg width="12" height="12" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        <span style="font-family:'Roboto',sans-serif;font-size:0.65rem;color:#fff;font-weight:400">Ajustar</span>
       </div>`;
     } else {
       // ── FULL MODE ── image covers entire card
       layers += `<div style="position:absolute;inset:0;overflow:hidden;z-index:1;">
         <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${card.bg.imageScale||1});transform-origin:center;object-fit:${card.bg.imageMode==='contain'?'contain':card.bg.imageMode==='fill'?'fill':'cover'};pointer-events:none;user-select:none;" draggable="false"/>
         <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
+          <svg width="12" height="12" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span style="font-family:'Roboto',sans-serif;font-size:0.65rem;color:#fff;font-weight:400">Trocar</span>
+        </div>
+        <div onclick="enterImageEditMode(${idx})" title="Mover/Redimensionar imagem" style="position:absolute;bottom:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
+          <svg width="12" height="12" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+          <span style="font-family:'Roboto',sans-serif;font-size:0.65rem;color:#fff;font-weight:400">Ajustar</span>
+        </div>
           <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
           <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;color:rgba(255,255,255,0.8);letter-spacing:0.8px;text-transform:uppercase;">Trocar</span>
         </div>
@@ -5162,6 +5200,7 @@ function renderCardHtml(card, idx, total) {
 
 // ── CARD SELECTION → SIDEBAR ──
 function selectCard(idx) {
+  exitImageEditMode(); // clean up any active image edit
   S.activeCardIdx = idx;
   // Update selected state visually
   document.querySelectorAll('.c-card').forEach((el, i) => {
@@ -5181,7 +5220,277 @@ function attachCardClickHandlers() {
   });
 }
 
-// ── CARD TEXT EDITING ──
+// ── IMAGE DRAG & RESIZE ENGINE ──
+let _imgEditIdx = null; // currently editing card index
+
+function enterImageEditMode(idx) {
+  exitImageEditMode();
+  _imgEditIdx = idx;
+  const card = S.cards[idx];
+  if (!card?.bg?.imageSrc) return;
+
+  const cardEl = document.querySelectorAll('.c-card')[idx];
+  if (!cardEl) return;
+
+  // Find the background image element
+  const imgEl = cardEl.querySelector('[data-card-img]');
+  if (!imgEl) return;
+
+  // Add edit class to card
+  cardEl.classList.add('img-edit-mode');
+
+  // Create resize overlay container (sits over the card, z-index above image)
+  const overlay = document.createElement('div');
+  overlay.id = 'img-edit-overlay-' + idx;
+  overlay.style.cssText = `position:absolute;inset:0;z-index:25;pointer-events:none;`;
+
+  // Toolbar
+  const toolbar = document.createElement('div');
+  toolbar.className = 'img-edit-toolbar';
+  toolbar.innerHTML = `
+    <span>↔ Arrastar · ◎ Redimensionar</span>
+    <button onclick="resetImageTransform(${idx})">↺ Reset</button>
+    <button onclick="exitImageEditMode()" style="color:#ff6b6b;">✕ Sair</button>
+  `;
+  overlay.appendChild(toolbar);
+
+  // 4 corner resize handles — corners only (proportional scale)
+  const corners = [
+    { x: '0%',   y: '0%',   cursor: 'nwse-resize', dir: -1 },
+    { x: '100%', y: '0%',   cursor: 'nesw-resize', dir:  1 },
+    { x: '0%',   y: '100%', cursor: 'nesw-resize', dir: -1 },
+    { x: '100%', y: '100%', cursor: 'nwse-resize', dir:  1 },
+  ];
+  corners.forEach((c, ci) => {
+    const h = document.createElement('div');
+    h.className = 'img-resize-handle';
+    h.style.left = c.x;
+    h.style.top  = c.y;
+    h.style.cursor = c.cursor;
+    h.style.pointerEvents = 'all';
+    h.addEventListener('mousedown', (e) => { e.stopPropagation(); startResize(e, idx, c.dir); });
+    h.addEventListener('touchstart', (e) => { e.stopPropagation(); startResizeTouch(e, idx, c.dir); }, { passive: false });
+    overlay.appendChild(h);
+  });
+
+  cardEl.style.position = 'relative';
+  cardEl.appendChild(overlay);
+
+  // Make card draggable
+  cardEl.addEventListener('mousedown', onImgDragStart, { capture: false });
+  cardEl.addEventListener('touchstart', onImgDragStartTouch, { capture: false, passive: false });
+
+  // Click outside to exit
+  setTimeout(() => {
+    document.addEventListener('mousedown', onClickOutsideImgEdit, { capture: true, once: false });
+  }, 100);
+}
+
+function exitImageEditMode() {
+  if (_imgEditIdx === null) return;
+  const idx = _imgEditIdx;
+  const cardEl = document.querySelectorAll('.c-card')[idx];
+  if (cardEl) {
+    cardEl.classList.remove('img-edit-mode');
+    cardEl.removeEventListener('mousedown', onImgDragStart, { capture: false });
+    cardEl.removeEventListener('touchstart', onImgDragStartTouch, { capture: false });
+    const overlay = document.getElementById('img-edit-overlay-' + idx);
+    if (overlay) overlay.remove();
+  }
+  document.removeEventListener('mousedown', onClickOutsideImgEdit, { capture: true });
+  _imgEditIdx = null;
+  // Sync sidebar sliders to final values
+  renderCardSidebar();
+}
+
+function onClickOutsideImgEdit(e) {
+  if (_imgEditIdx === null) return;
+  const idx = _imgEditIdx;
+  const cardEl = document.querySelectorAll('.c-card')[idx];
+  const overlay = document.getElementById('img-edit-overlay-' + idx);
+  if (cardEl && (cardEl.contains(e.target) || (overlay && overlay.contains(e.target)))) return;
+  exitImageEditMode();
+}
+
+function resetImageTransform(idx) {
+  S.cards[idx].bg.imageX = 0;
+  S.cards[idx].bg.imageY = 0;
+  S.cards[idx].bg.imageScale = 1;
+  refreshCard(idx);
+  // Re-enter edit mode to refresh handles
+  setTimeout(() => enterImageEditMode(idx), 30);
+}
+
+// ── DRAG ──
+let _drag = null;
+function onImgDragStart(e) {
+  if (_imgEditIdx === null) return;
+  const t = e.target;
+  if (t.classList.contains('img-resize-handle') || t.closest('.img-edit-toolbar')) return;
+  if (t.hasAttribute('contenteditable')) return;
+  e.preventDefault();
+  const idx = _imgEditIdx;
+  const card = S.cards[idx];
+  const isBox = card.bg.boxMode;
+  _drag = {
+    idx, isBox,
+    startX: e.clientX, startY: e.clientY,
+    origX: isBox ? (card.bg.boxImgX || 0) : (card.bg.imageX || 0),
+    origY: isBox ? (card.bg.boxImgY || 0) : (card.bg.imageY || 0),
+  };
+  document.addEventListener('mousemove', onImgDragMove);
+  document.addEventListener('mouseup',   onImgDragEnd);
+}
+
+function onImgDragMove(e) {
+  if (!_drag) return;
+  const dx = e.clientX - _drag.startX;
+  const dy = e.clientY - _drag.startY;
+  if (_drag.isBox) {
+    S.cards[_drag.idx].bg.boxImgX = Math.round(_drag.origX + dx);
+    S.cards[_drag.idx].bg.boxImgY = Math.round(_drag.origY + dy);
+  } else {
+    S.cards[_drag.idx].bg.imageX = Math.round(_drag.origX + dx);
+    S.cards[_drag.idx].bg.imageY = Math.round(_drag.origY + dy);
+  }
+  _refreshImgOnly(_drag.idx);
+}
+
+function onImgDragEnd() {
+  if (!_drag) return;
+  document.removeEventListener('mousemove', onImgDragMove);
+  document.removeEventListener('mouseup',   onImgDragEnd);
+  _drag = null;
+}
+
+// Touch drag
+function onImgDragStartTouch(e) {
+  if (_imgEditIdx === null) return;
+  const t = e.target;
+  if (t.classList.contains('img-resize-handle') || t.closest('.img-edit-toolbar')) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  const idx = _imgEditIdx;
+  const card = S.cards[idx];
+  const isBox = card.bg.boxMode;
+  _drag = {
+    idx, isBox,
+    startX: touch.clientX, startY: touch.clientY,
+    origX: isBox ? (card.bg.boxImgX || 0) : (card.bg.imageX || 0),
+    origY: isBox ? (card.bg.boxImgY || 0) : (card.bg.imageY || 0),
+  };
+  document.addEventListener('touchmove', onImgDragMoveTouch, { passive: false });
+  document.addEventListener('touchend',  onImgDragEndTouch);
+}
+
+function onImgDragMoveTouch(e) {
+  if (!_drag) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  const dx = touch.clientX - _drag.startX;
+  const dy = touch.clientY - _drag.startY;
+  if (_drag.isBox) {
+    S.cards[_drag.idx].bg.boxImgX = Math.round(_drag.origX + dx);
+    S.cards[_drag.idx].bg.boxImgY = Math.round(_drag.origY + dy);
+  } else {
+    S.cards[_drag.idx].bg.imageX = Math.round(_drag.origX + dx);
+    S.cards[_drag.idx].bg.imageY = Math.round(_drag.origY + dy);
+  }
+  _refreshImgOnly(_drag.idx);
+}
+
+function onImgDragEndTouch() {
+  document.removeEventListener('touchmove', onImgDragMoveTouch);
+  document.removeEventListener('touchend',  onImgDragEndTouch);
+  _drag = null;
+}
+
+// ── RESIZE ──
+let _resize = null;
+
+function startResize(e, idx, dir) {
+  e.preventDefault();
+  const card = S.cards[idx];
+  _resize = {
+    idx, dir,
+    startX: e.clientX, startY: e.clientY,
+    origScale: card.bg.imageScale || 1,
+  };
+  document.addEventListener('mousemove', onResizeMove);
+  document.addEventListener('mouseup',   onResizeEnd);
+}
+
+function onResizeMove(e) {
+  if (!_resize) return;
+  // Use the larger of dx/dy for uniform scale, dir determines sign
+  const dx = e.clientX - _resize.startX;
+  const dy = e.clientY - _resize.startY;
+  // Diagonal distance with sign — drag right/down = bigger, left/up = smaller
+  const delta = (Math.abs(dx) > Math.abs(dy) ? dx : dy) * _resize.dir;
+  // 1px drag = 0.5% scale change on 320px card
+  const scaleDelta = delta / 320 * 1.5;
+  const newScale = Math.max(0.2, Math.min(5, _resize.origScale + scaleDelta));
+  S.cards[_resize.idx].bg.imageScale = Math.round(newScale * 100) / 100;
+  _refreshImgOnly(_resize.idx);
+}
+
+function onResizeEnd() {
+  document.removeEventListener('mousemove', onResizeMove);
+  document.removeEventListener('mouseup',   onResizeEnd);
+  _resize = null;
+}
+
+// Touch resize
+function startResizeTouch(e, idx, dir) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const card = S.cards[idx];
+  _resize = {
+    idx, dir,
+    startX: touch.clientX, startY: touch.clientY,
+    origScale: card.bg.imageScale || 1,
+  };
+  document.addEventListener('touchmove', onResizeMoveTouch, { passive: false });
+  document.addEventListener('touchend',  onResizeEndTouch);
+}
+
+function onResizeMoveTouch(e) {
+  if (!_resize) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  const dx = touch.clientX - _resize.startX;
+  const dy = touch.clientY - _resize.startY;
+  const delta = (Math.abs(dx) > Math.abs(dy) ? dx : dy) * _resize.dir;
+  const scaleDelta = delta / 320 * 1.5;
+  const newScale = Math.max(0.2, Math.min(5, _resize.origScale + scaleDelta));
+  S.cards[_resize.idx].bg.imageScale = Math.round(newScale * 100) / 100;
+  _refreshImgOnly(_resize.idx);
+}
+
+function onResizeEndTouch() {
+  document.removeEventListener('touchmove', onResizeMoveTouch);
+  document.removeEventListener('touchend',  onResizeEndTouch);
+  _resize = null;
+}
+
+// ── FAST REFRESH — only update image transform, no full re-render ──
+function _refreshImgOnly(idx) {
+  const card = S.cards[idx];
+  const cardEl = document.querySelectorAll('.c-card')[idx];
+  if (!cardEl) return;
+  const imgEl = cardEl.querySelector('[data-card-img]');
+  if (!imgEl) return;
+  if (card.bg.boxMode) {
+    const bxIX = card.bg.boxImgX || 0;
+    const bxIY = card.bg.boxImgY || 0;
+    imgEl.style.objectPosition = `calc(50% + ${bxIX}px) calc(50% + ${bxIY}px)`;
+  } else {
+    const x = card.bg.imageX || 0;
+    const y = card.bg.imageY || 0;
+    const s = card.bg.imageScale || 1;
+    imgEl.style.transform = `translate(-50%,-50%) translate(${x}px,${y}px) scale(${s})`;
+  }
+}
 function updateCardText(idx, field, text) {
   if (!S.cards[idx]) return;
   if (field === 'title') S.cards[idx].title.text = text;
@@ -5263,15 +5572,48 @@ function renderCardSidebar() {
   }
 
   function slider(label, val, min, max, step, onInput) {
-    const sid = 'sv' + Math.random().toString(36).slice(2,8);
+    const sid  = 'sv'  + Math.random().toString(36).slice(2,8);
+    const iid  = 'si'  + Math.random().toString(36).slice(2,8);
+    const rid  = 'rng' + Math.random().toString(36).slice(2,8);
+    const decimals = step < 1 ? String(step).split('.')[1]?.length || 0 : 0;
     return `<div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-        <span style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">${label}</span>
-        <span style="font-size:0.72rem;font-weight:600;color:var(--ink)" id="${sid}">${val}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;">
+        <span style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;flex:1;min-width:0;">${label}</span>
+        <div style="display:flex;align-items:center;gap:3px;flex-shrink:0;">
+          <button onclick="
+            var r=document.getElementById('${rid}');
+            var nv=Math.max(${min},parseFloat(r.value)-${step});
+            r.value=nv;
+            document.getElementById('${sid}').textContent=nv.toFixed(${decimals});
+            document.getElementById('${iid}').value=nv.toFixed(${decimals});
+            (${onInput})(nv);"
+            style="width:20px;height:20px;border-radius:4px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-size:0.75rem;color:var(--muted);display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">−</button>
+          <input id="${iid}" type="number" value="${Number(val).toFixed(decimals)}" min="${min}" max="${max}" step="${step}"
+            style="width:46px;text-align:center;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--ink);font-size:0.72rem;font-weight:600;padding:2px 2px;height:20px;-moz-appearance:textfield;appearance:textfield;"
+            oninput="
+              var nv=Math.max(${min},Math.min(${max},parseFloat(this.value)||0));
+              document.getElementById('${sid}').textContent=nv;
+              document.getElementById('${rid}').value=nv;
+              (${onInput})(nv);"
+          />
+          <button onclick="
+            var r=document.getElementById('${rid}');
+            var nv=Math.min(${max},parseFloat(r.value)+${step});
+            r.value=nv;
+            document.getElementById('${sid}').textContent=nv.toFixed(${decimals});
+            document.getElementById('${iid}').value=nv.toFixed(${decimals});
+            (${onInput})(nv);"
+            style="width:20px;height:20px;border-radius:4px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-size:0.75rem;color:var(--muted);display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">+</button>
+        </div>
       </div>
-      <input type="range" min="${min}" max="${max}" step="${step}" value="${val}"
-        oninput="document.getElementById('${sid}').textContent=this.value; (${onInput})(this.value)"
+      <input id="${rid}" type="range" min="${min}" max="${max}" step="${step}" value="${val}"
+        oninput="
+          var nv=parseFloat(this.value);
+          document.getElementById('${sid}').textContent=nv.toFixed(${decimals});
+          document.getElementById('${iid}').value=nv.toFixed(${decimals});
+          (${onInput})(nv);"
         style="width:100%;accent-color:var(--accent);cursor:pointer;"/>
+      <span id="${sid}" style="display:none">${val}</span>
     </div>`;
   }
 
