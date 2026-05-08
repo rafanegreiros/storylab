@@ -5233,7 +5233,6 @@ function attachCardClickHandlers() {
 function cardMouseDown(e, idx) {
   if (e.target.hasAttribute('contenteditable')) return;
   if (e.target.closest('.img-upload-overlay')) return;
-  // Middle-click or right-click: ignore
   if (e.button && e.button !== 0) return;
 
   const card = S.cards[idx];
@@ -5241,36 +5240,22 @@ function cardMouseDown(e, idx) {
     selectCard(idx); return;
   }
 
-  // Check if click is on a content-editable (text) or overlay button — if so, don't drag
-  const clickedEl = document.elementFromPoint(e.clientX, e.clientY);
-  if (clickedEl && (clickedEl.hasAttribute('contenteditable') || clickedEl.closest('.img-upload-overlay'))) {
-    return;
-  }
-
-  // Start tracking — decide after small movement whether it's a drag or a click
   const startX = e.clientX, startY = e.clientY;
   let dragging = false;
-  let dragStarted = false;
 
   const onMove = (mv) => {
     const dx = mv.clientX - startX, dy = mv.clientY - startY;
     if (!dragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
       dragging = true;
-      if (!dragStarted) {
-        dragStarted = true;
-        // Select card first so sidebar shows for this card
-        if (S.activeCardIdx !== idx) selectCard(idx);
-        startImgDrag(e, idx);
-      }
+      if (S.activeCardIdx !== idx) selectCard(idx);
+      // Pass move event coordinates so startImgDrag uses correct origin
+      startImgDrag(mv, idx, startX, startY);
     }
   };
-  const onUp = (up) => {
+  const onUp = () => {
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
-    if (!dragging) {
-      // It was a click — select the card
-      selectCard(idx);
-    }
+    if (!dragging) selectCard(idx);
   };
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
@@ -5293,7 +5278,7 @@ function cardTouchStart(e, idx) {
     if (!dragging && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
       dragging = true;
       if (S.activeCardIdx !== idx) selectCard(idx);
-      startImgDrag(e, idx);
+      startImgDrag(mv, idx, startX, startY);
     }
   };
   const onEnd = () => {
@@ -7974,14 +7959,21 @@ function bcNavigate(targetStep) {
     document.removeEventListener('touchend', onDragEnd);
   }
 
-  window.startImgDrag = function(e, idx) {
-    // Only drag on the image layer itself, not on overlays/buttons
+  window.startImgDrag = function(e, idx, overrideStartX, overrideStartY) {
     const card = S.cards[idx];
     if (!card || card.bg.type !== 'image' || !card.bg.imageSrc) return;
     e.preventDefault();
-    e.stopPropagation();
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    // Clean up any lingering drag state before starting a new one
+    if (_drag) {
+      document.removeEventListener('mousemove', onDragMove);
+      document.removeEventListener('mouseup',   onDragEnd);
+      document.removeEventListener('touchmove', onDragMove);
+      document.removeEventListener('touchend',  onDragEnd);
+      _drag = null;
+    }
+    // Use override coords (from cardMouseDown's initial mousedown position) when provided
+    const cx = overrideStartX != null ? overrideStartX : (e.touches ? e.touches[0].clientX : e.clientX);
+    const cy = overrideStartY != null ? overrideStartY : (e.touches ? e.touches[0].clientY : e.clientY);
     const mode = card.bg.boxMode ? 'box' : 'full';
     _drag = {
       idx,
