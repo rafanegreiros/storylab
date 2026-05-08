@@ -958,6 +958,13 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
   border: none;
 }
 .c-card:hover { transform: translateY(-5px); box-shadow: 0 20px 50px rgba(20,18,16,0.15); }
+/* Wrapper that allows resize handles to overflow the card boundary */
+.c-card-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: var(--card-w);
+  height: var(--card-h);
+}
 
 @keyframes cardIn {
   from { opacity:0; transform:translateY(16px); }
@@ -5034,7 +5041,7 @@ function renderCardHtml(card, idx, total) {
       const rLeft   = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
       const rRight  = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
       const boxRadius = `${rTop} ${rRight} ${rBottom} ${rLeft}`;
-      layers += `<div style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};" onmousedown="startImgDrag(event,${idx})" ontouchstart="startImgDrag(event,${idx})">
+      layers += `<div style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};">
         <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:calc(50% + ${bxIX}px) calc(50% + ${bxIY}px);pointer-events:none;user-select:none;" draggable="false"/>
       </div>
       <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
@@ -5043,7 +5050,7 @@ function renderCardHtml(card, idx, total) {
       </div>`;
     } else {
       // ── FULL MODE ── image covers entire card
-      layers += `<div style="position:absolute;inset:0;overflow:hidden;z-index:1;" onmousedown="startImgDrag(event,${idx})" ontouchstart="startImgDrag(event,${idx})">
+      layers += `<div style="position:absolute;inset:0;overflow:hidden;z-index:1;">
         <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${card.bg.imageScale||1});transform-origin:center;object-fit:${card.bg.imageMode==='contain'?'contain':card.bg.imageMode==='fill'?'fill':'cover'};pointer-events:none;user-select:none;" draggable="false"/>
         <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
           <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
@@ -5181,14 +5188,19 @@ function renderCardHtml(card, idx, total) {
 
   const selectedStyle = isSelected ? 'outline:3px solid var(--accent);outline-offset:0;' : '';
   const hasImg = card.bg.type === 'image' && card.bg.imageSrc;
-  const resizeHandles = (isSelected && hasImg) ? `
+  // Resize handles go in the WRAPPER (outside overflow:hidden) so they're visible at card edges
+  const resizeHandles = (isSelected && hasImg && !card.bg.boxMode) ? `
     <div class="card-resize-handle" data-corner="tl" onmousedown="startImgResize(event,${idx},'tl')"></div>
     <div class="card-resize-handle" data-corner="tr" onmousedown="startImgResize(event,${idx},'tr')"></div>
     <div class="card-resize-handle" data-corner="bl" onmousedown="startImgResize(event,${idx},'bl')"></div>
     <div class="card-resize-handle" data-corner="br" onmousedown="startImgResize(event,${idx},'br')"></div>` : '';
-  return `<div class="c-card" data-idx="${idx}" data-has-img="${hasImg?'true':'false'}" onclick="selectCard(${idx})"
-    style="position:relative;overflow:hidden;border-radius:10px;cursor:pointer;${bgStyle}${selectedStyle}flex-shrink:0;width:var(--card-w);height:var(--card-h);">
-    ${layers}${resizeHandles}
+  // Drag handler at card level — only fires when clicking on the image area (z-index 1 layer)
+  const dragAttr = hasImg ? `onmousedown="cardMouseDown(event,${idx})" ontouchstart="cardTouchStart(event,${idx})"` : `onclick="selectCard(${idx})"`;
+  return `<div class="c-card-wrap">
+    <div class="c-card" data-idx="${idx}" data-has-img="${hasImg?'true':'false'}" ${dragAttr}
+      style="position:relative;overflow:hidden;border-radius:10px;cursor:${hasImg?'grab':'pointer'};${bgStyle}${selectedStyle}width:var(--card-w);height:var(--card-h);">
+      ${layers}
+    </div>${resizeHandles}
   </div>`;
 }
 
@@ -5205,12 +5217,92 @@ function selectCard(idx) {
 
 function attachCardClickHandlers() {
   document.querySelectorAll('.c-card').forEach((el, i) => {
-    el.addEventListener('click', (e) => {
-      if (e.target.hasAttribute('contenteditable')) return;
-      if (e.target.closest('.img-upload-overlay')) return;
-      selectCard(i);
-    });
+    // Cards with images use cardMouseDown/cardTouchStart (set inline)
+    // Cards without images need click handler
+    if (!el.dataset.hasImg || el.dataset.hasImg === 'false') {
+      el.addEventListener('click', (e) => {
+        if (e.target.hasAttribute('contenteditable')) return;
+        if (e.target.closest('.img-upload-overlay')) return;
+        selectCard(i);
+      });
+    }
   });
+}
+
+// Called on mousedown for cards with images — decides: drag or select
+function cardMouseDown(e, idx) {
+  if (e.target.hasAttribute('contenteditable')) return;
+  if (e.target.closest('.img-upload-overlay')) return;
+  // Middle-click or right-click: ignore
+  if (e.button && e.button !== 0) return;
+
+  const card = S.cards[idx];
+  if (!card || card.bg.type !== 'image' || !card.bg.imageSrc) {
+    selectCard(idx); return;
+  }
+
+  // Check if click is on a content-editable (text) or overlay button — if so, don't drag
+  const clickedEl = document.elementFromPoint(e.clientX, e.clientY);
+  if (clickedEl && (clickedEl.hasAttribute('contenteditable') || clickedEl.closest('.img-upload-overlay'))) {
+    return;
+  }
+
+  // Start tracking — decide after small movement whether it's a drag or a click
+  const startX = e.clientX, startY = e.clientY;
+  let dragging = false;
+  let dragStarted = false;
+
+  const onMove = (mv) => {
+    const dx = mv.clientX - startX, dy = mv.clientY - startY;
+    if (!dragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+      dragging = true;
+      if (!dragStarted) {
+        dragStarted = true;
+        // Select card first so sidebar shows for this card
+        if (S.activeCardIdx !== idx) selectCard(idx);
+        startImgDrag(e, idx);
+      }
+    }
+  };
+  const onUp = (up) => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    if (!dragging) {
+      // It was a click — select the card
+      selectCard(idx);
+    }
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  e.preventDefault();
+}
+
+function cardTouchStart(e, idx) {
+  if (e.target.hasAttribute('contenteditable')) return;
+  const card = S.cards[idx];
+  if (!card || card.bg.type !== 'image' || !card.bg.imageSrc) {
+    selectCard(idx); return;
+  }
+  const t = e.touches[0];
+  const startX = t.clientX, startY = t.clientY;
+  let dragging = false;
+
+  const onMove = (mv) => {
+    const tc = mv.touches[0];
+    const dx = tc.clientX - startX, dy = tc.clientY - startY;
+    if (!dragging && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+      dragging = true;
+      if (S.activeCardIdx !== idx) selectCard(idx);
+      startImgDrag(e, idx);
+    }
+  };
+  const onEnd = () => {
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onEnd);
+    if (!dragging) selectCard(idx);
+  };
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onEnd);
 }
 
 // ── CARD TEXT EDITING ──
@@ -5635,21 +5727,25 @@ let _cardEditSaveTimer = null;
 function refreshCard(idx) {
   const scroll = document.getElementById('carousel-scroll');
   if (!scroll) return;
-  const cards = scroll.querySelectorAll('.c-card');
-  if (!cards[idx]) { renderFinal(); return; }
+  // Find the wrapper by index — wraps contain .c-card
+  const wraps = scroll.querySelectorAll('.c-card-wrap');
+  if (!wraps[idx]) { renderFinal(); return; }
   const newHtml = renderCardHtml(S.cards[idx], idx, S.cards.length);
   const tmp = document.createElement('div');
   tmp.innerHTML = newHtml;
-  const newCard = tmp.firstElementChild;
-  cards[idx].replaceWith(newCard);
-  // Re-attach click on new card
-  newCard.addEventListener('click', (e) => {
-    if (e.target.hasAttribute('contenteditable')) return;
-    if (e.target.closest('.img-upload-overlay')) return;
-    selectCard(idx);
-  });
-  // Keep selection highlight
-  if (idx === S.activeCardIdx) newCard.style.outline = '3px solid var(--accent)';
+  const newWrap = tmp.firstElementChild; // .c-card-wrap
+  wraps[idx].replaceWith(newWrap);
+  // Inner .c-card for non-image click handler
+  const innerCard = newWrap.querySelector('.c-card');
+  if (innerCard && (!innerCard.dataset.hasImg || innerCard.dataset.hasImg === 'false')) {
+    innerCard.addEventListener('click', (e) => {
+      if (e.target.hasAttribute('contenteditable')) return;
+      if (e.target.closest('.img-upload-overlay')) return;
+      selectCard(idx);
+    });
+  }
+  // Keep selection highlight on inner card
+  if (idx === S.activeCardIdx && innerCard) innerCard.style.outline = '3px solid var(--accent)';
   // Debounced autoSave — fires 1.5s after last edit
   clearTimeout(_cardEditSaveTimer);
   _cardEditSaveTimer = setTimeout(() => { autoSave(); }, 1500);
@@ -7855,18 +7951,22 @@ function bcNavigate(targetStep) {
     if (_drag.mode === 'full') {
       card.bg.imageX = Math.round(_drag.origX + dx);
       card.bg.imageY = Math.round(_drag.origY + dy);
+      // Update image transform directly — no DOM replacement during drag
+      const imgEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img]`);
+      if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX}px,${card.bg.imageY}px) scale(${card.bg.imageScale||1})`;
     } else {
-      // box mode — move the img inside the box
+      // box mode — move the img inside the box via object-position
       card.bg.boxImgX = Math.round(_drag.origX + dx);
       card.bg.boxImgY = Math.round(_drag.origY + dy);
+      const imgEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img]`);
+      if (imgEl) imgEl.style.objectPosition = `calc(50% + ${card.bg.boxImgX}px) calc(50% + ${card.bg.boxImgY}px)`;
     }
-    refreshCard(_drag.idx);
   }
 
   function onDragEnd(e) {
     if (!_drag) return;
     const cardEl = document.querySelectorAll('.c-card')[_drag.idx];
-    if (cardEl) { cardEl.removeAttribute('data-dragging'); }
+    if (cardEl) { cardEl.removeAttribute('data-dragging'); cardEl.style.cursor = 'grab'; }
     _drag = null;
     document.removeEventListener('mousemove', onDragMove);
     document.removeEventListener('mouseup', onDragEnd);
@@ -7908,7 +8008,6 @@ function bcNavigate(targetStep) {
     e.preventDefault();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    // Distance from center of card at drag start vs now
     const cw = _rsz.cardRect.width;
     const ch = _rsz.cardRect.height;
     const cx0 = _rsz.cardRect.left + cw/2;
@@ -7918,8 +8017,12 @@ function bcNavigate(targetStep) {
     if (distOrig < 2) return;
     const ratio = distNow / distOrig;
     const newScale = Math.min(4, Math.max(0.3, _rsz.origScale * ratio));
-    S.cards[_rsz.idx].bg.imageScale = parseFloat(newScale.toFixed(3));
-    refreshCard(_rsz.idx);
+    const scale = parseFloat(newScale.toFixed(3));
+    S.cards[_rsz.idx].bg.imageScale = scale;
+    // Update transform directly — no DOM replacement during resize
+    const card = S.cards[_rsz.idx];
+    const imgEl = document.querySelector(`.c-card[data-idx="${_rsz.idx}"] img[data-card-img]`);
+    if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${scale})`;
   }
 
   function onRszEnd() {
