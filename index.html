@@ -6329,7 +6329,9 @@ async function exportCardToCanvas(card, idx) {
         await drawBoxImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H, SC);
       }
     } else {
-      ctx.fillStyle = card.bg.color || '#111111';
+      // Full image mode: always fill black as base (prevents brand color bleeding through
+      // when image is shifted and doesn't cover entire canvas)
+      ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
       if (card.bg.type === 'image' && card.bg.imageSrc) {
         await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H);
@@ -6596,69 +6598,104 @@ async function exportCardToCanvas(card, idx) {
     let y = textCenterY + tOffY - totalBlockH / 2 + tFS * 1.1;
 
     // Draw title lines with highlight support
-    const _norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\n/g, ' ');
+    // Strategy: tokenize the full title text, mark each token as highlighted or not,
+    // then render line by line. This works regardless of how wrapText broke the lines.
+    const _norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const hlWord = card.title.highlight?.word;
-    // If hlWord spans multiple lines (contains \n), split into segments — each segment matches its own line
-    const hlSegments = hlWord
-      ? hlWord.split('\n').map(s => s.trim()).filter(Boolean).map(s => _norm(s))
-      : [];
-    // Also support the full joined phrase as a fallback for single-line titles
-    const hlNormFull = hlWord ? _norm(hlWord.replace(/\n/g, ' ').trim()) : null;
+    const hlColor = card.title.highlight?.color;
+
+    // Build token highlight map from the full title text
+    // Each token = { text, highlighted }
+    let tokenMap = null;
+    if (hlWord && hlColor) {
+      const fullText = titleClean.replace(/\n/g, ' '); // flatten for matching
+      const hlNormStr = _norm(hlWord.replace(/\n/g, ' ').trim());
+      const fullNorm = _norm(fullText);
+      // Find all occurrences of hlNorm in fullNorm
+      const hlRanges = []; // [{start, end}] in original fullText char positions
+      let searchFrom = 0;
+      while (true) {
+        const pos = fullNorm.indexOf(hlNormStr, searchFrom);
+        if (pos < 0) break;
+        // Map normalized pos back to original string positions
+        let normAcc = 0, origStart = fullText.length;
+        for (let ci = 0; ci < fullText.length; ci++) {
+          if (normAcc >= pos) { origStart = ci; break; }
+          normAcc += _norm(fullText[ci]).length;
+        }
+        let normAcc2 = 0, origEnd = fullText.length;
+        for (let ci = origStart; ci < fullText.length; ci++) {
+          if (normAcc2 >= hlNormStr.length) { origEnd = ci; break; }
+          normAcc2 += _norm(fullText[ci]).length;
+        }
+        hlRanges.push({ start: origStart, end: origEnd });
+        searchFrom = pos + 1;
+      }
+      tokenMap = { fullText, hlRanges };
+    }
+
+    // Helper: given a substring of fullText starting at globalOffset, split into highlighted segments
+    function getLineSegments(lineText, globalOffset) {
+      if (!tokenMap || !tokenMap.hlRanges.length) {
+        return [{ text: lineText, hl: false }];
+      }
+      const segments = [];
+      let pos = 0;
+      while (pos < lineText.length) {
+        const absPos = globalOffset + pos;
+        // Check if absPos falls inside a highlight range
+        const range = tokenMap.hlRanges.find(r => absPos >= r.start && absPos < r.end);
+        if (range) {
+          const hlLen = Math.min(range.end - absPos, lineText.length - pos);
+          segments.push({ text: lineText.slice(pos, pos + hlLen), hl: true });
+          pos += hlLen;
+        } else {
+          // Find start of next highlight range
+          const nextRange = tokenMap.hlRanges
+            .filter(r => r.start > absPos)
+            .sort((a, b) => a.start - b.start)[0];
+          const end = nextRange ? Math.min(nextRange.start - globalOffset, lineText.length) : lineText.length;
+          segments.push({ text: lineText.slice(pos, end), hl: false });
+          pos = end;
+        }
+      }
+      return segments;
+    }
 
     ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
     ctx.fillStyle = card.title.color;
     ctx.textAlign = tAlign;
 
-    // Build a set of normalized segments to match per line
+    // Track global character offset as we walk through lines
+    // wrapText flattens \n to spaces when splitting, so we reconstruct by joining lines with space
+    let globalOffset = 0;
     for (const line of titleLines) {
       const lineTrimmed = line.replace(/\n/g, ' ');
-      const lineNorm = _norm(lineTrimmed);
+      const segments = getLineSegments(lineTrimmed, globalOffset);
+      const hasHighlight = segments.some(s => s.hl);
 
-      // Try full phrase first, then individual segments
-      let hlNorm = null;
-      if (hlNormFull && lineNorm.includes(hlNormFull)) {
-        hlNorm = hlNormFull;
-      } else {
-        // Find which segment (if any) appears in this line
-        hlNorm = hlSegments.find(seg => seg && lineNorm.includes(seg)) || null;
-      }
-
-      const hlIdx = hlNorm ? lineNorm.indexOf(hlNorm) : -1;
-
-      if (hlIdx >= 0 && hlNorm) {
-        // Map normalized index back to original string char positions
-        let normAcc = 0, origStart = lineTrimmed.length;
-        for (let ci = 0; ci < lineTrimmed.length; ci++) {
-          if (normAcc >= hlIdx) { origStart = ci; break; }
-          normAcc += _norm(lineTrimmed[ci]).length;
-        }
-        let normAcc2 = 0, origEnd = lineTrimmed.length;
-        for (let ci = origStart; ci < lineTrimmed.length; ci++) {
-          if (normAcc2 >= hlNorm.length) { origEnd = ci; break; }
-          normAcc2 += _norm(lineTrimmed[ci]).length;
-        }
-
-        const before      = lineTrimmed.slice(0, origStart);
-        const highlighted = lineTrimmed.slice(origStart, origEnd);
-        const after       = lineTrimmed.slice(origEnd);
-
+      if (hasHighlight) {
         ctx.textAlign = 'left';
         ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
         let wx = tPad + tOffX;
         if (tAlign !== 'left') {
           const lineW = ctx.measureText(lineTrimmed).width;
-          wx = tAlign === 'center' ? (EXPORT_W - lineW) / 2 + tOffX : EXPORT_W - tPad - lineW + tOffX;
+          wx = tAlign === 'center' ? (EXPORT_W - lineW) / 2 + tOffX
+             : EXPORT_W - tPad - lineW + tOffX;
         }
-        if (before)      { ctx.fillStyle = card.title.color;           ctx.fillText(before,      wx, y); wx += ctx.measureText(before).width; }
-        ctx.fillStyle = card.title.highlight.color;
-        ctx.fillText(highlighted, wx, y); wx += ctx.measureText(highlighted).width;
-        if (after)       { ctx.fillStyle = card.title.color;           ctx.fillText(after,       wx, y); }
+        for (const seg of segments) {
+          ctx.fillStyle = seg.hl ? hlColor : card.title.color;
+          ctx.fillText(seg.text, wx, y);
+          wx += ctx.measureText(seg.text).width;
+        }
         ctx.textAlign = tAlign;
       } else {
         ctx.fillStyle = card.title.color;
         ctx.fillText(lineTrimmed, tX, y);
       }
       ctx.fillStyle = card.title.color;
+      // Advance globalOffset: line length + 1 for the space/newline wrapText consumed
+      globalOffset += lineTrimmed.length + 1;
       y += tFS * 1.1;
     }
     ctx.restore();
