@@ -5188,30 +5188,42 @@ function renderCardHtml(card, idx, total) {
 
   const selectedStyle = isSelected ? 'outline:3px solid var(--accent);outline-offset:0;' : '';
   const hasImg = card.bg.type === 'image' && card.bg.imageSrc;
-  // Resize handles go in the WRAPPER (outside overflow:hidden) so they're visible at card edges
-  const resizeHandles = (isSelected && hasImg && !card.bg.boxMode) ? `
-    <div class="card-resize-handle" data-corner="tl" onmousedown="startImgResize(event,${idx},'tl')"></div>
-    <div class="card-resize-handle" data-corner="tr" onmousedown="startImgResize(event,${idx},'tr')"></div>
-    <div class="card-resize-handle" data-corner="bl" onmousedown="startImgResize(event,${idx},'bl')"></div>
-    <div class="card-resize-handle" data-corner="br" onmousedown="startImgResize(event,${idx},'br')"></div>` : '';
-  // Drag handler at card level — only fires when clicking on the image area (z-index 1 layer)
   const dragAttr = hasImg ? `onmousedown="cardMouseDown(event,${idx})" ontouchstart="cardTouchStart(event,${idx})"` : `onclick="selectCard(${idx})"`;
   return `<div class="c-card-wrap">
     <div class="c-card" data-idx="${idx}" data-has-img="${hasImg?'true':'false'}" ${dragAttr}
       style="position:relative;overflow:hidden;border-radius:10px;cursor:${hasImg?'grab':'pointer'};${bgStyle}${selectedStyle}width:var(--card-w);height:var(--card-h);">
       ${layers}
-    </div>${resizeHandles}
+    </div>
   </div>`;
 }
 
 // ── CARD SELECTION → SIDEBAR ──
 function selectCard(idx) {
   S.activeCardIdx = idx;
-  // Update selected state visually
+
+  // Update outline on inner cards
   document.querySelectorAll('.c-card').forEach((el, i) => {
     el.style.outline = i === idx ? '3px solid var(--accent)' : '';
     el.style.outlineOffset = '0';
   });
+
+  // Move resize handles: remove from all wrappers, add to the selected one if it has an image
+  document.querySelectorAll('.card-resize-handle').forEach(h => h.remove());
+  const card = S.cards[idx];
+  const hasImg = card && card.bg.type === 'image' && card.bg.imageSrc && !card.bg.boxMode;
+  if (hasImg) {
+    const wraps = document.querySelectorAll('.c-card-wrap');
+    if (wraps[idx]) {
+      ['tl','tr','bl','br'].forEach(corner => {
+        const h = document.createElement('div');
+        h.className = 'card-resize-handle';
+        h.dataset.corner = corner;
+        h.onmousedown = (e) => startImgResize(e, idx, corner);
+        wraps[idx].appendChild(h);
+      });
+    }
+  }
+
   renderCardSidebar();
 }
 
@@ -5712,15 +5724,13 @@ let _cardEditSaveTimer = null;
 function refreshCard(idx) {
   const scroll = document.getElementById('carousel-scroll');
   if (!scroll) return;
-  // Find the wrapper by index — wraps contain .c-card
   const wraps = scroll.querySelectorAll('.c-card-wrap');
   if (!wraps[idx]) { renderFinal(); return; }
   const newHtml = renderCardHtml(S.cards[idx], idx, S.cards.length);
   const tmp = document.createElement('div');
   tmp.innerHTML = newHtml;
-  const newWrap = tmp.firstElementChild; // .c-card-wrap
+  const newWrap = tmp.firstElementChild;
   wraps[idx].replaceWith(newWrap);
-  // Inner .c-card for non-image click handler
   const innerCard = newWrap.querySelector('.c-card');
   if (innerCard && (!innerCard.dataset.hasImg || innerCard.dataset.hasImg === 'false')) {
     innerCard.addEventListener('click', (e) => {
@@ -5729,9 +5739,21 @@ function refreshCard(idx) {
       selectCard(idx);
     });
   }
-  // Keep selection highlight on inner card
-  if (idx === S.activeCardIdx && innerCard) innerCard.style.outline = '3px solid var(--accent)';
-  // Debounced autoSave — fires 1.5s after last edit
+  if (idx === S.activeCardIdx && innerCard) {
+    innerCard.style.outline = '3px solid var(--accent)';
+    // Re-add resize handles if selected card has image
+    const card = S.cards[idx];
+    const hasImg = card && card.bg.type === 'image' && card.bg.imageSrc && !card.bg.boxMode;
+    if (hasImg) {
+      ['tl','tr','bl','br'].forEach(corner => {
+        const h = document.createElement('div');
+        h.className = 'card-resize-handle';
+        h.dataset.corner = corner;
+        h.onmousedown = (e) => startImgResize(e, idx, corner);
+        newWrap.appendChild(h);
+      });
+    }
+  }
   clearTimeout(_cardEditSaveTimer);
   _cardEditSaveTimer = setTimeout(() => { autoSave(); }, 1500);
 }
