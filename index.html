@@ -7798,6 +7798,56 @@ function showHistoryList() {
   loadHistoryList();
 }
 
+// ── CARD MIGRATION: fill in missing fields added in newer versions ──
+function migrateCard(card) {
+  if (!card) return card;
+  // Ensure bg object exists
+  card.bg = card.bg || {};
+  // Fields added for image drag & resize
+  if (card.bg.imageScale == null) card.bg.imageScale = 1;
+  if (card.bg.imageX     == null) card.bg.imageX     = 0;
+  if (card.bg.imageY     == null) card.bg.imageY     = 0;
+  if (card.bg.imageMode  == null) card.bg.imageMode  = 'cover';
+  // Fields added for box mode
+  if (card.bg.boxMode    == null) card.bg.boxMode    = false;
+  if (card.bg.boxY       == null) card.bg.boxY       = 10;
+  if (card.bg.boxH       == null) card.bg.boxH       = 42;
+  if (card.bg.boxW       == null) card.bg.boxW       = 100;
+  if (card.bg.boxImgX    == null) card.bg.boxImgX    = 0;
+  if (card.bg.boxImgY    == null) card.bg.boxImgY    = 0;
+  if (card.bg.boxTextLayout == null) card.bg.boxTextLayout = 'top';
+  // Fields added for gradient
+  if (!card.bg.gradColors) card.bg.gradColors = ['#0071e3', '#000000'];
+  if (card.bg.gradAngle  == null) card.bg.gradAngle  = 180;
+  // Overlay
+  card.overlay = card.overlay || {};
+  if (card.overlay.visible      == null) card.overlay.visible      = false;
+  if (card.overlay.color        == null) card.overlay.color        = '#000000';
+  if (card.overlay.direction    == null) card.overlay.direction    = 'bottom-up';
+  if (card.overlay.opacityStart == null) card.overlay.opacityStart = 0.85;
+  if (card.overlay.opacityEnd   == null) card.overlay.opacityEnd   = 0;
+  if (card.overlay.reach        == null) card.overlay.reach        = 60;
+  // img2 (second image / split mode)
+  card.img2 = card.img2 || {};
+  if (card.img2.visible == null) card.img2.visible = false;
+  if (card.img2.mode    == null) card.img2.mode    = 'split-h';
+  // Title
+  card.title = card.title || {};
+  if (card.title.offsetX == null) card.title.offsetX = 0;
+  if (card.title.offsetY == null) card.title.offsetY = 0;
+  if (!card.title.fontFamily)     card.title.fontFamily = "'Fraunces', serif";
+  // Body
+  card.body = card.body || {};
+  if (card.body.offsetX == null) card.body.offsetX = 0;
+  if (card.body.offsetY == null) card.body.offsetY = 0;
+  if (!card.body.fontFamily)     card.body.fontFamily  = "'Syne', sans-serif";
+  // Components
+  card.header = card.header || { visible: true, bgColor: 'transparent' };
+  card.cta    = card.cta    || { visible: false };
+  card.avatar = card.avatar || { visible: false };
+  return card;
+}
+
 function restoreSnap(snap, sessionId) {
   if (sessionId) activeSessionId = sessionId;
   Object.assign(S, {
@@ -7819,7 +7869,7 @@ function restoreSnap(snap, sessionId) {
     espinha: snap.espinha || null,
     selectedTemplate: snap.selectedTemplate || null,
     renderCards: snap.renderCards || [],
-    cards: snap.cards || snap.renderCards || [],
+    cards: (snap.cards || snap.renderCards || []).map(migrateCard),
     renderAnalysis: snap.renderAnalysis || null,
     sources: snap.sources || [],
     postDescricao: snap.postDescricao || '',
