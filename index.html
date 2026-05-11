@@ -6987,22 +6987,31 @@ async function drawBoxImageOnCanvas(ctx, src, bgState, W, H, SC) {
       const bxW  = (bgState.boxW  != null ? bgState.boxW  : 100) / 100;
       const bxH  = (bgState.boxH  != null ? bgState.boxH  : 42)  / 100;
       const bxY  = (bgState.boxY  != null ? bgState.boxY  : 10)  / 100;
-      const bxIX = (bgState.boxImgX != null ? bgState.boxImgX : 0) * (W / 320);
-      const bxIY = (bgState.boxImgY != null ? bgState.boxImgY : 0) * (H / 400);
 
       const boxW  = W * bxW;
       const boxH  = H * bxH;
       const boxX  = (W - boxW) / 2;
       const boxY  = H * bxY;
 
-      // Scale image to cover the box — matches CSS min-width:100%;min-height:100%
-      // Apply imageScale if set (matches full mode behavior)
+      // Base scale: same as CSS min-width:100%;min-height:100% — cover the box
       const imgScale = bgState.imageScale || 1;
       const scaleW = boxW / img.naturalWidth;
       const scaleH = boxH / img.naturalHeight;
-      const scale = Math.max(scaleW, scaleH) * imgScale;
+      const coverScale = Math.max(scaleW, scaleH); // scale to cover box at imageScale=1
+      const scale = coverScale * imgScale;
+
       const rW = img.naturalWidth  * scale;
       const rH = img.naturalHeight * scale;
+
+      // Offsets: preview uses DOM px on a 320×400 card.
+      // Export canvas is W×H. Scale offsets by the ratio of export card size to preview card size,
+      // then also apply the same imgScale factor (bigger image = same visual offset needs more canvas px)
+      const previewCardW = 320, previewCardH = 400;
+      const exportScaleX = W / previewCardW;
+      const exportScaleY = H / previewCardH;
+      const bxIX = (bgState.boxImgX != null ? bgState.boxImgX : 0) * exportScaleX * imgScale;
+      const bxIY = (bgState.boxImgY != null ? bgState.boxImgY : 0) * exportScaleY * imgScale;
+
       const dx = boxX + (boxW - rW) / 2 + bxIX;
       const dy = boxY + (boxH - rH) / 2 + bxIY;
 
