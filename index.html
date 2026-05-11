@@ -5044,7 +5044,7 @@ function renderCardHtml(card, idx, total) {
       const rLeft   = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
       const rRight  = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
       const boxRadius = `${rTop} ${rRight} ${rBottom} ${rLeft}`;
-      layers += `<div style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};">
+      layers += `<div data-box-img="${idx}" style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};">
         <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:calc(50% + ${bxIX}px) calc(50% + ${bxIY}px);pointer-events:none;user-select:none;" draggable="false"/>
       </div>
       <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
@@ -8135,13 +8135,19 @@ function bcNavigate(targetStep) {
       card.bg.boxW = parseFloat(Math.min(100, Math.max(20, newBoxW)).toFixed(1));
 
       // Update box div directly without full DOM replacement
-      const boxEl = document.querySelector(`.c-card[data-idx="${_rsz.idx}"] div[style*="overflow:hidden"][style*="z-index:1"]`);
+      const boxEl = document.querySelector(`[data-box-img="${_rsz.idx}"]`);
       if (boxEl) {
-        const boxLeft = ((100 - card.bg.boxW) / 2).toFixed(2);
-        boxEl.style.left   = `${boxLeft}%`;
-        boxEl.style.top    = `${card.bg.boxY}%`;
-        boxEl.style.width  = `${card.bg.boxW}%`;
-        boxEl.style.height = `${card.bg.boxH}%`;
+        const bxW = card.bg.boxW, bxH = card.bg.boxH, bxY = card.bg.boxY;
+        const boxLeft = ((100 - bxW) / 2).toFixed(2);
+        const rTop    = bxY  <= 0.5          ? '0' : '4px';
+        const rBottom = (bxY + bxH) >= 99.5  ? '0' : '4px';
+        const rLeft   = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
+        const rRight  = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
+        boxEl.style.left         = `${boxLeft}%`;
+        boxEl.style.top          = `${bxY}%`;
+        boxEl.style.width        = `${bxW}%`;
+        boxEl.style.height       = `${bxH}%`;
+        boxEl.style.borderRadius = `${rTop} ${rRight} ${rBottom} ${rLeft}`;
       }
       _updateBoxHandlePositions(_rsz.idx);
     }
@@ -8205,7 +8211,9 @@ function bcNavigate(targetStep) {
     }
 
     // Box mode: position handles at box corners in px
-    const cardW = 320; const cardH = 400; // CSS var values
+    const wrapRect = wrap.getBoundingClientRect();
+    const cardW = wrapRect.width  || 320;
+    const cardH = wrapRect.height || 400;
     const bxW = card.bg.boxW != null ? card.bg.boxW : 100;
     const bxH = card.bg.boxH != null ? card.bg.boxH : 42;
     const bxY = card.bg.boxY != null ? card.bg.boxY : 10;
