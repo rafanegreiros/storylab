@@ -5045,7 +5045,7 @@ function renderCardHtml(card, idx, total) {
       const rRight  = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
       const boxRadius = `${rTop} ${rRight} ${rBottom} ${rLeft}`;
       layers += `<div data-box-img="${idx}" style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};">
-        <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:calc(50% + ${bxIX}px) calc(50% + ${bxIY}px);pointer-events:none;user-select:none;" draggable="false"/>
+        <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px) scale(${card.bg.imageScale||1});transform-origin:center;object-fit:cover;pointer-events:none;user-select:none;" draggable="false"/>
       </div>
       <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
         <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
@@ -8018,11 +8018,11 @@ function bcNavigate(targetStep) {
       const imgEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img]`);
       if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX}px,${card.bg.imageY}px) scale(${card.bg.imageScale||1})`;
     } else {
-      // box mode — move the img inside the box via object-position
+      // box mode — move the img inside the box via transform
       card.bg.boxImgX = Math.round(_drag.origX + dx);
       card.bg.boxImgY = Math.round(_drag.origY + dy);
       const imgEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img]`);
-      if (imgEl) imgEl.style.objectPosition = `calc(50% + ${card.bg.boxImgX}px) calc(50% + ${card.bg.boxImgY}px)`;
+      if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.boxImgX}px,${card.bg.boxImgY}px) scale(${card.bg.imageScale||1})`;
     }
   }
 
@@ -8073,20 +8073,17 @@ function bcNavigate(targetStep) {
 ;(function() {
   let _rsz = null;
   // _rsz for full mode: { mode:'full', idx, corner, startX, startY, origScale, cardRect }
-  // _rsz for box mode:  { mode:'box',  idx, corner, startX, startY, origBoxY, origBoxH, origBoxW, cardRect }
+  // _rsz for box mode:  { mode:'box',  idx, corner, startX, startY, origScale, boxRect }
 
   function onRszMove(e) {
     if (!_rsz) return;
     e.preventDefault();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    const dx = cx - _rsz.startX;
-    const dy = cy - _rsz.startY;
-    const cw = _rsz.cardRect.width;   // px width of card
-    const ch = _rsz.cardRect.height;  // px height of card
 
     if (_rsz.mode === 'full') {
-      // Scale proportionally from center
+      // Scale proportionally from card center
+      const cw = _rsz.cardRect.width, ch = _rsz.cardRect.height;
       const cx0 = _rsz.cardRect.left + cw / 2;
       const cy0 = _rsz.cardRect.top  + ch / 2;
       const distNow  = Math.sqrt((cx - cx0) ** 2 + (cy - cy0) ** 2);
@@ -8097,59 +8094,20 @@ function bcNavigate(targetStep) {
       const card = S.cards[_rsz.idx];
       const imgEl = document.querySelector(`.c-card[data-idx="${_rsz.idx}"] img[data-card-img]`);
       if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${scale})`;
-      // Move handle visually
-      _updateBoxHandlePositions(_rsz.idx);
 
     } else {
-      // Box mode — each corner adjusts different dimensions
+      // Box mode — scale the IMAGE inside the box (box itself is the mask, stays fixed)
+      // Reference point: center of the box element
+      const bx0 = _rsz.boxRect.left + _rsz.boxRect.width  / 2;
+      const by0 = _rsz.boxRect.top  + _rsz.boxRect.height / 2;
+      const distNow  = Math.sqrt((cx - bx0) ** 2 + (cy - by0) ** 2);
+      const distOrig = Math.sqrt((_rsz.startX - bx0) ** 2 + (_rsz.startY - by0) ** 2);
+      if (distOrig < 2) return;
+      const scale = parseFloat(Math.min(6, Math.max(0.3, _rsz.origScale * distNow / distOrig)).toFixed(3));
+      S.cards[_rsz.idx].bg.imageScale = scale;
       const card = S.cards[_rsz.idx];
-      const corner = _rsz.corner;
-      // dy in px → dy/ch*100 in %
-      const dyPct = dy / ch * 100;
-      const dxPct = dx / cw * 100;
-
-      let newBoxY = _rsz.origBoxY;
-      let newBoxH = _rsz.origBoxH;
-      let newBoxW = _rsz.origBoxW;
-
-      if (corner === 'tl' || corner === 'tr') {
-        // Top edge: move top = change Y and shrink H
-        newBoxY = Math.min(_rsz.origBoxY + dyPct, _rsz.origBoxY + _rsz.origBoxH - 10);
-        newBoxH = _rsz.origBoxH - (newBoxY - _rsz.origBoxY);
-      }
-      if (corner === 'bl' || corner === 'br') {
-        // Bottom edge: extend/shrink H downward
-        newBoxH = Math.max(10, _rsz.origBoxH + dyPct);
-      }
-      if (corner === 'tl' || corner === 'bl') {
-        // Left edge → width grows leftward (box is centered, so dxPct shrinks width)
-        newBoxW = Math.max(20, _rsz.origBoxW - dxPct * 2);
-      }
-      if (corner === 'tr' || corner === 'br') {
-        // Right edge → width grows rightward
-        newBoxW = Math.max(20, _rsz.origBoxW + dxPct * 2);
-      }
-
-      card.bg.boxY = parseFloat(Math.min(95, Math.max(0, newBoxY)).toFixed(1));
-      card.bg.boxH = parseFloat(Math.min(100, Math.max(10, newBoxH)).toFixed(1));
-      card.bg.boxW = parseFloat(Math.min(100, Math.max(20, newBoxW)).toFixed(1));
-
-      // Update box div directly without full DOM replacement
-      const boxEl = document.querySelector(`[data-box-img="${_rsz.idx}"]`);
-      if (boxEl) {
-        const bxW = card.bg.boxW, bxH = card.bg.boxH, bxY = card.bg.boxY;
-        const boxLeft = ((100 - bxW) / 2).toFixed(2);
-        const rTop    = bxY  <= 0.5          ? '0' : '4px';
-        const rBottom = (bxY + bxH) >= 99.5  ? '0' : '4px';
-        const rLeft   = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
-        const rRight  = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
-        boxEl.style.left         = `${boxLeft}%`;
-        boxEl.style.top          = `${bxY}%`;
-        boxEl.style.width        = `${bxW}%`;
-        boxEl.style.height       = `${bxH}%`;
-        boxEl.style.borderRadius = `${rTop} ${rRight} ${rBottom} ${rLeft}`;
-      }
-      _updateBoxHandlePositions(_rsz.idx);
+      const imgEl = document.querySelector(`.c-card[data-idx="${_rsz.idx}"] img[data-card-img]`);
+      if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.boxImgX||0}px,${card.bg.boxImgY||0}px) scale(${scale})`;
     }
   }
 
@@ -8171,23 +8129,24 @@ function bcNavigate(targetStep) {
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
     const cardEl = document.querySelectorAll('.c-card')[idx];
-    const rect = cardEl ? cardEl.getBoundingClientRect() : { left:0, top:0, width:320, height:400 };
+    const cardRect = cardEl ? cardEl.getBoundingClientRect() : { left:0, top:0, width:320, height:400 };
 
     if (card.bg.boxMode) {
+      // Get the actual box element rect to use as scale reference center
+      const boxEl = document.querySelector(`[data-box-img="${idx}"]`);
+      const boxRect = boxEl ? boxEl.getBoundingClientRect() : cardRect;
       _rsz = {
         mode: 'box', idx, corner,
         startX: cx, startY: cy,
-        origBoxY: card.bg.boxY != null ? card.bg.boxY : 10,
-        origBoxH: card.bg.boxH != null ? card.bg.boxH : 42,
-        origBoxW: card.bg.boxW != null ? card.bg.boxW : 100,
-        cardRect: rect,
+        origScale: card.bg.imageScale || 1,
+        boxRect,
       };
     } else {
       _rsz = {
         mode: 'full', idx, corner,
         startX: cx, startY: cy,
         origScale: card.bg.imageScale || 1,
-        cardRect: rect,
+        cardRect,
       };
     }
     document.addEventListener('mousemove', onRszMove);
