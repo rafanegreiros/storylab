@@ -5044,9 +5044,39 @@ function renderCardHtml(card, idx, total) {
       const rLeft   = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
       const rRight  = parseFloat(boxLeft) <= 0.2 ? '0' : '4px';
       const boxRadius = `${rTop} ${rRight} ${rBottom} ${rLeft}`;
+      // Calculate cover scale exactly as the export canvas does:
+      // scale image so it covers the box (in px), then apply imageScale on top.
+      // boxW/H in px = card 320×400 * box%
+      const CARD_W = 320, CARD_H = 400;
+      const boxWpx = CARD_W * (bxW / 100);
+      const boxHpx = CARD_H * (bxH / 100);
+      const natW = card.bg.imgNaturalW || 0;
+      const natH = card.bg.imgNaturalH || 0;
+
+      if (!natW || !natH) {
+        // Legacy card: dimensions not stored — resolve lazily then re-render
+        const _tmpImg = new Image();
+        _tmpImg.onload = () => {
+          S.cards[idx].bg.imgNaturalW = _tmpImg.naturalWidth;
+          S.cards[idx].bg.imgNaturalH = _tmpImg.naturalHeight;
+          refreshCard(idx);
+        };
+        _tmpImg.src = card.bg.imageSrc;
+        // Fallback render while loading
+        layers += `<div data-box-img="${idx}" style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};">
+          <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px);object-fit:cover;pointer-events:none;user-select:none;" draggable="false"/>
+        </div>`;
+      } else {
+      const coverScaleW = boxWpx / natW;
+      const coverScaleH = boxHpx / natH;
+      const coverScale  = Math.max(coverScaleW, coverScaleH);
+      const imgScale    = card.bg.imageScale || 1;
+      const rendW = Math.round(natW * coverScale * imgScale);
+      const rendH = Math.round(natH * coverScale * imgScale);
       layers += `<div data-box-img="${idx}" style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};">
-        <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;min-width:100%;min-height:100%;width:auto;height:auto;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px) scale(${card.bg.imageScale||1});transform-origin:center;object-fit:none;pointer-events:none;user-select:none;" draggable="false"/>
-      </div>
+        <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:${rendW}px;height:${rendH}px;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px);transform-origin:center;pointer-events:none;user-select:none;" draggable="false"/>
+      </div>`;
+      }
       <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
         <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
         <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;color:rgba(255,255,255,0.8);letter-spacing:0.8px;text-transform:uppercase;">Trocar</span>
@@ -5484,6 +5514,7 @@ function renderCardSidebar() {
             ${slider('↔ Largura do box %', card.bg.boxW != null ? card.bg.boxW : 100, 40, 100, 1, `(v)=>setBoxW(${idx},v)`)}
             ${slider('↔ Imagem X (dentro)', card.bg.boxImgX || 0, -400, 400, 4, `(v)=>setBoxImgX(${idx},v)`)}
             ${slider('↕ Imagem Y (dentro)', card.bg.boxImgY || 0, -400, 400, 4, `(v)=>setBoxImgY(${idx},v)`)}
+            <button onclick="resetBoxImage(${idx})" style="width:100%;margin-top:6px;padding:7px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:0.68rem;font-family:'Poppins',sans-serif;cursor:pointer;letter-spacing:0.5px;">↺ Resetar posição e escala</button>
           </div>
         ` : `
           ${slider('↔ Posição X', card.bg.imageX||0, -400, 400, 4, `(v)=>setCardImgX(${idx},v)`)}
@@ -5815,6 +5846,12 @@ function setBoxH(idx, v) { S.cards[idx].bg.boxH = parseFloat(v); refreshCard(idx
 function setBoxW(idx, v) { S.cards[idx].bg.boxW = parseFloat(v); refreshCard(idx); }
 function setBoxImgX(idx, v) { S.cards[idx].bg.boxImgX = parseInt(v); refreshCard(idx); }
 function setBoxImgY(idx, v) { S.cards[idx].bg.boxImgY = parseInt(v); refreshCard(idx); }
+function resetBoxImage(idx) {
+  S.cards[idx].bg.imageScale = 1;
+  S.cards[idx].bg.boxImgX = 0;
+  S.cards[idx].bg.boxImgY = 0;
+  refreshCard(idx); renderCardSidebar();
+}
 
 function setBoxTextLayout(idx, layout) {
   S.cards[idx].bg.boxTextLayout = layout;
@@ -5878,6 +5915,13 @@ function triggerBgImageUpload(idx) {
         S.cards[idx].bg.imageSrc  = compressed;
         S.cards[idx].bg.imageMime = 'image/jpeg';
         S.cards[idx].bg.type = 'image';
+        // Store natural dimensions for consistent preview↔export scaling
+        S.cards[idx].bg.imgNaturalW = cvs.width;
+        S.cards[idx].bg.imgNaturalH = cvs.height;
+        // Reset position/scale on new image upload
+        S.cards[idx].bg.imageScale = 1;
+        S.cards[idx].bg.imageX = 0; S.cards[idx].bg.imageY = 0;
+        S.cards[idx].bg.boxImgX = 0; S.cards[idx].bg.boxImgY = 0;
         refreshCard(idx); renderCardSidebar();
         saveImagesToStorage(activeSessionId || 'current');
         autoSave();
@@ -6993,24 +7037,22 @@ async function drawBoxImageOnCanvas(ctx, src, bgState, W, H, SC) {
       const boxX  = (W - boxW) / 2;
       const boxY  = H * bxY;
 
-      // Base scale: same as CSS min-width:100%;min-height:100% — cover the box
+      // Use stored natural dimensions if available (set on upload), else fall back to img element
+      const natW = bgState.imgNaturalW || img.naturalWidth;
+      const natH = bgState.imgNaturalH || img.naturalHeight;
+
+      // Cover scale: same formula as preview render
       const imgScale = bgState.imageScale || 1;
-      const scaleW = boxW / img.naturalWidth;
-      const scaleH = boxH / img.naturalHeight;
-      const coverScale = Math.max(scaleW, scaleH); // scale to cover box at imageScale=1
+      const coverScale = Math.max(boxW / natW, boxH / natH);
       const scale = coverScale * imgScale;
+      const rW = natW * scale;
+      const rH = natH * scale;
 
-      const rW = img.naturalWidth  * scale;
-      const rH = img.naturalHeight * scale;
-
-      // Offsets: preview uses DOM px on a 320×400 card.
-      // Export canvas is W×H. Scale offsets by the ratio of export card size to preview card size,
-      // then also apply the same imgScale factor (bigger image = same visual offset needs more canvas px)
-      const previewCardW = 320, previewCardH = 400;
-      const exportScaleX = W / previewCardW;
-      const exportScaleY = H / previewCardH;
-      const bxIX = (bgState.boxImgX != null ? bgState.boxImgX : 0) * exportScaleX * imgScale;
-      const bxIY = (bgState.boxImgY != null ? bgState.boxImgY : 0) * exportScaleY * imgScale;
+      // Offset: preview stores drag offset in DOM px (320×400 card).
+      // Scale to export canvas px — no extra imgScale factor needed because
+      // the offset was applied to the already-scaled image in the preview.
+      const bxIX = (bgState.boxImgX != null ? bgState.boxImgX : 0) * (W / 320);
+      const bxIY = (bgState.boxImgY != null ? bgState.boxImgY : 0) * (H / 400);
 
       const dx = boxX + (boxW - rW) / 2 + bxIX;
       const dy = boxY + (boxH - rH) / 2 + bxIY;
@@ -7825,8 +7867,9 @@ function migrateCard(card) {
   if (card.bg.boxImgX    == null) card.bg.boxImgX    = 0;
   if (card.bg.boxImgY    == null) card.bg.boxImgY    = 0;
   if (card.bg.boxTextLayout == null) card.bg.boxTextLayout = 'top';
-  // Fields added for gradient
-  if (!card.bg.gradColors) card.bg.gradColors = ['#0071e3', '#000000'];
+  // Natural image dimensions (stored on upload for precise preview↔export match)
+  // For legacy cards without this data, we'll resolve lazily when rendering
+  if (card.bg.imgNaturalW == null) card.bg.imgNaturalW = 0; // 0 = unknown, use img.naturalWidth at render
   if (card.bg.gradAngle  == null) card.bg.gradAngle  = 180;
   // Overlay
   card.overlay = card.overlay || {};
@@ -8027,11 +8070,11 @@ function bcNavigate(targetStep) {
       const imgEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img]`);
       if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX}px,${card.bg.imageY}px) scale(${card.bg.imageScale||1})`;
     } else {
-      // box mode — move the img inside the box via transform
+      // box mode — move the img inside the box via transform translate
       card.bg.boxImgX = Math.round(_drag.origX + dx);
       card.bg.boxImgY = Math.round(_drag.origY + dy);
       const imgEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img]`);
-      if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.boxImgX}px,${card.bg.boxImgY}px) scale(${card.bg.imageScale||1})`;
+      if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.boxImgX}px,${card.bg.boxImgY}px)`;
     }
   }
 
@@ -8105,18 +8148,25 @@ function bcNavigate(targetStep) {
       if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${scale})`;
 
     } else {
-      // Box mode — scale the IMAGE inside the box (box itself is the mask, stays fixed)
-      // Reference point: center of the box element
+      // Box mode — scale image using same formula as preview render (explicit px dimensions)
       const bx0 = _rsz.boxRect.left + _rsz.boxRect.width  / 2;
       const by0 = _rsz.boxRect.top  + _rsz.boxRect.height / 2;
       const distNow  = Math.sqrt((cx - bx0) ** 2 + (cy - by0) ** 2);
       const distOrig = Math.sqrt((_rsz.startX - bx0) ** 2 + (_rsz.startY - by0) ** 2);
       if (distOrig < 2) return;
-      const scale = parseFloat(Math.min(6, Math.max(0.3, _rsz.origScale * distNow / distOrig)).toFixed(3));
-      S.cards[_rsz.idx].bg.imageScale = scale;
+      const newScale = parseFloat(Math.min(6, Math.max(0.3, _rsz.origScale * distNow / distOrig)).toFixed(3));
+      S.cards[_rsz.idx].bg.imageScale = newScale;
       const card = S.cards[_rsz.idx];
+      const CARD_W = 320, CARD_H = 400;
+      const bxW = card.bg.boxW != null ? card.bg.boxW : 100;
+      const bxH = card.bg.boxH != null ? card.bg.boxH : 42;
+      const natW = card.bg.imgNaturalW || 1;
+      const natH = card.bg.imgNaturalH || 1;
+      const coverScale = Math.max((CARD_W * bxW / 100) / natW, (CARD_H * bxH / 100) / natH);
+      const rendW = Math.round(natW * coverScale * newScale);
+      const rendH = Math.round(natH * coverScale * newScale);
       const imgEl = document.querySelector(`.c-card[data-idx="${_rsz.idx}"] img[data-card-img]`);
-      if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.boxImgX||0}px,${card.bg.boxImgY||0}px) scale(${scale})`;
+      if (imgEl) { imgEl.style.width = rendW + 'px'; imgEl.style.height = rendH + 'px'; }
     }
   }
 
