@@ -6567,32 +6567,30 @@ async function exportCardToCanvas(card, idx) {
   // Preview: ~10px top, 8px sides, font ~7px → SC gives ~24px font, ~27px Y
   if (card.header.visible) {
     const hPad  = Math.round(8  * SC); // 27px
-    const hY    = Math.round(10 * SC); // 34px
-    const hFS   = Math.round(7  * SC); // 24px
+    const hY    = Math.round(10 * SC);
+    const hFS   = Math.round(6.4 * SC); // 0.4rem equivalent — same for all three elements
     const hMode = card.header.colorMode || 'auto';
-    // 'light' = texto claro (branco); 'dark' = texto escuro
     const hDark = hMode==='light' ? true : hMode==='dark' ? false
                 : (isColorDark(card.bg.color) || card.bg.type==='image');
     const hHandleCol  = hDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
     const hTaglineCol = hDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
     const hYearCol    = hDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
     ctx.save();
-    ctx.font = `600 ${hFS}px 'Syne', sans-serif`;
+    ctx.font = `400 ${hFS}px 'Roboto', sans-serif`;
     ctx.fillStyle = hHandleCol;
     ctx.textBaseline = 'top';
-    ctx.fillText(b.handle || '', hPad, hY);
+    ctx.fillText((b.handle || '').toUpperCase(), hPad, hY);
     if (b.tagline) {
-      const hFSTag = Math.round(hFS * 0.75); // tagline smaller than handle (~0.42rem vs 0.56rem)
       ctx.textAlign = 'center';
       ctx.fillStyle = hTaglineCol;
-      ctx.font = `400 ${hFSTag}px 'Syne', sans-serif`;
+      ctx.font = `400 ${hFS}px 'Roboto', sans-serif`;
       ctx.fillText((b.tagline||'').toUpperCase(), EXPORT_W/2, hY);
     }
     if (b.year) {
       ctx.textAlign = 'right';
       ctx.fillStyle = hYearCol;
-      ctx.font = `400 ${hFS}px 'Syne', sans-serif`;
-      ctx.fillText(String(b.year), EXPORT_W - hPad, hY);
+      ctx.font = `400 ${hFS}px 'Roboto', sans-serif`;
+      ctx.fillText(String(b.year).toUpperCase(), EXPORT_W - hPad, hY);
     }
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
@@ -7123,9 +7121,9 @@ function brandHeaderHtml(isDark, num, total) {
   const subtleColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
   const yearColor   = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
   return `<div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;pointer-events:none;">
-    <span style="font-family:'Roboto',sans-serif;font-size:0.56rem;letter-spacing:1px;color:${handleColor};font-weight:400;text-transform:uppercase">${b.handle||''}</span>
-    <span style="font-family:'Roboto',sans-serif;font-size:0.42rem;letter-spacing:0.8px;color:${subtleColor};flex:1;text-align:center;text-transform:uppercase">${b.tagline||''}</span>
-    <span style="font-family:'Roboto',sans-serif;font-size:0.5rem;letter-spacing:1.2px;color:${yearColor};font-weight:400;text-transform:uppercase">${b.year||''}</span>
+    <span style="font-family:'Roboto',sans-serif;font-size:0.4rem;letter-spacing:1px;color:${handleColor};font-weight:400;text-transform:uppercase">${b.handle||''}</span>
+    <span style="font-family:'Roboto',sans-serif;font-size:0.4rem;letter-spacing:0.8px;color:${subtleColor};flex:1;text-align:center;text-transform:uppercase">${b.tagline||''}</span>
+    <span style="font-family:'Roboto',sans-serif;font-size:0.4rem;letter-spacing:1.2px;color:${yearColor};font-weight:400;text-transform:uppercase">${b.year||''}</span>
   </div>`;
 }
 
