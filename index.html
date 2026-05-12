@@ -5391,8 +5391,11 @@ function renderCardSidebar() {
       <div onclick="(${onChangeFn})('${p.val}')"
         style="width:26px;height:26px;border-radius:5px;background:${p.val};cursor:pointer;border:2px solid ${currentColor===p.val?'#fff':'transparent'};${isLight(p.val)?'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);':''}transition:transform 0.1s;"
         title="${p.label}" onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform=''"></div>`).join('');
-    const freeInput = `<label style="width:26px;height:26px;border-radius:5px;background:${currentColor};cursor:pointer;border:2px solid rgba(255,255,255,0.15);position:relative;overflow:hidden;display:block;" title="Cor livre">
-      <input type="color" value="${currentColor}" oninput="(${onChangeFn})(this.value)"
+    const freeInput = `<label onclick="event.stopPropagation()" style="width:26px;height:26px;border-radius:5px;background:${currentColor};cursor:pointer;border:2px solid rgba(255,255,255,0.15);position:relative;display:block;flex-shrink:0;" title="Cor livre">
+      <input type="color" value="${currentColor}"
+        oninput="event.stopPropagation();(${onChangeFn})(this.value)"
+        onchange="event.stopPropagation();(${onChangeFn})(this.value)"
+        onclick="event.stopPropagation()"
         style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:none;padding:0;"/>
     </label>`;
     return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">${swatches}${freeInput}</div>`;
@@ -5932,7 +5935,7 @@ function setOverlayOpEnd(idx, v) { S.cards[idx].overlay.opacityEnd = parseFloat(
 function setOverlayReach(idx, v) { S.cards[idx].overlay.reach = parseInt(v); refreshCard(idx); }
 
 // Title controls
-function setCardTitleColor(idx, color) { S.cards[idx].title.color = color; refreshCard(idx); renderCardSidebar(); }
+function setCardTitleColor(idx, color) { S.cards[idx].title.color = color; refreshCard(idx); }
 function setCardTitleSize(idx, size) { S.cards[idx].title.size = parseInt(size); refreshCard(idx); }
 function setCardTitleWeight(idx, w) { S.cards[idx].title.weight = parseInt(w); refreshCard(idx); renderCardSidebar(); }
 function setCardTitleAlign(idx, align) { S.cards[idx].title.align = align; refreshCard(idx); renderCardSidebar(); }
@@ -5950,7 +5953,7 @@ function clearHighlight(idx) {
 
 // Body controls
 function toggleBodyVisible(idx) { S.cards[idx].body.visible = !S.cards[idx].body.visible; refreshCard(idx); renderCardSidebar(); }
-function setCardBodyColor(idx, color) { S.cards[idx].body.color = color; refreshCard(idx); renderCardSidebar(); }
+function setCardBodyColor(idx, color)  { S.cards[idx].body.color  = color; refreshCard(idx); }
 function setCardBodySize(idx, size) { S.cards[idx].body.size = parseInt(size); refreshCard(idx); }
 function setCardBodyAlign(idx, align) { S.cards[idx].body.align = align; refreshCard(idx); renderCardSidebar(); }
 
@@ -7120,9 +7123,9 @@ function brandHeaderHtml(isDark, num, total) {
   const subtleColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
   const yearColor   = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
   return `<div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;pointer-events:none;">
-    <span style="font-family:${fb};font-size:0.56rem;letter-spacing:0.8px;color:${handleColor};font-weight:600">${b.handle||''}</span>
-    <span style="font-family:${fb};font-size:0.42rem;letter-spacing:0.6px;color:${subtleColor};flex:1;text-align:center;text-transform:uppercase">${b.tagline||''}</span>
-    <span style="font-family:${fb};font-size:0.5rem;letter-spacing:1px;color:${yearColor}">${b.year||''}</span>
+    <span style="font-family:'Roboto',sans-serif;font-size:0.56rem;letter-spacing:1px;color:${handleColor};font-weight:400;text-transform:uppercase">${b.handle||''}</span>
+    <span style="font-family:'Roboto',sans-serif;font-size:0.42rem;letter-spacing:0.8px;color:${subtleColor};flex:1;text-align:center;text-transform:uppercase">${b.tagline||''}</span>
+    <span style="font-family:'Roboto',sans-serif;font-size:0.5rem;letter-spacing:1.2px;color:${yearColor};font-weight:400;text-transform:uppercase">${b.year||''}</span>
   </div>`;
 }
 
