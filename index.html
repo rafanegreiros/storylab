@@ -5917,21 +5917,9 @@ async function exportCardAsVideo(idx) {
       setTimeout(() => res(), 10000);
     });
 
-    // ── 3. Build static layers canvas (text, overlay, header — NO video) ──
-    // Export at EW/EH with bg = solid color (we'll composite video under this)
-    const staticCanvas = document.createElement('canvas');
-    staticCanvas.width = EW; staticCanvas.height = EH;
-    const sctx = staticCanvas.getContext('2d');
-    sctx.clearRect(0, 0, EW, EH);
-
-    // Get static layers by exporting with video type replaced by solid
-    const cardNoVid = JSON.parse(JSON.stringify(card));
-    cardNoVid.bg.type = 'solid';
-    cardNoVid.bg.color = 'rgba(0,0,0,0)'; // transparent bg
-    const staticBlob = await exportCardToCanvas(cardNoVid, idx);
-    const staticBitmap = await createImageBitmap(staticBlob);
-    sctx.drawImage(staticBitmap, 0, 0, EW, EH);
-    staticBitmap.close();
+    // ── 3. Build static layers canvas (bg-outside-box, overlay, text, header — NO video) ──
+    // Uses buildStaticLayersCanvas which works at EW×EH natively — same coordinate space as video
+    const staticCanvas = await buildStaticLayersCanvas(card, idx, EW, EH);
 
     setStatus('Iniciando gravação...', 18);
 
@@ -7328,6 +7316,86 @@ async function exportCardToCanvasEl(card, idx) {
 
 
 // ── CANVAS HELPERS ──
+
+// Builds a transparent canvas with only the "static" layers (overlay, header, text, CTA)
+// at the requested resolution — used by exportCardAsVideo so video+static share the same coordinate space
+async function buildStaticLayersCanvas(card, idx, W, H) {
+  await document.fonts.ready;
+  try {
+    await Promise.all([
+      document.fonts.load("700 48px 'Fraunces'"),
+      document.fonts.load("400 48px 'Fraunces'"),
+      document.fonts.load("600 48px 'Fraunces'"),
+      document.fonts.load("900 48px 'Fraunces'"),
+      document.fonts.load("400 48px 'Syne'"),
+      document.fonts.load("600 48px 'Syne'"),
+      document.fonts.load("700 48px 'Poppins'"),
+      document.fonts.load("400 48px 'Roboto'"),
+    ]);
+  } catch(e) {}
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  // Start fully transparent — no background drawn here
+  ctx.clearRect(0, 0, W, H);
+
+  const SC = W / 320; // same scale factor as EXPORT_W/320 but for target W
+  const b = getBrand();
+
+  // ── Solid bg for box mode (the area outside the box needs the bg color) ──
+  if (card.bg.boxMode && (card.bg.type === 'image' || card.bg.type === 'video')) {
+    ctx.fillStyle = card.bg.color || '#141210';
+    ctx.fillRect(0, 0, W, H);
+    // Cut out the box area (leave transparent so video shows through)
+    const bxW = (card.bg.boxW != null ? card.bg.boxW : 100) / 100;
+    const bxH = (card.bg.boxH != null ? card.bg.boxH : 42)  / 100;
+    const bxY = (card.bg.boxY != null ? card.bg.boxY : 10)  / 100;
+    const boxW = W * bxW, boxH = H * bxH;
+    const boxX = (W - boxW) / 2, boxY = H * bxY;
+    ctx.clearRect(boxX, boxY, boxW, boxH);
+  }
+
+  // ── Overlay ──
+  if (card.overlay.visible) {
+    const dirs = {
+      'bottom-up':  [W/2, H, W/2, 0],
+      'top-down':   [W/2, 0, W/2, H],
+      'left-right': [0, H/2, W, H/2],
+      'diagonal':   [0, H, W, 0],
+    };
+    const [x1,y1,x2,y2] = dirs[card.overlay.direction] || dirs['bottom-up'];
+    const reach = Math.max(0.01, Math.min(1, (card.overlay.reach || 60) / 100));
+    const col = card.overlay.color || '#000000';
+    const r2 = parseInt(col.slice(1,3),16), g2 = parseInt(col.slice(3,5),16), b2 = parseInt(col.slice(5,7),16);
+    const opStart = Math.max(0, Math.min(1, parseFloat(card.overlay.opacityStart) || 0.85));
+    const opEnd   = Math.max(0, Math.min(1, parseFloat(card.overlay.opacityEnd)   || 0));
+    const oGrad = ctx.createLinearGradient(x1,y1,x2,y2);
+    oGrad.addColorStop(0,     `rgba(${r2},${g2},${b2},${opStart})`);
+    oGrad.addColorStop(reach, `rgba(${r2},${g2},${b2},${opEnd})`);
+    oGrad.addColorStop(1,     `rgba(${r2},${g2},${b2},${opEnd})`);
+    ctx.fillStyle = oGrad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // ── Delegate remaining layers to exportCardToCanvas scaled result ──
+  // Generate at full 1080×1350 but only draw layers 3-7 (no bg, no overlay)
+  // Simplest: generate full export, composite at target size
+  // We've already handled bg+overlay manually above so we need a version without them
+  // Use the full export but drawn at W×H scale — the scaling handles coordinate mapping
+  const cardForLayers = JSON.parse(JSON.stringify(card));
+  // Set bg to transparent solid so exportCardToCanvas draws no real bg
+  cardForLayers.bg = Object.assign({}, card.bg, { type: 'solid', color: 'rgba(0,0,0,0)', imageSrc: null, videoSrc: null });
+  cardForLayers.overlay = Object.assign({}, card.overlay, { visible: false }); // we drew overlay above
+
+  const layersBlob = await exportCardToCanvas(cardForLayers, idx);
+  const layersBitmap = await createImageBitmap(layersBlob);
+  ctx.drawImage(layersBitmap, 0, 0, W, H);
+  layersBitmap.close();
+
+  return canvas;
+}
+
 function wrapText(ctx, text, maxWidth, lineH) {
   // First split on hard line breaks (\n), then wrap each paragraph by word
   const paragraphs = text.split('\n');
