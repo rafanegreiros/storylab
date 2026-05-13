@@ -5887,138 +5887,150 @@ async function exportCardAsVideo(idx) {
   };
 
   try {
-    const EW = 640, EH = 800; // 4:5 ratio, good quality/speed balance
+    const EW = 640, EH = 800;
 
-    // ── Step 1: Get the live video element ──
-    const videoEl = document.querySelector(`.c-card[data-idx="${idx}"] video[data-card-vid]`);
-    if (!videoEl) throw new Error('Vídeo não encontrado no preview. Selecione o card primeiro.');
-    if (videoEl.readyState < 2) {
-      setStatus('Carregando vídeo...', 5);
+    // ── 1. Get live video element ──
+    const videoEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video`);
+    if (!videoEl) throw new Error('Vídeo não encontrado. Selecione o card primeiro.');
+    setStatus('Carregando vídeo...', 5);
+    if (videoEl.readyState < 3) {
       await new Promise((res, rej) => {
-        videoEl.addEventListener('canplay', res, { once: true });
-        setTimeout(() => rej(new Error('Timeout ao carregar vídeo')), 15000);
+        videoEl.addEventListener('canplaythrough', res, { once: true });
+        setTimeout(() => res(), 8000); // proceed anyway after 8s
       });
     }
     const duration = isFinite(videoEl.duration) && videoEl.duration > 0 ? videoEl.duration : 6;
-    setStatus('Gerando layers estáticos...', 10);
+    setStatus('Gerando layers de texto...', 10);
 
-    // ── Step 2: Build static layers canvas (everything EXCEPT the video background) ──
-    // Temporarily hide video layer, render everything else, then restore
+    // ── 2. Build offscreen video element at native resolution for clean drawImage ──
+    // The DOM video is small (preview size) — create a hidden full-res copy
+    const offVideo = document.createElement('video');
+    offVideo.src = card.bg.videoSrc;
+    offVideo.muted = true; // offscreen copy always muted — we use live el for audio
+    offVideo.playsInline = true;
+    offVideo.preload = 'auto';
+    document.body.appendChild(offVideo);
+    await new Promise((res, rej) => {
+      offVideo.addEventListener('canplaythrough', res, { once: true });
+      offVideo.addEventListener('error', rej, { once: true });
+      offVideo.load();
+      setTimeout(() => res(), 10000);
+    });
+
+    // ── 3. Build static layers canvas (text, overlay, header — NO video) ──
+    // Export at EW/EH with bg = solid color (we'll composite video under this)
     const staticCanvas = document.createElement('canvas');
     staticCanvas.width = EW; staticCanvas.height = EH;
     const sctx = staticCanvas.getContext('2d');
+    sctx.clearRect(0, 0, EW, EH);
 
-    // Create a card clone with type='solid' to get the static layers without video
-    const cardForStatic = JSON.parse(JSON.stringify(card));
-    cardForStatic.bg.type = 'solid';
-    cardForStatic.bg.color = card.bg.boxMode ? (card.bg.color || '#141210') : 'transparent';
-    const SC = EW / 320;
+    // Get static layers by exporting with video type replaced by solid
+    const cardNoVid = JSON.parse(JSON.stringify(card));
+    cardNoVid.bg.type = 'solid';
+    cardNoVid.bg.color = 'rgba(0,0,0,0)'; // transparent bg
+    const staticBlob = await exportCardToCanvas(cardNoVid, idx);
+    const staticBitmap = await createImageBitmap(staticBlob);
+    sctx.drawImage(staticBitmap, 0, 0, EW, EH);
+    staticBitmap.close();
 
-    // Draw the static canvas using exportCardToCanvas but scaled to EW/EH
-    // We export at full EXPORT_W/H then scale down
-    const fullStaticCanvas = await exportCardToCanvasEl(cardForStatic, idx);
-    sctx.drawImage(fullStaticCanvas, 0, 0, EW, EH);
+    setStatus('Iniciando gravação...', 18);
 
-    setStatus('Configurando gravação...', 15);
-
-    // ── Step 3: Setup recording canvas ──
+    // ── 4. Recording canvas ──
     const recCanvas = document.createElement('canvas');
     recCanvas.width = EW; recCanvas.height = EH;
     const rctx = recCanvas.getContext('2d');
 
-    // ── Step 4: Setup MediaRecorder with best available codec ──
+    // ── 5. MediaRecorder setup ──
     const mimeType = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm;codecs=vp8,opus','video/webm;codecs=vp8','video/webm']
       .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
 
-    // Capture canvas stream + audio from video element if not muted
     const canvasStream = recCanvas.captureStream(30);
+
+    // Audio: use the live DOM video element (which has audio context attached)
     const isMuted = card.bg.videoMuted !== false;
-    if (!isMuted && videoEl.srcObject == null) {
-      // Add audio track from video element
+    if (!isMuted) {
       try {
-        const audioCtx = new AudioContext();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const src = audioCtx.createMediaElementSource(videoEl);
         const dest = audioCtx.createMediaStreamDestination();
         src.connect(dest);
-        src.connect(audioCtx.destination); // keep playing through speakers
+        src.connect(audioCtx.destination);
         dest.stream.getAudioTracks().forEach(t => canvasStream.addTrack(t));
-      } catch(e) { console.warn('Audio capture failed:', e.message); }
+      } catch(e) { console.warn('Audio capture skipped:', e.message); }
     }
 
-    const recorder = new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: 6_000_000 });
+    const recorder = new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: 8_000_000 });
     const chunks = [];
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
-    // ── Step 5: Seek video to start and begin recording ──
-    videoEl.currentTime = 0;
-    await new Promise(res => { videoEl.addEventListener('seeked', res, { once: true }); });
+    // ── 6. Seek offscreen video to start ──
+    offVideo.currentTime = 0;
+    await new Promise(res => { offVideo.addEventListener('seeked', res, { once: true }); setTimeout(res, 2000); });
 
-    recorder.start(200);
-    videoEl.play().catch(() => {});
+    recorder.start(100);
+    offVideo.play().catch(() => {});
+    if (!isMuted) videoEl.currentTime = 0; // sync live el for audio
 
-    // ── Step 6: Frame loop ──
+    // ── 7. Frame loop using setInterval (more reliable than rAF for video) ──
     const FPS = 30;
+    const frameDuration = 1000 / FPS;
     const totalFrames = Math.round(duration * FPS);
     let frame = 0;
 
     await new Promise((resolve) => {
-      const SC_vid = card.bg.boxMode ? null : null; // unused — draw full video
-      function drawFrame() {
-        if (frame >= totalFrames) { resolve(); return; }
+      const interval = setInterval(() => {
+        if (frame >= totalFrames || offVideo.ended) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
 
         rctx.clearRect(0, 0, EW, EH);
 
-        // Draw black base
-        rctx.fillStyle = '#000';
-        rctx.fillRect(0, 0, EW, EH);
-
-        // Draw video frame (with position/scale from card state)
+        // Base background
         if (card.bg.boxMode) {
-          // Box mode: draw solid bg, then clip video to box
-          const bgColor = card.bg.color || '#141210';
-          rctx.fillStyle = bgColor;
+          rctx.fillStyle = card.bg.color || '#141210';
           rctx.fillRect(0, 0, EW, EH);
-          const bxW = ((card.bg.boxW != null ? card.bg.boxW : 100) / 100) * EW;
-          const bxH = ((card.bg.boxH != null ? card.bg.boxH : 42)  / 100) * EH;
+          // Draw video inside box mask
+          const bxW = ((card.bg.boxW  ?? 100) / 100) * EW;
+          const bxH = ((card.bg.boxH  ?? 42)  / 100) * EH;
           const bxX = (EW - bxW) / 2;
-          const bxY2 = ((card.bg.boxY != null ? card.bg.boxY : 10) / 100) * EH;
-          const vscale = Math.max(bxW / videoEl.videoWidth, bxH / videoEl.videoHeight) * (card.bg.imageScale || 1);
-          const vW = videoEl.videoWidth * vscale, vH = videoEl.videoHeight * vscale;
+          const bxY = ((card.bg.boxY  ?? 10)  / 100) * EH;
+          const vs = Math.max(bxW / offVideo.videoWidth, bxH / offVideo.videoHeight) * (card.bg.imageScale || 1);
+          const vW = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
           const ox = (card.bg.boxImgX || 0) * (EW / 320);
           const oy = (card.bg.boxImgY || 0) * (EH / 400);
           rctx.save();
-          rctx.beginPath(); rctx.rect(bxX, bxY2, bxW, bxH); rctx.clip();
-          rctx.drawImage(videoEl, bxX + (bxW - vW) / 2 + ox, bxY2 + (bxH - vH) / 2 + oy, vW, vH);
+          rctx.beginPath(); rctx.rect(bxX, bxY, bxW, bxH); rctx.clip();
+          rctx.drawImage(offVideo, bxX + (bxW - vW) / 2 + ox, bxY + (bxH - vH) / 2 + oy, vW, vH);
           rctx.restore();
         } else {
-          // Full mode
-          const vscale = Math.max(EW / videoEl.videoWidth, EH / videoEl.videoHeight) * (card.bg.imageScale || 1);
-          const vW = videoEl.videoWidth * vscale, vH = videoEl.videoHeight * vscale;
+          rctx.fillStyle = '#000';
+          rctx.fillRect(0, 0, EW, EH);
+          const vs = Math.max(EW / offVideo.videoWidth, EH / offVideo.videoHeight) * (card.bg.imageScale || 1);
+          const vW = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
           const ox = (card.bg.imageX || 0) * (EW / 320);
           const oy = (card.bg.imageY || 0) * (EH / 400);
-          rctx.drawImage(videoEl, (EW - vW) / 2 + ox, (EH - vH) / 2 + oy, vW, vH);
+          rctx.drawImage(offVideo, (EW - vW) / 2 + ox, (EH - vH) / 2 + oy, vW, vH);
         }
 
-        // Composite static layers (overlay, title, body, header, etc.) on top
+        // Composite static layers on top
         rctx.drawImage(staticCanvas, 0, 0, EW, EH);
 
         frame++;
-        setStatus(`Frame ${frame} / ${totalFrames}`, 15 + Math.round((frame / totalFrames) * 78));
-        requestAnimationFrame(drawFrame);
-      }
-      drawFrame();
+        setStatus(`Frame ${frame} / ${totalFrames}`, 18 + Math.round((frame / totalFrames) * 76));
+      }, frameDuration);
     });
 
-    videoEl.pause();
+    offVideo.pause();
+    offVideo.remove();
     recorder.stop();
-    setStatus('Finalizando...', 95);
+    setStatus('Finalizando...', 96);
 
     await new Promise(res => { recorder.onstop = res; });
-
     const blob = new Blob(chunks, { type: mimeType });
-    const tema = (S.renderAnalysis?.tema || 'card').replace(/[^a-zA-Z0-9]/g,'-').substring(0,20);
-    triggerDownload(blob, `${tema}-card${String(idx+1).padStart(2,'0')}.webm`);
-
+    const tema = (S.renderAnalysis?.tema || 'card').replace(/[^a-zA-Z0-9]/g, '-').substring(0, 20);
+    triggerDownload(blob, `${tema}-card${String(idx + 1).padStart(2, '0')}.webm`);
     setStatus('✅ Vídeo exportado!', 100);
     setTimeout(() => overlay.remove(), 2500);
 
@@ -6028,7 +6040,6 @@ async function exportCardAsVideo(idx) {
     setTimeout(() => overlay.remove(), 4000);
   }
 }
-
 function setCardBgType(idx, type) {
   S.cards[idx].bg.type = type;
   refreshCard(idx); renderCardSidebar();
