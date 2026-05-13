@@ -5023,10 +5023,35 @@ function renderCardHtml(card, idx, total) {
     bgStyle = card.bg.boxMode
       ? `background:${card.bg.color||'#141210'};`
       : `background:#111;`;
+  } else if (card.bg.type === 'video') {
+    bgStyle = card.bg.boxMode
+      ? `background:${card.bg.color||'#141210'};`
+      : `background:#000;`;
   }
 
   // Build layers HTML
   let layers = '';
+
+  // Layer: background video
+  if (card.bg.type === 'video' && card.bg.videoSrc) {
+    const vX = card.bg.imageX || 0, vY = card.bg.imageY || 0;
+    const vScale = card.bg.imageScale || 1;
+    const bxIX = card.bg.boxImgX || 0, bxIY = card.bg.boxImgY || 0;
+    if (card.bg.boxMode) {
+      const bxW  = card.bg.boxW  != null ? card.bg.boxW  : 100;
+      const bxH  = card.bg.boxH  != null ? card.bg.boxH  : 42;
+      const bxYv = card.bg.boxY  != null ? card.bg.boxY  : 10;
+      const boxLeft = ((100 - bxW) / 2).toFixed(2);
+      const boxRadius = `${bxYv<=0.5?'0':'4px'} ${parseFloat(boxLeft)<=0.2?'0':'4px'} ${(bxYv+bxH)>=99.5?'0':'4px'} ${parseFloat(boxLeft)<=0.2?'0':'4px'}`;
+      layers += `<div data-box-img="${idx}" style="position:absolute;left:${boxLeft}%;top:${bxYv}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};">
+        <video data-card-vid="${idx}" src="${card.bg.videoSrc}" style="position:absolute;left:50%;top:50%;min-width:100%;min-height:100%;width:auto;height:auto;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px) scale(${vScale});transform-origin:center;pointer-events:none;user-select:none;" autoplay muted loop playsinline></video>
+      </div>`;
+    } else {
+      layers += `<div style="position:absolute;inset:0;overflow:hidden;z-index:1;">
+        <video data-card-vid="${idx}" src="${card.bg.videoSrc}" style="position:absolute;left:50%;top:50%;min-width:100%;min-height:100%;width:auto;height:auto;transform:translate(-50%,-50%) translate(${vX}px,${vY}px) scale(${vScale});transform-origin:center;pointer-events:none;user-select:none;" autoplay muted loop playsinline></video>
+      </div>`;
+    }
+  }
 
   // Layer: background image
   if (card.bg.type === 'image' && card.bg.imageSrc) {
@@ -5210,7 +5235,7 @@ function renderCardHtml(card, idx, total) {
   }
 
   const selectedStyle = isSelected ? 'outline:3px solid var(--accent);outline-offset:0;' : '';
-  const hasImg = card.bg.type === 'image' && card.bg.imageSrc;
+  const hasImg = (card.bg.type === 'image' && card.bg.imageSrc) || (card.bg.type === 'video' && card.bg.videoSrc);
   const dragAttr = hasImg ? `onmousedown="cardMouseDown(event,${idx})" ontouchstart="cardTouchStart(event,${idx})"` : `onclick="selectCard(${idx})"`;
   return `<div class="c-card-wrap">
     <div class="c-card" data-idx="${idx}" data-has-img="${hasImg?'true':'false'}" ${dragAttr}
@@ -5233,7 +5258,7 @@ function selectCard(idx) {
   // Move resize handles: remove from all wrappers, add to the selected one if it has an image
   document.querySelectorAll('.card-resize-handle').forEach(h => h.remove());
   const card = S.cards[idx];
-  const hasImg = card && card.bg.type === 'image' && card.bg.imageSrc;
+  const hasImg = card && ((card.bg.type === 'image' && card.bg.imageSrc) || (card.bg.type === 'video' && card.bg.videoSrc));
   if (hasImg) {
     const wraps = document.querySelectorAll('.c-card-wrap');
     if (wraps[idx]) {
@@ -5273,7 +5298,8 @@ function cardMouseDown(e, idx) {
   if (e.button && e.button !== 0) return;
 
   const card = S.cards[idx];
-  if (!card || card.bg.type !== 'image' || !card.bg.imageSrc) {
+  const hasDraggable = (card.bg.type === 'image' && card.bg.imageSrc) || (card.bg.type === 'video' && card.bg.videoSrc);
+  if (!card || !hasDraggable) {
     selectCard(idx); return;
   }
 
@@ -5302,7 +5328,8 @@ function cardMouseDown(e, idx) {
 function cardTouchStart(e, idx) {
   if (e.target.hasAttribute('contenteditable')) return;
   const card = S.cards[idx];
-  if (!card || card.bg.type !== 'image' || !card.bg.imageSrc) {
+  const hasDraggableT = (card.bg.type === 'image' && card.bg.imageSrc) || (card.bg.type === 'video' && card.bg.videoSrc);
+  if (!card || !hasDraggableT) {
     selectCard(idx); return;
   }
   const t = e.touches[0];
@@ -5454,9 +5481,9 @@ function renderCardSidebar() {
 
   const bgSection = section('bg', '', 'Background', `
     <div style="display:flex;gap:6px;margin-bottom:10px;">
-      ${['solid','gradient','image'].map(t => `<button onclick="setCardBgType(${idx},'${t}')"
-        style="flex:1;padding:6px 4px;border-radius:6px;border:1.5px solid ${card.bg.type===t?'var(--accent)':'var(--border)'};background:${card.bg.type===t?'rgba(0,113,227,0.1)':'transparent'};font-size:0.65rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${card.bg.type===t?'var(--accent)':'var(--muted)'};">
-        ${t==='solid'?'Cor':t==='gradient'?'Gradiente':'Imagem'}
+      ${['solid','gradient','image','video'].map(t => `<button onclick="setCardBgType(${idx},'${t}')"
+        style="flex:1;padding:6px 4px;border-radius:6px;border:1.5px solid ${card.bg.type===t?'var(--accent)':'var(--border)'};background:${card.bg.type===t?'rgba(0,113,227,0.1)':'transparent'};font-size:0.62rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${card.bg.type===t?'var(--accent)':'var(--muted)'};">
+        ${t==='solid'?'Cor':t==='gradient'?'Grad':t==='image'?'Img':'▶ Vídeo'}
       </button>`).join('')}
     </div>
     ${card.bg.type === 'solid' ? `
@@ -5468,7 +5495,38 @@ function renderCardSidebar() {
         <div style="flex:1"><div class="field-label">Cor 2</div><input type="color" value="${card.bg.gradColors[1]}" oninput="setCardGradColor(${idx},1,this.value)" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"/></div>
       </div>
       ${slider('Ângulo', card.bg.gradAngle, 0, 360, 5, `(v)=>setCardGradAngle(${idx},v)`)}`
-    : `
+    : card.bg.type === 'video' ? `
+      ${card.bg.videoSrc ? `
+        <div style="border-radius:8px;overflow:hidden;height:80px;background:#111;margin-bottom:8px;position:relative;">
+          <video src="${card.bg.videoSrc}" style="width:100%;height:100%;object-fit:cover;opacity:0.8;" muted autoplay loop playsinline></video>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+            <span style="background:rgba(0,0,0,0.5);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;">▶</span>
+          </div>
+          <button onclick="event.stopPropagation();triggerBgVideoUpload(${idx})" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:0.6rem;font-family:'Poppins',sans-serif;">🔄 Trocar</button>
+          <button onclick="event.stopPropagation();clearBgVideo(${idx})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div class="field-label" style="margin-bottom:6px;">Modo de exibição</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;">
+          <button onclick="setCardBgBoxMode(${idx},false)" style="flex:1;padding:6px 4px;border-radius:6px;border:1.5px solid ${!card.bg.boxMode?'var(--accent)':'var(--border)'};background:${!card.bg.boxMode?'rgba(0,113,227,0.1)':'transparent'};font-size:0.65rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${!card.bg.boxMode?'var(--accent)':'var(--muted)'};">▣ Full</button>
+          <button onclick="setCardBgBoxMode(${idx},true)" style="flex:1;padding:6px 4px;border-radius:6px;border:1.5px solid ${card.bg.boxMode?'var(--accent)':'var(--border)'};background:${card.bg.boxMode?'rgba(0,113,227,0.1)':'transparent'};font-size:0.65rem;font-family:'Poppins',sans-serif;cursor:pointer;color:${card.bg.boxMode?'var(--accent)':'var(--muted)'};">⬚ Box</button>
+        </div>
+        ${card.bg.boxMode ? `
+          ${slider('↕ Posição Y do box %', card.bg.boxY != null ? card.bg.boxY : 10, 0, 95, 1, '(v)=>setBoxY('+idx+',v)')}
+          ${slider('↕ Altura do box %', card.bg.boxH || 42, 15, 90, 1, '(v)=>setBoxH('+idx+',v)')}
+          ${slider('↔ Largura do box %', card.bg.boxW != null ? card.bg.boxW : 100, 40, 100, 1, '(v)=>setBoxW('+idx+',v)')}
+          ${slider('↔ Offset X', card.bg.boxImgX||0, -400, 400, 4, '(v)=>setBoxImgX('+idx+',v)')}
+          ${slider('↕ Offset Y', card.bg.boxImgY||0, -400, 400, 4, '(v)=>setBoxImgY('+idx+',v)')}
+        ` : `
+          ${slider('↔ Posição X', card.bg.imageX||0, -400, 400, 4, '(v)=>setCardImgX('+idx+',v)')}
+          ${slider('↕ Posição Y', card.bg.imageY||0, -400, 400, 4, '(v)=>setCardImgY('+idx+',v)')}
+          ${slider('🔍 Zoom %', Math.round((card.bg.imageScale||1)*100), 50, 300, 5, '(v)=>setCardImgScale('+idx+',v/100)')}
+        `}
+        <div class="field-label" style="margin-top:8px;">Exportação MP4</div>
+        <button onclick="exportCardAsVideo(${idx})" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid var(--accent);background:rgba(0,113,227,0.1);cursor:pointer;color:var(--accent);font-size:0.72rem;font-family:'Poppins',sans-serif;font-weight:600;">⬇ Exportar este card (.mp4)</button>
+      ` : `
+        <button onclick="triggerBgVideoUpload(${idx})" style="width:100%;padding:10px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;color:var(--muted);font-size:0.78rem;">▶ Adicionar vídeo</button>
+      `}
+    ` : `
       ${card.bg.imageSrc ? `
         <div style="border-radius:8px;overflow:hidden;height:80px;background:#111;margin-bottom:8px;position:relative;cursor:pointer;" onclick="triggerBgImageUpload(${idx})" title="Clique para trocar a imagem">
           <img src="${card.bg.imageSrc}" style="width:100%;height:100%;object-fit:cover;opacity:0.8;"/>
@@ -5772,7 +5830,7 @@ function refreshCard(idx) {
     innerCard.style.outline = '3px solid var(--accent)';
     // Re-add resize handles if selected card has image
     const card = S.cards[idx];
-    const hasImg = card && card.bg.type === 'image' && card.bg.imageSrc;
+    const hasImg = card && ((card.bg.type === 'image' && card.bg.imageSrc) || (card.bg.type === 'video' && card.bg.videoSrc));
     if (hasImg) {
       ['tl','tr','bl','br'].forEach(corner => {
         const h = document.createElement('div');
@@ -5786,6 +5844,111 @@ function refreshCard(idx) {
   }
   clearTimeout(_cardEditSaveTimer);
   _cardEditSaveTimer = setTimeout(() => { autoSave(); }, 1500);
+}
+
+function clearBgVideo(idx) {
+  const card = S.cards[idx];
+  if (card.bg.videoSrc) URL.revokeObjectURL(card.bg.videoSrc);
+  card.bg.videoSrc    = null;
+  card.bg.videoBlobKey = null;
+  card.bg.type = 'solid';
+  refreshCard(idx); renderCardSidebar();
+}
+
+async function exportCardAsVideo(idx) {
+  const card = S.cards[idx];
+  if (!card || !card.bg.videoSrc) { alert('Nenhum vídeo neste card.'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'export-overlay';
+  overlay.innerHTML = `<div class="export-box">
+    <div class="ex-title">Exportando vídeo...</div>
+    <div class="export-progress-bar"><div class="export-progress-fill" id="vid-fill" style="width:0%"></div></div>
+    <div class="export-status" id="vid-status">Preparando...</div>
+    <div style="font-size:0.72rem;color:var(--muted);max-width:260px;line-height:1.6;text-align:center">Gravando canvas frame a frame.<br>Aguarde o download.</div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  try {
+    // Find the live card element and create offscreen canvas at export res
+    const SCALE = 2; // 640×800 — balance quality vs speed
+    const EW = 320 * SCALE, EH = 400 * SCALE;
+
+    const videoEl = document.querySelector(`.c-card[data-idx="${idx}"] video[data-card-vid]`);
+    if (!videoEl) throw new Error('Elemento de vídeo não encontrado no preview.');
+
+    // Wait for video to have enough data
+    if (videoEl.readyState < 2) {
+      await new Promise(res => { videoEl.addEventListener('canplay', res, { once: true }); });
+    }
+    const duration = videoEl.duration || 6;
+
+    // Build a static canvas snapshot of all non-video layers (text, overlay, header, etc.)
+    const staticCanvas = await exportCardToCanvas(card, idx);
+    const staticImg = await createImageBitmap(staticCanvas);
+
+    // Recording canvas
+    const recCanvas = document.createElement('canvas');
+    recCanvas.width = EW; recCanvas.height = EH;
+    const rctx = recCanvas.getContext('2d');
+
+    // Setup MediaRecorder
+    const stream = recCanvas.captureStream(30);
+    const mimeType = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4']
+      .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+    const chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+    recorder.start(100);
+    videoEl.currentTime = 0;
+    await new Promise(res => videoEl.addEventListener('seeked', res, { once: true }));
+    videoEl.play();
+
+    const FPS = 30;
+    const totalFrames = Math.round(duration * FPS);
+    let frame = 0;
+
+    await new Promise((resolve) => {
+      function drawFrame() {
+        if (frame >= totalFrames) { resolve(); return; }
+        rctx.clearRect(0, 0, EW, EH);
+        // Draw live video frame
+        rctx.drawImage(videoEl, 0, 0, EW, EH);
+        // Composite static layers (overlay, text, header, etc.) on top
+        rctx.drawImage(staticImg, 0, 0, EW, EH);
+        frame++;
+        const pct = Math.round((frame / totalFrames) * 90);
+        const fill = document.getElementById('vid-fill');
+        const status = document.getElementById('vid-status');
+        if (fill) fill.style.width = pct + '%';
+        if (status) status.textContent = `Frame ${frame} / ${totalFrames}`;
+        requestAnimationFrame(drawFrame);
+      }
+      drawFrame();
+    });
+
+    videoEl.pause();
+    recorder.stop();
+    const fill2 = document.getElementById('vid-fill');
+    if (fill2) fill2.style.width = '95%';
+    document.getElementById('vid-status').textContent = 'Finalizando...';
+
+    await new Promise(res => { recorder.onstop = res; });
+    const blob = new Blob(chunks, { type: mimeType });
+    const ext  = mimeType.includes('mp4') ? 'mp4' : 'webm';
+    const tema = (S.renderAnalysis?.tema || 'card').replace(/[^a-zA-Z0-9]/g,'-').substring(0,20);
+    triggerDownload(blob, `${tema}-card${String(idx+1).padStart(2,'0')}.${ext}`);
+
+    if (fill2) fill2.style.width = '100%';
+    document.getElementById('vid-status').textContent = '✅ Vídeo exportado!';
+    setTimeout(() => overlay.remove(), 2500);
+  } catch(err) {
+    console.error('Video export error:', err);
+    const s = document.getElementById('vid-status');
+    if (s) s.textContent = '❌ Erro: ' + err.message;
+    setTimeout(() => overlay.remove(), 3000);
+  }
 }
 
 function setCardBgType(idx, type) {
@@ -5924,6 +6087,52 @@ function triggerBgImageUpload(idx) {
     reader.readAsDataURL(file);
   };
   inp.click();
+}
+
+function triggerBgVideoUpload(idx) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'video/*';
+  inp.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 150 * 1024 * 1024) { alert('Vídeo muito grande. Máximo 150MB.'); return; }
+
+    // Store blob in IndexedDB
+    const blobKey = 'storylab_video_' + Date.now() + '_' + idx;
+    try {
+      const db = await _openIDB();
+      const tx = db.transaction(_IDB_STORE, 'readwrite');
+      tx.objectStore(_IDB_STORE).put(file, blobKey);
+      await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    } catch(e) { console.warn('Video IDB store failed:', e); }
+
+    // Revoke previous objectURL if any
+    if (S.cards[idx].bg.videoSrc) URL.revokeObjectURL(S.cards[idx].bg.videoSrc);
+
+    const objectUrl = URL.createObjectURL(file);
+    S.cards[idx].bg.type        = 'video';
+    S.cards[idx].bg.videoSrc    = objectUrl;
+    S.cards[idx].bg.videoBlobKey = blobKey;
+    S.cards[idx].bg.imageScale  = 1;
+    S.cards[idx].bg.imageX = 0; S.cards[idx].bg.imageY = 0;
+    S.cards[idx].bg.boxImgX = 0; S.cards[idx].bg.boxImgY = 0;
+    refreshCard(idx); renderCardSidebar();
+    autoSave();
+  };
+  inp.click();
+}
+
+async function loadVideoFromStorage(blobKey) {
+  if (!blobKey) return null;
+  try {
+    const db = await _openIDB();
+    const tx = db.transaction(_IDB_STORE, 'readonly');
+    const blob = await new Promise((res, rej) => {
+      const r = tx.objectStore(_IDB_STORE).get(blobKey);
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    return blob ? URL.createObjectURL(blob) : null;
+  } catch(e) { return null; }
 }
 
 // Overlay controls
@@ -6430,8 +6639,15 @@ async function exportAllCards() {
     if (status) status.textContent = `Card ${i+1} de ${total}...`;
 
     try {
-      const blob = await exportCardToCanvas(S.cards[i], i);
-      pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.png`, blob });
+      if (S.cards[i].bg.type === 'video') {
+        // For video cards: capture a static frame for the zip PNG
+        const blob = await exportCardToCanvas(S.cards[i], i);
+        pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.png`, blob });
+        // Note: use "Exportar este card (.mp4)" in sidebar for full video export
+      } else {
+        const blob = await exportCardToCanvas(S.cards[i], i);
+        pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.png`, blob });
+      }
     } catch(err) {
       console.error(`Card ${i+1} error:`, err);
     }
@@ -6510,20 +6726,43 @@ async function exportCardToCanvas(card, idx) {
   } else {
     // Determine background for image cards
     if (card.bg.boxMode) {
-      // Box mode: always solid color background
       ctx.fillStyle = card.bg.color || '#141210';
       ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-      // Draw image in box mask
       if (card.bg.imageSrc) {
         await drawBoxImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H, SC);
+      } else if (card.bg.type === 'video' && card.bg.videoSrc) {
+        // Draw current video frame in box
+        const vidEl = document.querySelector(`.c-card[data-idx="${idx}"] video[data-card-vid]`);
+        if (vidEl) {
+          const bxW = (card.bg.boxW != null ? card.bg.boxW : 100) / 100;
+          const bxH = (card.bg.boxH != null ? card.bg.boxH : 42)  / 100;
+          const bxY = (card.bg.boxY != null ? card.bg.boxY : 10)  / 100;
+          const boxW = EXPORT_W * bxW, boxH = EXPORT_H * bxH;
+          const boxX = (EXPORT_W - boxW) / 2, boxY = EXPORT_H * bxY;
+          const scaleV = Math.max(boxW / vidEl.videoWidth, boxH / vidEl.videoHeight) * (card.bg.imageScale || 1);
+          const rW = vidEl.videoWidth * scaleV, rH = vidEl.videoHeight * scaleV;
+          const ox = (card.bg.boxImgX || 0) * (EXPORT_W / 320);
+          const oy = (card.bg.boxImgY || 0) * (EXPORT_H / 400);
+          ctx.save(); ctx.beginPath(); ctx.rect(boxX, boxY, boxW, boxH); ctx.clip();
+          ctx.drawImage(vidEl, boxX + (boxW - rW) / 2 + ox, boxY + (boxH - rH) / 2 + oy, rW, rH);
+          ctx.restore();
+        }
       }
     } else {
-      // Full image mode: always fill black as base (prevents brand color bleeding through
-      // when image is shifted and doesn't cover entire canvas)
-      ctx.fillStyle = '#000000';
+      ctx.fillStyle = card.bg.type === 'video' ? '#000000' : '#000000';
       ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
       if (card.bg.type === 'image' && card.bg.imageSrc) {
         await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H);
+      } else if (card.bg.type === 'video' && card.bg.videoSrc) {
+        // Draw current video frame full
+        const vidEl = document.querySelector(`.c-card[data-idx="${idx}"] video[data-card-vid]`);
+        if (vidEl) {
+          const scaleV = Math.max(EXPORT_W / vidEl.videoWidth, EXPORT_H / vidEl.videoHeight) * (card.bg.imageScale || 1);
+          const rW = vidEl.videoWidth * scaleV, rH = vidEl.videoHeight * scaleV;
+          const ox = (card.bg.imageX || 0) * (EXPORT_W / 320);
+          const oy = (card.bg.imageY || 0) * (EXPORT_H / 400);
+          ctx.drawImage(vidEl, (EXPORT_W - rW) / 2 + ox, (EXPORT_H - rH) / 2 + oy, rW, rH);
+        }
       }
     }
   }
@@ -8057,15 +8296,15 @@ function bcNavigate(targetStep) {
     if (_drag.mode === 'full') {
       card.bg.imageX = Math.round(_drag.origX + dx);
       card.bg.imageY = Math.round(_drag.origY + dy);
-      // Update image transform directly — no DOM replacement during drag
-      const imgEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img]`);
-      if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX}px,${card.bg.imageY}px) scale(${card.bg.imageScale||1})`;
+      // Update image/video transform directly — no DOM replacement during drag
+      const mediaEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img], .c-card[data-idx="${_drag.idx}"] video[data-card-vid]`);
+      if (mediaEl) mediaEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX}px,${card.bg.imageY}px) scale(${card.bg.imageScale||1})`;
     } else {
       // box mode — move the img inside the box via transform translate
       card.bg.boxImgX = Math.round(_drag.origX + dx);
       card.bg.boxImgY = Math.round(_drag.origY + dy);
-      const imgEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img]`);
-      if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.boxImgX}px,${card.bg.boxImgY}px)`;
+      const mediaEl2 = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img], .c-card[data-idx="${_drag.idx}"] video[data-card-vid]`);
+      if (mediaEl2) mediaEl2.style.transform = `translate(-50%,-50%) translate(${card.bg.boxImgX}px,${card.bg.boxImgY}px)`;
     }
   }
 
@@ -8082,7 +8321,8 @@ function bcNavigate(targetStep) {
 
   window.startImgDrag = function(e, idx, overrideStartX, overrideStartY) {
     const card = S.cards[idx];
-    if (!card || card.bg.type !== 'image' || !card.bg.imageSrc) return;
+    const isDraggable = (card.bg.type === 'image' && card.bg.imageSrc) || (card.bg.type === 'video' && card.bg.videoSrc);
+    if (!card || !isDraggable) return;
     e.preventDefault();
     // Clean up any lingering drag state before starting a new one
     if (_drag) {
