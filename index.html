@@ -5044,11 +5044,11 @@ function renderCardHtml(card, idx, total) {
       const boxLeft = ((100 - bxW) / 2).toFixed(2);
       const boxRadius = `${bxYv<=0.5?'0':'4px'} ${parseFloat(boxLeft)<=0.2?'0':'4px'} ${(bxYv+bxH)>=99.5?'0':'4px'} ${parseFloat(boxLeft)<=0.2?'0':'4px'}`;
       layers += `<div data-box-img="${idx}" style="position:absolute;left:${boxLeft}%;top:${bxYv}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};">
-        <video data-card-vid="${idx}" src="${card.bg.videoSrc}" style="position:absolute;left:50%;top:50%;min-width:100%;min-height:100%;width:auto;height:auto;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px) scale(${vScale});transform-origin:center;pointer-events:none;user-select:none;" autoplay muted loop playsinline></video>
+        <video data-card-vid="${idx}" src="${card.bg.videoSrc}" style="position:absolute;left:50%;top:50%;min-width:100%;min-height:100%;width:auto;height:auto;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px) scale(${vScale});transform-origin:center;pointer-events:none;user-select:none;" autoplay ${card.bg.videoMuted!==false?"muted":""} loop playsinline></video>
       </div>`;
     } else {
       layers += `<div style="position:absolute;inset:0;overflow:hidden;z-index:1;">
-        <video data-card-vid="${idx}" src="${card.bg.videoSrc}" style="position:absolute;left:50%;top:50%;min-width:100%;min-height:100%;width:auto;height:auto;transform:translate(-50%,-50%) translate(${vX}px,${vY}px) scale(${vScale});transform-origin:center;pointer-events:none;user-select:none;" autoplay muted loop playsinline></video>
+        <video data-card-vid="${idx}" src="${card.bg.videoSrc}" style="position:absolute;left:50%;top:50%;min-width:100%;min-height:100%;width:auto;height:auto;transform:translate(-50%,-50%) translate(${vX}px,${vY}px) scale(${vScale});transform-origin:center;pointer-events:none;user-select:none;" autoplay ${card.bg.videoMuted!==false?"muted":""} loop playsinline></video>
       </div>`;
     }
   }
@@ -5504,6 +5504,7 @@ function renderCardSidebar() {
           </div>
           <button onclick="event.stopPropagation();triggerBgVideoUpload(${idx})" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:0.6rem;font-family:'Poppins',sans-serif;">🔄 Trocar</button>
           <button onclick="event.stopPropagation();clearBgVideo(${idx})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;">×</button>
+          <button onclick="event.stopPropagation();toggleVideoMuted(${idx})" style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.72);border:none;color:#fff;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:0.62rem;font-family:'Poppins',sans-serif;">${card.bg.videoMuted!==false?'🔇 Mudo':'🔊 Som'}</button>
         </div>
         <div class="field-label" style="margin-bottom:6px;">Modo de exibição</div>
         <div style="display:flex;gap:6px;margin-bottom:10px;">
@@ -5846,6 +5847,15 @@ function refreshCard(idx) {
   _cardEditSaveTimer = setTimeout(() => { autoSave(); }, 1500);
 }
 
+function toggleVideoMuted(idx) {
+  const card = S.cards[idx];
+  card.bg.videoMuted = !(card.bg.videoMuted !== false ? true : false);
+  // Apply immediately to the live video element
+  const vidEl = document.querySelector(`.c-card[data-idx="${idx}"] video[data-card-vid]`);
+  if (vidEl) vidEl.muted = card.bg.videoMuted !== false;
+  refreshCard(idx); renderCardSidebar();
+}
+
 function clearBgVideo(idx) {
   const card = S.cards[idx];
   if (card.bg.videoSrc) URL.revokeObjectURL(card.bg.videoSrc);
@@ -5865,64 +5875,135 @@ async function exportCardAsVideo(idx) {
     <div class="ex-title">Exportando vídeo...</div>
     <div class="export-progress-bar"><div class="export-progress-fill" id="vid-fill" style="width:0%"></div></div>
     <div class="export-status" id="vid-status">Preparando...</div>
-    <div style="font-size:0.72rem;color:var(--muted);max-width:260px;line-height:1.6;text-align:center">Gravando canvas frame a frame.<br>Aguarde o download.</div>
+    <div style="font-size:0.72rem;color:var(--muted);max-width:260px;line-height:1.6;text-align:center">Gravando canvas frame a frame.<br>Aguarde o download (.webm).</div>
   </div>`;
   document.body.appendChild(overlay);
 
+  const setStatus = (msg, pct) => {
+    const f = document.getElementById('vid-fill');
+    const s = document.getElementById('vid-status');
+    if (f && pct != null) f.style.width = pct + '%';
+    if (s) s.textContent = msg;
+  };
+
   try {
-    // Find the live card element and create offscreen canvas at export res
-    const SCALE = 2; // 640×800 — balance quality vs speed
-    const EW = 320 * SCALE, EH = 400 * SCALE;
+    const EW = 640, EH = 800; // 4:5 ratio, good quality/speed balance
 
+    // ── Step 1: Get the live video element ──
     const videoEl = document.querySelector(`.c-card[data-idx="${idx}"] video[data-card-vid]`);
-    if (!videoEl) throw new Error('Elemento de vídeo não encontrado no preview.');
-
-    // Wait for video to have enough data
+    if (!videoEl) throw new Error('Vídeo não encontrado no preview. Selecione o card primeiro.');
     if (videoEl.readyState < 2) {
-      await new Promise(res => { videoEl.addEventListener('canplay', res, { once: true }); });
+      setStatus('Carregando vídeo...', 5);
+      await new Promise((res, rej) => {
+        videoEl.addEventListener('canplay', res, { once: true });
+        setTimeout(() => rej(new Error('Timeout ao carregar vídeo')), 15000);
+      });
     }
-    const duration = videoEl.duration || 6;
+    const duration = isFinite(videoEl.duration) && videoEl.duration > 0 ? videoEl.duration : 6;
+    setStatus('Gerando layers estáticos...', 10);
 
-    // Build a static canvas snapshot of all non-video layers (text, overlay, header, etc.)
-    const staticCanvas = await exportCardToCanvas(card, idx);
-    const staticImg = await createImageBitmap(staticCanvas);
+    // ── Step 2: Build static layers canvas (everything EXCEPT the video background) ──
+    // Temporarily hide video layer, render everything else, then restore
+    const staticCanvas = document.createElement('canvas');
+    staticCanvas.width = EW; staticCanvas.height = EH;
+    const sctx = staticCanvas.getContext('2d');
 
-    // Recording canvas
+    // Create a card clone with type='solid' to get the static layers without video
+    const cardForStatic = JSON.parse(JSON.stringify(card));
+    cardForStatic.bg.type = 'solid';
+    cardForStatic.bg.color = card.bg.boxMode ? (card.bg.color || '#141210') : 'transparent';
+    const SC = EW / 320;
+
+    // Draw the static canvas using exportCardToCanvas but scaled to EW/EH
+    // We export at full EXPORT_W/H then scale down
+    const fullStaticCanvas = await exportCardToCanvas(cardForStatic, idx);
+    sctx.drawImage(fullStaticCanvas, 0, 0, EW, EH);
+
+    setStatus('Configurando gravação...', 15);
+
+    // ── Step 3: Setup recording canvas ──
     const recCanvas = document.createElement('canvas');
     recCanvas.width = EW; recCanvas.height = EH;
     const rctx = recCanvas.getContext('2d');
 
-    // Setup MediaRecorder
-    const stream = recCanvas.captureStream(30);
-    const mimeType = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4']
+    // ── Step 4: Setup MediaRecorder with best available codec ──
+    const mimeType = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm;codecs=vp8,opus','video/webm;codecs=vp8','video/webm']
       .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+
+    // Capture canvas stream + audio from video element if not muted
+    const canvasStream = recCanvas.captureStream(30);
+    const isMuted = card.bg.videoMuted !== false;
+    if (!isMuted && videoEl.srcObject == null) {
+      // Add audio track from video element
+      try {
+        const audioCtx = new AudioContext();
+        const src = audioCtx.createMediaElementSource(videoEl);
+        const dest = audioCtx.createMediaStreamDestination();
+        src.connect(dest);
+        src.connect(audioCtx.destination); // keep playing through speakers
+        dest.stream.getAudioTracks().forEach(t => canvasStream.addTrack(t));
+      } catch(e) { console.warn('Audio capture failed:', e.message); }
+    }
+
+    const recorder = new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: 6_000_000 });
     const chunks = [];
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
-    recorder.start(100);
+    // ── Step 5: Seek video to start and begin recording ──
     videoEl.currentTime = 0;
-    await new Promise(res => videoEl.addEventListener('seeked', res, { once: true }));
-    videoEl.play();
+    await new Promise(res => { videoEl.addEventListener('seeked', res, { once: true }); });
 
+    recorder.start(200);
+    videoEl.play().catch(() => {});
+
+    // ── Step 6: Frame loop ──
     const FPS = 30;
     const totalFrames = Math.round(duration * FPS);
     let frame = 0;
 
     await new Promise((resolve) => {
+      const SC_vid = card.bg.boxMode ? null : null; // unused — draw full video
       function drawFrame() {
         if (frame >= totalFrames) { resolve(); return; }
+
         rctx.clearRect(0, 0, EW, EH);
-        // Draw live video frame
-        rctx.drawImage(videoEl, 0, 0, EW, EH);
-        // Composite static layers (overlay, text, header, etc.) on top
-        rctx.drawImage(staticImg, 0, 0, EW, EH);
+
+        // Draw black base
+        rctx.fillStyle = '#000';
+        rctx.fillRect(0, 0, EW, EH);
+
+        // Draw video frame (with position/scale from card state)
+        if (card.bg.boxMode) {
+          // Box mode: draw solid bg, then clip video to box
+          const bgColor = card.bg.color || '#141210';
+          rctx.fillStyle = bgColor;
+          rctx.fillRect(0, 0, EW, EH);
+          const bxW = ((card.bg.boxW != null ? card.bg.boxW : 100) / 100) * EW;
+          const bxH = ((card.bg.boxH != null ? card.bg.boxH : 42)  / 100) * EH;
+          const bxX = (EW - bxW) / 2;
+          const bxY2 = ((card.bg.boxY != null ? card.bg.boxY : 10) / 100) * EH;
+          const vscale = Math.max(bxW / videoEl.videoWidth, bxH / videoEl.videoHeight) * (card.bg.imageScale || 1);
+          const vW = videoEl.videoWidth * vscale, vH = videoEl.videoHeight * vscale;
+          const ox = (card.bg.boxImgX || 0) * (EW / 320);
+          const oy = (card.bg.boxImgY || 0) * (EH / 400);
+          rctx.save();
+          rctx.beginPath(); rctx.rect(bxX, bxY2, bxW, bxH); rctx.clip();
+          rctx.drawImage(videoEl, bxX + (bxW - vW) / 2 + ox, bxY2 + (bxH - vH) / 2 + oy, vW, vH);
+          rctx.restore();
+        } else {
+          // Full mode
+          const vscale = Math.max(EW / videoEl.videoWidth, EH / videoEl.videoHeight) * (card.bg.imageScale || 1);
+          const vW = videoEl.videoWidth * vscale, vH = videoEl.videoHeight * vscale;
+          const ox = (card.bg.imageX || 0) * (EW / 320);
+          const oy = (card.bg.imageY || 0) * (EH / 400);
+          rctx.drawImage(videoEl, (EW - vW) / 2 + ox, (EH - vH) / 2 + oy, vW, vH);
+        }
+
+        // Composite static layers (overlay, title, body, header, etc.) on top
+        rctx.drawImage(staticCanvas, 0, 0, EW, EH);
+
         frame++;
-        const pct = Math.round((frame / totalFrames) * 90);
-        const fill = document.getElementById('vid-fill');
-        const status = document.getElementById('vid-status');
-        if (fill) fill.style.width = pct + '%';
-        if (status) status.textContent = `Frame ${frame} / ${totalFrames}`;
+        setStatus(`Frame ${frame} / ${totalFrames}`, 15 + Math.round((frame / totalFrames) * 78));
         requestAnimationFrame(drawFrame);
       }
       drawFrame();
@@ -5930,24 +6011,21 @@ async function exportCardAsVideo(idx) {
 
     videoEl.pause();
     recorder.stop();
-    const fill2 = document.getElementById('vid-fill');
-    if (fill2) fill2.style.width = '95%';
-    document.getElementById('vid-status').textContent = 'Finalizando...';
+    setStatus('Finalizando...', 95);
 
     await new Promise(res => { recorder.onstop = res; });
-    const blob = new Blob(chunks, { type: mimeType });
-    const ext  = mimeType.includes('mp4') ? 'mp4' : 'webm';
-    const tema = (S.renderAnalysis?.tema || 'card').replace(/[^a-zA-Z0-9]/g,'-').substring(0,20);
-    triggerDownload(blob, `${tema}-card${String(idx+1).padStart(2,'0')}.${ext}`);
 
-    if (fill2) fill2.style.width = '100%';
-    document.getElementById('vid-status').textContent = '✅ Vídeo exportado!';
+    const blob = new Blob(chunks, { type: mimeType });
+    const tema = (S.renderAnalysis?.tema || 'card').replace(/[^a-zA-Z0-9]/g,'-').substring(0,20);
+    triggerDownload(blob, `${tema}-card${String(idx+1).padStart(2,'0')}.webm`);
+
+    setStatus('✅ Vídeo exportado!', 100);
     setTimeout(() => overlay.remove(), 2500);
+
   } catch(err) {
     console.error('Video export error:', err);
-    const s = document.getElementById('vid-status');
-    if (s) s.textContent = '❌ Erro: ' + err.message;
-    setTimeout(() => overlay.remove(), 3000);
+    setStatus('❌ Erro: ' + err.message, null);
+    setTimeout(() => overlay.remove(), 4000);
   }
 }
 
@@ -6728,9 +6806,7 @@ async function exportCardToCanvas(card, idx) {
     if (card.bg.boxMode) {
       ctx.fillStyle = card.bg.color || '#141210';
       ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-      if (card.bg.imageSrc) {
-        await drawBoxImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H, SC);
-      } else if (card.bg.type === 'video' && card.bg.videoSrc) {
+      if (card.bg.type === 'video' && card.bg.videoSrc) {
         // Draw current video frame in box
         const vidEl = document.querySelector(`.c-card[data-idx="${idx}"] video[data-card-vid]`);
         if (vidEl) {
@@ -6747,9 +6823,11 @@ async function exportCardToCanvas(card, idx) {
           ctx.drawImage(vidEl, boxX + (boxW - rW) / 2 + ox, boxY + (boxH - rH) / 2 + oy, rW, rH);
           ctx.restore();
         }
+      } else if (card.bg.type === 'image' && card.bg.imageSrc) {
+        await drawBoxImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H, SC);
       }
     } else {
-      ctx.fillStyle = card.bg.type === 'video' ? '#000000' : '#000000';
+      ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
       if (card.bg.type === 'image' && card.bg.imageSrc) {
         await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H);
@@ -8097,6 +8175,10 @@ function migrateCard(card) {
   if (card.bg.boxImgX    == null) card.bg.boxImgX    = 0;
   if (card.bg.boxImgY    == null) card.bg.boxImgY    = 0;
   if (card.bg.boxTextLayout == null) card.bg.boxTextLayout = 'top';
+  // Video fields
+  if (card.bg.videoSrc     == null) card.bg.videoSrc     = null;
+  if (card.bg.videoBlobKey == null) card.bg.videoBlobKey = null;
+  if (card.bg.videoMuted   == null) card.bg.videoMuted   = true;
   // Natural image dimensions (stored on upload for precise preview↔export match)
   // For legacy cards without this data, we'll resolve lazily when rendering
   if (card.bg.imgNaturalW == null) card.bg.imgNaturalW = 0; // 0 = unknown, use img.naturalWidth at render
