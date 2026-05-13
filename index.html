@@ -5916,7 +5916,7 @@ async function exportCardAsVideo(idx) {
 
     // Draw the static canvas using exportCardToCanvas but scaled to EW/EH
     // We export at full EXPORT_W/H then scale down
-    const fullStaticCanvas = await exportCardToCanvas(cardForStatic, idx);
+    const fullStaticCanvas = await exportCardToCanvasEl(cardForStatic, idx);
     sctx.drawImage(fullStaticCanvas, 0, 0, EW, EH);
 
     setStatus('Configurando gravação...', 15);
@@ -6808,7 +6808,7 @@ async function exportCardToCanvas(card, idx) {
       ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
       if (card.bg.type === 'video' && card.bg.videoSrc) {
         // Draw current video frame in box
-        const vidEl = document.querySelector(`.c-card[data-idx="${idx}"] video[data-card-vid]`);
+        const vidEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video[data-card-vid]`);
         if (vidEl) {
           const bxW = (card.bg.boxW != null ? card.bg.boxW : 100) / 100;
           const bxH = (card.bg.boxH != null ? card.bg.boxH : 42)  / 100;
@@ -6833,7 +6833,7 @@ async function exportCardToCanvas(card, idx) {
         await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H);
       } else if (card.bg.type === 'video' && card.bg.videoSrc) {
         // Draw current video frame full
-        const vidEl = document.querySelector(`.c-card[data-idx="${idx}"] video[data-card-vid]`);
+        const vidEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video[data-card-vid]`);
         if (vidEl) {
           const scaleV = Math.max(EXPORT_W / vidEl.videoWidth, EXPORT_H / vidEl.videoHeight) * (card.bg.imageScale || 1);
           const rW = vidEl.videoWidth * scaleV, rH = vidEl.videoHeight * scaleV;
@@ -7269,6 +7269,50 @@ async function exportCardToCanvas(card, idx) {
   }
 
   return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/png'));
+}
+
+// Returns the canvas element directly (for video frame compositing in exportCardAsVideo)
+async function exportCardToCanvasEl(card, idx) {
+  await document.fonts.ready;
+  // Create canvas at video export resolution (640×800)
+  const EW = 640, EH = 800;
+  const canvas = document.createElement('canvas');
+  canvas.width = EW; canvas.height = EH;
+  const ctx = canvas.getContext('2d');
+  const SC = EW / 320;
+  const b = getBrand();
+
+  // Background (no video — caller handles video layer)
+  if (card.bg.type === 'solid' || card.bg.type === 'video') {
+    ctx.fillStyle = card.bg.boxMode ? (card.bg.color || '#141210') : (card.bg.color || '#141210');
+    ctx.fillRect(0, 0, EW, EH);
+  } else if (card.bg.type === 'gradient') {
+    const angle = (card.bg.gradAngle || 180) * Math.PI / 180;
+    const cx2 = EW/2, cy2 = EH/2;
+    const grad = ctx.createLinearGradient(
+      cx2 - Math.cos(angle)*EW/2, cy2 - Math.sin(angle)*EH/2,
+      cx2 + Math.cos(angle)*EW/2, cy2 + Math.sin(angle)*EH/2
+    );
+    grad.addColorStop(0, card.bg.gradColors[0]);
+    grad.addColorStop(1, card.bg.gradColors[1]);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, EW, EH);
+  } else {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, EW, EH);
+    if (card.bg.type === 'image' && card.bg.imageSrc) {
+      await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EW, EH);
+    }
+  }
+
+  // Re-use the full export pipeline by generating at EXPORT_W and scaling down
+  const fullBlob = await exportCardToCanvas(card, idx);
+  const bitmap = await createImageBitmap(fullBlob);
+  // Clear and draw scaled
+  ctx.clearRect(0, 0, EW, EH);
+  ctx.drawImage(bitmap, 0, 0, EW, EH);
+  bitmap.close();
+  return canvas;
 }
 
 
