@@ -5942,24 +5942,21 @@ async function exportCardAsVideo(idx) {
     const videoEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video`);
     if (!videoEl) throw new Error('Vídeo não encontrado. Selecione o card primeiro.');
 
-    // ── 2. Offscreen video for frame capture ──
+    // ── 2. Use the live video element — browser already renders it ──
+    // Offscreen elements block drawImage in many browsers; the live preview element works
     setStatus('Carregando vídeo...', 5);
-    offVideo = document.createElement('video');
-    offVideo.src = card.bg.videoSrc;
-    offVideo.muted = true;
-    offVideo.playsInline = true;
-    offVideo.preload = 'auto';
-    offVideo.loop = false; // we control the loop manually
-    offVideo.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;';
-    document.body.appendChild(offVideo);
-
-    await new Promise((res) => {
-      if (offVideo.readyState >= 3) { res(); return; }
-      offVideo.addEventListener('canplaythrough', res, { once: true });
-      offVideo.addEventListener('error', res, { once: true });
-      offVideo.load();
-      setTimeout(res, 12000);
-    });
+    offVideo = videoEl; // reuse live element
+    offVideo.loop = false;
+    offVideo.muted = true; // mute during capture to avoid feedback
+    if (offVideo.readyState < 3) {
+      await new Promise(res => {
+        offVideo.addEventListener('canplaythrough', res, { once: true });
+        setTimeout(res, 8000);
+      });
+    }
+    // Make sure the card is visible/scrolled into view so browser renders frames
+    const cardEl = document.querySelector(`.c-card[data-idx="${idx}"]`);
+    if (cardEl) cardEl.scrollIntoView({ block: 'center', behavior: 'instant' });
 
     const duration = isFinite(offVideo.duration) && offVideo.duration > 0 ? offVideo.duration : 6;
     const totalFrames = Math.round(duration * FPS);
@@ -6074,7 +6071,7 @@ async function exportCardAsVideo(idx) {
     setStatus('❌ Erro: ' + err.message, null);
     setTimeout(() => overlay.remove(), 5000);
   } finally {
-    if (offVideo) { offVideo.pause(); offVideo.remove(); offVideo = null; }
+    if (offVideo) { offVideo.pause(); offVideo = null; }
   }
 }
 function setCardBgType(idx, type) {
