@@ -5970,76 +5970,52 @@ async function exportCardAsVideo(idx) {
 
     setStatus('Capturando frames...', 12);
 
-    // ── 4. Seek to start and wait for first frame ──
-    offVideo.currentTime = 0;
-    await new Promise(res => {
-      offVideo.addEventListener('seeked', res, { once: true });
-      setTimeout(res, 2000);
-    });
-    // Draw one frame to verify video is working
-    const testCanvas = document.createElement('canvas');
-    testCanvas.width = 4; testCanvas.height = 4;
-    const testCtx = testCanvas.getContext('2d');
-    testCtx.drawImage(offVideo, 0, 0, 4, 4);
-    const td = testCtx.getImageData(0, 0, 4, 4).data;
-    const hasVideo = td.some((v, i) => i % 4 !== 3 && v > 0);
-    if (!hasVideo) console.warn('Video may not be rendering frames yet');
-
-    // ── 5. Capture all frames into ImageBitmaps ──
-    offVideo.play().catch(() => {});
+    // ── 4 & 5. Seek frame-by-frame and capture ──
+    // seek-based capture: guarantees each frame is fully decoded before drawImage
     const capturedFrames = [];
     const recCanvas = document.createElement('canvas');
     recCanvas.width = EW; recCanvas.height = EH;
     const rctx = recCanvas.getContext('2d');
 
-    await new Promise((resolve) => {
-      let lastTime = -1;
-      const interval = setInterval(async () => {
-        // Check if video has new frame data
-        if (offVideo.readyState < 2) return;
+    function drawVideoFrame() {
+      rctx.clearRect(0, 0, EW, EH);
+      if (card.bg.boxMode) {
+        rctx.fillStyle = card.bg.color || '#141210';
+        rctx.fillRect(0, 0, EW, EH);
+        const bxW = ((card.bg.boxW  ?? 100) / 100) * EW;
+        const bxH = ((card.bg.boxH  ?? 42)  / 100) * EH;
+        const bxX = (EW - bxW) / 2;
+        const bxY = ((card.bg.boxY  ?? 10)  / 100) * EH;
+        const vs  = Math.max(bxW / offVideo.videoWidth, bxH / offVideo.videoHeight) * (card.bg.imageScale || 1);
+        const vW  = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
+        const ox  = (card.bg.boxImgX || 0) * (EW / 320);
+        const oy  = (card.bg.boxImgY || 0) * (EH / 400);
+        rctx.save();
+        rctx.beginPath(); rctx.rect(bxX, bxY, bxW, bxH); rctx.clip();
+        rctx.drawImage(offVideo, bxX + (bxW - vW) / 2 + ox, bxY + (bxH - vH) / 2 + oy, vW, vH);
+        rctx.restore();
+      } else {
+        rctx.fillStyle = '#000'; rctx.fillRect(0, 0, EW, EH);
+        const vs = Math.max(EW / offVideo.videoWidth, EH / offVideo.videoHeight) * (card.bg.imageScale || 1);
+        const vW = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
+        const ox = (card.bg.imageX || 0) * (EW / 320);
+        const oy = (card.bg.imageY || 0) * (EH / 400);
+        rctx.drawImage(offVideo, (EW - vW) / 2 + ox, (EH - vH) / 2 + oy, vW, vH);
+      }
+      rctx.drawImage(staticCanvas, 0, 0, EW, EH);
+    }
 
-        rctx.clearRect(0, 0, EW, EH);
-
-        if (card.bg.boxMode) {
-          rctx.fillStyle = card.bg.color || '#141210';
-          rctx.fillRect(0, 0, EW, EH);
-          const bxW = ((card.bg.boxW  ?? 100) / 100) * EW;
-          const bxH = ((card.bg.boxH  ?? 42)  / 100) * EH;
-          const bxX = (EW - bxW) / 2;
-          const bxY = ((card.bg.boxY  ?? 10)  / 100) * EH;
-          const vs   = Math.max(bxW / offVideo.videoWidth, bxH / offVideo.videoHeight) * (card.bg.imageScale || 1);
-          const vW   = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
-          const ox   = (card.bg.boxImgX || 0) * (EW / 320);
-          const oy   = (card.bg.boxImgY || 0) * (EH / 400);
-          rctx.save();
-          rctx.beginPath(); rctx.rect(bxX, bxY, bxW, bxH); rctx.clip();
-          rctx.drawImage(offVideo, bxX + (bxW - vW) / 2 + ox, bxY + (bxH - vH) / 2 + oy, vW, vH);
-          rctx.restore();
-        } else {
-          rctx.fillStyle = '#000';
-          rctx.fillRect(0, 0, EW, EH);
-          const vs = Math.max(EW / offVideo.videoWidth, EH / offVideo.videoHeight) * (card.bg.imageScale || 1);
-          const vW = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
-          const ox = (card.bg.imageX || 0) * (EW / 320);
-          const oy = (card.bg.imageY || 0) * (EH / 400);
-          rctx.drawImage(offVideo, (EW - vW) / 2 + ox, (EH - vH) / 2 + oy, vW, vH);
-        }
-        rctx.drawImage(staticCanvas, 0, 0, EW, EH);
-
-        // Capture frame as ImageBitmap
-        const bitmap = await createImageBitmap(recCanvas);
-        capturedFrames.push(bitmap);
-
-        const f = capturedFrames.length;
-        setStatus(`Capturando frame ${f} / ${totalFrames}`, 12 + Math.round((f / totalFrames) * 55));
-
-        if (f >= totalFrames || (offVideo.ended && f > totalFrames * 0.95)) {
-          clearInterval(interval);
-          offVideo.pause();
-          resolve();
-        }
-      }, 1000 / FPS);
-    });
+    for (let f = 0; f < totalFrames; f++) {
+      const t = f / FPS;
+      offVideo.currentTime = t;
+      await new Promise(res => {
+        offVideo.addEventListener('seeked', res, { once: true });
+        setTimeout(res, 500); // safety timeout per frame
+      });
+      drawVideoFrame();
+      capturedFrames.push(await createImageBitmap(recCanvas));
+      if (f % 5 === 0) setStatus(`Exportando para .mp4, aguarde... ${f} / ${totalFrames}`, 12 + Math.round((f / totalFrames) * 55));
+    }
 
     setStatus('Codificando MP4...', 68, 'Usando VideoEncoder nativo...');
 
@@ -6074,39 +6050,15 @@ async function exportCardAsVideo(idx) {
       rec2.ondataavailable = e => { if (e.data.size > 0) chunks2.push(e.data); };
 
       // Re-seek and play for webm fallback
-      offVideo.currentTime = 0;
-      await new Promise(res => { offVideo.addEventListener('seeked', res, {once:true}); setTimeout(res,2000); });
+      // Webm fallback: also use seek-based capture with MediaRecorder
       rec2.start(100);
-      offVideo.play().catch(()=>{});
-      if (!isMuted && videoEl) videoEl.currentTime = 0;
-
-      await new Promise(resolve => {
-        let frame2 = 0;
-        const iv2 = setInterval(() => {
-          if (frame2 >= totalFrames || offVideo.ended) { clearInterval(iv2); resolve(); return; }
-          rctx.clearRect(0,0,EW,EH);
-          if (card.bg.boxMode) {
-            rctx.fillStyle = card.bg.color||'#141210'; rctx.fillRect(0,0,EW,EH);
-            const bxW2=((card.bg.boxW??100)/100)*EW, bxH2=((card.bg.boxH??42)/100)*EH;
-            const bxX2=(EW-bxW2)/2, bxY2=((card.bg.boxY??10)/100)*EH;
-            const vs2=Math.max(bxW2/offVideo.videoWidth,bxH2/offVideo.videoHeight)*(card.bg.imageScale||1);
-            const vW2=offVideo.videoWidth*vs2, vH2=offVideo.videoHeight*vs2;
-            const ox2=(card.bg.boxImgX||0)*(EW/320), oy2=(card.bg.boxImgY||0)*(EH/400);
-            rctx.save(); rctx.beginPath(); rctx.rect(bxX2,bxY2,bxW2,bxH2); rctx.clip();
-            rctx.drawImage(offVideo,bxX2+(bxW2-vW2)/2+ox2,bxY2+(bxH2-vH2)/2+oy2,vW2,vH2);
-            rctx.restore();
-          } else {
-            rctx.fillStyle='#000'; rctx.fillRect(0,0,EW,EH);
-            const vs2=Math.max(EW/offVideo.videoWidth,EH/offVideo.videoHeight)*(card.bg.imageScale||1);
-            const vW2=offVideo.videoWidth*vs2,vH2=offVideo.videoHeight*vs2;
-            const ox2=(card.bg.imageX||0)*(EW/320),oy2=(card.bg.imageY||0)*(EH/400);
-            rctx.drawImage(offVideo,(EW-vW2)/2+ox2,(EH-vH2)/2+oy2,vW2,vH2);
-          }
-          rctx.drawImage(staticCanvas,0,0,EW,EH);
-          frame2++;
-          setStatus(`Frame ${frame2}/${totalFrames}`, 68+Math.round((frame2/totalFrames)*28));
-        }, 1000/FPS);
-      });
+      if (!isMuted && videoEl) { videoEl.currentTime = 0; videoEl.play().catch(()=>{}); }
+      for (let f2 = 0; f2 < totalFrames; f2++) {
+        offVideo.currentTime = f2 / FPS;
+        await new Promise(res => { offVideo.addEventListener('seeked', res, {once:true}); setTimeout(res, 500); });
+        drawVideoFrame();
+        if (f2 % 5 === 0) setStatus(`Exportando para .mp4, aguarde... ${f2}/${totalFrames}`, 68+Math.round((f2/totalFrames)*28));
+      }
       offVideo.pause();
       rec2.stop();
       await new Promise(res => { rec2.onstop = res; });
