@@ -2491,8 +2491,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-<script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+<script src="https://unpkg.com/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
 </head>
 <body>
 
@@ -5849,49 +5848,47 @@ function refreshCard(idx) {
   _cardEditSaveTimer = setTimeout(() => { autoSave(); }, 1500);
 }
 
-// ── FFMPEG WEBM→MP4 CONVERSION ──
-let _ffmpegInstance = null;
-async function getFFmpeg() {
-  if (_ffmpegInstance) return _ffmpegInstance;
-  const { FFmpeg } = window.FFmpegWASM || window.FFmpegNamespace || (await new Promise(res => {
-    // @ffmpeg/ffmpeg UMD exports as FFmpegWASM or window.FFmpeg
-    if (window.FFmpeg) return res({ FFmpeg: window.FFmpeg });
-    setTimeout(() => res({ FFmpeg: window.FFmpeg }), 500);
-  }));
-  _ffmpegInstance = new FFmpeg();
-  _ffmpegInstance.on('log', ({ message }) => console.debug('[ffmpeg]', message));
-  await _ffmpegInstance.load({
-    coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-    wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
-  });
-  return _ffmpegInstance;
-}
-
-async function convertWebmToMp4(webmBlob, onProgress) {
+// ── MP4 MUXER — pure JS MP4 encoding, no WebAssembly required ──
+// Uses mp4-muxer to encode VideoFrames directly into a .mp4 container
+// Falls back to webm if VideoEncoder API is not available (older browsers)
+async function encodeMp4WithMuxer(frames, audioChunks, width, height, fps, onProgress) {
   try {
-    const ffmpeg = await getFFmpeg();
-    const { fetchFile } = window.FFmpegUtil || window;
-    const inData = new Uint8Array(await webmBlob.arrayBuffer());
-    await ffmpeg.writeFile('input.webm', inData);
-    ffmpeg.on('progress', ({ progress }) => onProgress && onProgress(Math.round(progress * 100)));
-    await ffmpeg.exec([
-      '-i', 'input.webm',
-      '-c:v', 'libx264',
-      '-preset', 'fast',
-      '-crf', '23',
-      '-c:a', 'aac',
-      '-b:a', '128k',
-      '-movflags', '+faststart',
-      '-pix_fmt', 'yuv420p',
-      'output.mp4'
-    ]);
-    const data = await ffmpeg.readFile('output.mp4');
-    await ffmpeg.deleteFile('input.webm');
-    await ffmpeg.deleteFile('output.mp4');
-    return new Blob([data.buffer], { type: 'video/mp4' });
+    const Mp4Muxer = window.Mp4Muxer;
+    if (!Mp4Muxer || typeof VideoEncoder === 'undefined') return null;
+
+    const chunks = [];
+    const muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: { codec: 'avc', width, height },
+      firstTimestampBehavior: 'offset',
+    });
+
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => console.warn('VideoEncoder error:', e),
+    });
+    encoder.configure({ codec: 'avc1.42001f', width, height, bitrate: 6_000_000, framerate: fps });
+
+    const totalFrames = frames.length;
+    for (let i = 0; i < totalFrames; i++) {
+      const bitmap = frames[i];
+      const ts = Math.round((i / fps) * 1_000_000); // microseconds
+      const vf = new VideoFrame(bitmap, { timestamp: ts });
+      encoder.encode(vf, { keyFrame: i % 60 === 0 });
+      vf.close();
+      bitmap.close();
+      if (i % 10 === 0) {
+        onProgress && onProgress(Math.round((i / totalFrames) * 100));
+        await new Promise(res => setTimeout(res, 0)); // yield to UI
+      }
+    }
+    await encoder.flush();
+    muxer.finalize();
+    const { buffer } = muxer.target;
+    return new Blob([buffer], { type: 'video/mp4' });
   } catch(e) {
-    console.warn('ffmpeg conversion failed:', e.message);
-    return null; // caller falls back to webm
+    console.warn('mp4-muxer failed:', e.message);
+    return null;
   }
 }
 
@@ -5923,119 +5920,97 @@ async function exportCardAsVideo(idx) {
     <div class="ex-title">Exportando vídeo...</div>
     <div class="export-progress-bar"><div class="export-progress-fill" id="vid-fill" style="width:0%"></div></div>
     <div class="export-status" id="vid-status">Preparando...</div>
-    <div style="font-size:0.72rem;color:var(--muted);max-width:260px;line-height:1.6;text-align:center">Gravando canvas frame a frame.<br>Aguarde o download (.webm).</div>
+    <div id="vid-sub" style="font-size:0.72rem;color:var(--muted);max-width:260px;line-height:1.6;text-align:center">Gravando frame a frame. Aguarde.</div>
   </div>`;
   document.body.appendChild(overlay);
 
-  const setStatus = (msg, pct) => {
+  const setStatus = (msg, pct, sub) => {
     const f = document.getElementById('vid-fill');
     const s = document.getElementById('vid-status');
+    const d = document.getElementById('vid-sub');
     if (f && pct != null) f.style.width = pct + '%';
     if (s) s.textContent = msg;
+    if (d && sub) d.textContent = sub;
   };
 
+  let offVideo = null;
   try {
     const EW = 640, EH = 800;
+    const FPS = 30;
 
-    // ── 1. Get live video element ──
+    // ── 1. Get live video for audio ──
     const videoEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video`);
     if (!videoEl) throw new Error('Vídeo não encontrado. Selecione o card primeiro.');
-    setStatus('Carregando vídeo...', 5);
-    if (videoEl.readyState < 3) {
-      await new Promise((res, rej) => {
-        videoEl.addEventListener('canplaythrough', res, { once: true });
-        setTimeout(() => res(), 8000); // proceed anyway after 8s
-      });
-    }
-    const duration = isFinite(videoEl.duration) && videoEl.duration > 0 ? videoEl.duration : 6;
-    setStatus('Gerando layers de texto...', 10);
 
-    // ── 2. Build offscreen video element at native resolution for clean drawImage ──
-    // The DOM video is small (preview size) — create a hidden full-res copy
-    const offVideo = document.createElement('video');
+    // ── 2. Offscreen video for frame capture ──
+    setStatus('Carregando vídeo...', 5);
+    offVideo = document.createElement('video');
     offVideo.src = card.bg.videoSrc;
-    offVideo.muted = true; // offscreen copy always muted — we use live el for audio
+    offVideo.muted = true;
     offVideo.playsInline = true;
     offVideo.preload = 'auto';
+    offVideo.loop = false; // we control the loop manually
+    offVideo.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;';
     document.body.appendChild(offVideo);
-    await new Promise((res, rej) => {
+
+    await new Promise((res) => {
+      if (offVideo.readyState >= 3) { res(); return; }
       offVideo.addEventListener('canplaythrough', res, { once: true });
-      offVideo.addEventListener('error', rej, { once: true });
+      offVideo.addEventListener('error', res, { once: true });
       offVideo.load();
-      setTimeout(() => res(), 10000);
+      setTimeout(res, 12000);
     });
 
-    // ── 3. Build static layers canvas (bg-outside-box, overlay, text, header — NO video) ──
-    // Uses buildStaticLayersCanvas which works at EW×EH natively — same coordinate space as video
+    const duration = isFinite(offVideo.duration) && offVideo.duration > 0 ? offVideo.duration : 6;
+    const totalFrames = Math.round(duration * FPS);
+    setStatus('Gerando layers estáticos...', 8);
+
+    // ── 3. Static layers canvas (text, header, bg-outside-box) ──
     const staticCanvas = await buildStaticLayersCanvas(card, idx, EW, EH);
 
-    setStatus('Iniciando gravação...', 18);
+    setStatus('Capturando frames...', 12);
 
-    // ── 4. Recording canvas ──
+    // ── 4. Seek to start and wait for first frame ──
+    offVideo.currentTime = 0;
+    await new Promise(res => {
+      offVideo.addEventListener('seeked', res, { once: true });
+      setTimeout(res, 2000);
+    });
+    // Draw one frame to verify video is working
+    const testCanvas = document.createElement('canvas');
+    testCanvas.width = 4; testCanvas.height = 4;
+    const testCtx = testCanvas.getContext('2d');
+    testCtx.drawImage(offVideo, 0, 0, 4, 4);
+    const td = testCtx.getImageData(0, 0, 4, 4).data;
+    const hasVideo = td.some((v, i) => i % 4 !== 3 && v > 0);
+    if (!hasVideo) console.warn('Video may not be rendering frames yet');
+
+    // ── 5. Capture all frames into ImageBitmaps ──
+    offVideo.play().catch(() => {});
+    const capturedFrames = [];
     const recCanvas = document.createElement('canvas');
     recCanvas.width = EW; recCanvas.height = EH;
     const rctx = recCanvas.getContext('2d');
 
-    // ── 5. MediaRecorder setup ──
-    const mimeType = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm;codecs=vp8,opus','video/webm;codecs=vp8','video/webm']
-      .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
-
-    const canvasStream = recCanvas.captureStream(30);
-
-    // Audio: use the live DOM video element (which has audio context attached)
-    const isMuted = card.bg.videoMuted !== false;
-    if (!isMuted) {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const src = audioCtx.createMediaElementSource(videoEl);
-        const dest = audioCtx.createMediaStreamDestination();
-        src.connect(dest);
-        src.connect(audioCtx.destination);
-        dest.stream.getAudioTracks().forEach(t => canvasStream.addTrack(t));
-      } catch(e) { console.warn('Audio capture skipped:', e.message); }
-    }
-
-    const recorder = new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: 8_000_000 });
-    const chunks = [];
-    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-
-    // ── 6. Seek offscreen video to start ──
-    offVideo.currentTime = 0;
-    await new Promise(res => { offVideo.addEventListener('seeked', res, { once: true }); setTimeout(res, 2000); });
-
-    recorder.start(100);
-    offVideo.play().catch(() => {});
-    if (!isMuted) videoEl.currentTime = 0; // sync live el for audio
-
-    // ── 7. Frame loop using setInterval (more reliable than rAF for video) ──
-    const FPS = 30;
-    const frameDuration = 1000 / FPS;
-    const totalFrames = Math.round(duration * FPS);
-    let frame = 0;
-
     await new Promise((resolve) => {
-      const interval = setInterval(() => {
-        if (frame >= totalFrames || offVideo.ended) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
+      let lastTime = -1;
+      const interval = setInterval(async () => {
+        // Check if video has new frame data
+        if (offVideo.readyState < 2) return;
 
         rctx.clearRect(0, 0, EW, EH);
 
-        // Base background
         if (card.bg.boxMode) {
           rctx.fillStyle = card.bg.color || '#141210';
           rctx.fillRect(0, 0, EW, EH);
-          // Draw video inside box mask
           const bxW = ((card.bg.boxW  ?? 100) / 100) * EW;
           const bxH = ((card.bg.boxH  ?? 42)  / 100) * EH;
           const bxX = (EW - bxW) / 2;
           const bxY = ((card.bg.boxY  ?? 10)  / 100) * EH;
-          const vs = Math.max(bxW / offVideo.videoWidth, bxH / offVideo.videoHeight) * (card.bg.imageScale || 1);
-          const vW = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
-          const ox = (card.bg.boxImgX || 0) * (EW / 320);
-          const oy = (card.bg.boxImgY || 0) * (EH / 400);
+          const vs   = Math.max(bxW / offVideo.videoWidth, bxH / offVideo.videoHeight) * (card.bg.imageScale || 1);
+          const vW   = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
+          const ox   = (card.bg.boxImgX || 0) * (EW / 320);
+          const oy   = (card.bg.boxImgY || 0) * (EH / 400);
           rctx.save();
           rctx.beginPath(); rctx.rect(bxX, bxY, bxW, bxH); rctx.clip();
           rctx.drawImage(offVideo, bxX + (bxW - vW) / 2 + ox, bxY + (bxH - vH) / 2 + oy, vW, vH);
@@ -6049,45 +6024,105 @@ async function exportCardAsVideo(idx) {
           const oy = (card.bg.imageY || 0) * (EH / 400);
           rctx.drawImage(offVideo, (EW - vW) / 2 + ox, (EH - vH) / 2 + oy, vW, vH);
         }
-
-        // Composite static layers on top
         rctx.drawImage(staticCanvas, 0, 0, EW, EH);
 
-        frame++;
-        setStatus(`Frame ${frame} / ${totalFrames}`, 18 + Math.round((frame / totalFrames) * 76));
-      }, frameDuration);
+        // Capture frame as ImageBitmap
+        const bitmap = await createImageBitmap(recCanvas);
+        capturedFrames.push(bitmap);
+
+        const f = capturedFrames.length;
+        setStatus(`Capturando frame ${f} / ${totalFrames}`, 12 + Math.round((f / totalFrames) * 55));
+
+        if (f >= totalFrames || (offVideo.ended && f > totalFrames * 0.95)) {
+          clearInterval(interval);
+          offVideo.pause();
+          resolve();
+        }
+      }, 1000 / FPS);
     });
 
-    offVideo.pause();
-    offVideo.remove();
-    recorder.stop();
-    setStatus('Finalizando...', 96);
+    setStatus('Codificando MP4...', 68, 'Usando VideoEncoder nativo...');
 
-    await new Promise(res => { recorder.onstop = res; });
-    const webmBlob = new Blob(chunks, { type: mimeType });
+    // ── 6. Encode to MP4 via mp4-muxer + VideoEncoder ──
     const tema = (S.renderAnalysis?.tema || 'card').replace(/[^a-zA-Z0-9]/g, '-').substring(0, 20);
     const baseName = `${tema}-card${String(idx + 1).padStart(2, '0')}`;
 
-    // Try to convert to MP4 via ffmpeg.wasm
-    setStatus('Convertendo para MP4...', 97);
-    const mp4Blob = await convertWebmToMp4(webmBlob, (pct) => {
-      setStatus(`Convertendo para MP4... ${pct}%`, 97 + Math.round(pct * 0.03));
+    const mp4Blob = await encodeMp4WithMuxer(capturedFrames, null, EW, EH, FPS, (pct) => {
+      setStatus(`Codificando MP4... ${pct}%`, 68 + Math.round(pct * 0.28));
     });
 
     if (mp4Blob) {
       triggerDownload(mp4Blob, `${baseName}.mp4`);
-      setStatus('✅ Exportado como .mp4!', 100);
+      setStatus('✅ Exportado como .mp4!', 100, 'Pronto para postar no Instagram!');
     } else {
-      // Fallback: download as webm
+      // Fallback: MediaRecorder webm
+      setStatus('VideoEncoder indisponível — gravando em .webm...', 68, 'Fallback: MediaRecorder');
+      const mimeType = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+      const stream2 = recCanvas.captureStream(FPS);
+      const isMuted = card.bg.videoMuted !== false;
+      if (!isMuted) {
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const src = audioCtx.createMediaElementSource(videoEl);
+          const dest = audioCtx.createMediaStreamDestination();
+          src.connect(dest); src.connect(audioCtx.destination);
+          dest.stream.getAudioTracks().forEach(t => stream2.addTrack(t));
+        } catch(e) {}
+      }
+      const rec2 = new MediaRecorder(stream2, { mimeType, videoBitsPerSecond: 8_000_000 });
+      const chunks2 = [];
+      rec2.ondataavailable = e => { if (e.data.size > 0) chunks2.push(e.data); };
+
+      // Re-seek and play for webm fallback
+      offVideo.currentTime = 0;
+      await new Promise(res => { offVideo.addEventListener('seeked', res, {once:true}); setTimeout(res,2000); });
+      rec2.start(100);
+      offVideo.play().catch(()=>{});
+      if (!isMuted && videoEl) videoEl.currentTime = 0;
+
+      await new Promise(resolve => {
+        let frame2 = 0;
+        const iv2 = setInterval(() => {
+          if (frame2 >= totalFrames || offVideo.ended) { clearInterval(iv2); resolve(); return; }
+          rctx.clearRect(0,0,EW,EH);
+          if (card.bg.boxMode) {
+            rctx.fillStyle = card.bg.color||'#141210'; rctx.fillRect(0,0,EW,EH);
+            const bxW2=((card.bg.boxW??100)/100)*EW, bxH2=((card.bg.boxH??42)/100)*EH;
+            const bxX2=(EW-bxW2)/2, bxY2=((card.bg.boxY??10)/100)*EH;
+            const vs2=Math.max(bxW2/offVideo.videoWidth,bxH2/offVideo.videoHeight)*(card.bg.imageScale||1);
+            const vW2=offVideo.videoWidth*vs2, vH2=offVideo.videoHeight*vs2;
+            const ox2=(card.bg.boxImgX||0)*(EW/320), oy2=(card.bg.boxImgY||0)*(EH/400);
+            rctx.save(); rctx.beginPath(); rctx.rect(bxX2,bxY2,bxW2,bxH2); rctx.clip();
+            rctx.drawImage(offVideo,bxX2+(bxW2-vW2)/2+ox2,bxY2+(bxH2-vH2)/2+oy2,vW2,vH2);
+            rctx.restore();
+          } else {
+            rctx.fillStyle='#000'; rctx.fillRect(0,0,EW,EH);
+            const vs2=Math.max(EW/offVideo.videoWidth,EH/offVideo.videoHeight)*(card.bg.imageScale||1);
+            const vW2=offVideo.videoWidth*vs2,vH2=offVideo.videoHeight*vs2;
+            const ox2=(card.bg.imageX||0)*(EW/320),oy2=(card.bg.imageY||0)*(EH/400);
+            rctx.drawImage(offVideo,(EW-vW2)/2+ox2,(EH-vH2)/2+oy2,vW2,vH2);
+          }
+          rctx.drawImage(staticCanvas,0,0,EW,EH);
+          frame2++;
+          setStatus(`Frame ${frame2}/${totalFrames}`, 68+Math.round((frame2/totalFrames)*28));
+        }, 1000/FPS);
+      });
+      offVideo.pause();
+      rec2.stop();
+      await new Promise(res => { rec2.onstop = res; });
+      const webmBlob = new Blob(chunks2, { type: mimeType });
       triggerDownload(webmBlob, `${baseName}.webm`);
-      setStatus('✅ Exportado como .webm (conversão MP4 indisponível)', 100);
+      setStatus('✅ Exportado como .webm', 100, 'Converta para MP4 no HandBrake/CloudConvert');
     }
-    setTimeout(() => overlay.remove(), 2500);
+
+    setTimeout(() => overlay.remove(), 3000);
 
   } catch(err) {
     console.error('Video export error:', err);
     setStatus('❌ Erro: ' + err.message, null);
-    setTimeout(() => overlay.remove(), 4000);
+    setTimeout(() => overlay.remove(), 5000);
+  } finally {
+    if (offVideo) { offVideo.pause(); offVideo.remove(); offVideo = null; }
   }
 }
 function setCardBgType(idx, type) {
