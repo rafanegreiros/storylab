@@ -2491,6 +2491,8 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+<script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 </head>
 <body>
 
@@ -5847,6 +5849,52 @@ function refreshCard(idx) {
   _cardEditSaveTimer = setTimeout(() => { autoSave(); }, 1500);
 }
 
+// ── FFMPEG WEBM→MP4 CONVERSION ──
+let _ffmpegInstance = null;
+async function getFFmpeg() {
+  if (_ffmpegInstance) return _ffmpegInstance;
+  const { FFmpeg } = window.FFmpegWASM || window.FFmpegNamespace || (await new Promise(res => {
+    // @ffmpeg/ffmpeg UMD exports as FFmpegWASM or window.FFmpeg
+    if (window.FFmpeg) return res({ FFmpeg: window.FFmpeg });
+    setTimeout(() => res({ FFmpeg: window.FFmpeg }), 500);
+  }));
+  _ffmpegInstance = new FFmpeg();
+  _ffmpegInstance.on('log', ({ message }) => console.debug('[ffmpeg]', message));
+  await _ffmpegInstance.load({
+    coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+    wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+  });
+  return _ffmpegInstance;
+}
+
+async function convertWebmToMp4(webmBlob, onProgress) {
+  try {
+    const ffmpeg = await getFFmpeg();
+    const { fetchFile } = window.FFmpegUtil || window;
+    const inData = new Uint8Array(await webmBlob.arrayBuffer());
+    await ffmpeg.writeFile('input.webm', inData);
+    ffmpeg.on('progress', ({ progress }) => onProgress && onProgress(Math.round(progress * 100)));
+    await ffmpeg.exec([
+      '-i', 'input.webm',
+      '-c:v', 'libx264',
+      '-preset', 'fast',
+      '-crf', '23',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+      '-movflags', '+faststart',
+      '-pix_fmt', 'yuv420p',
+      'output.mp4'
+    ]);
+    const data = await ffmpeg.readFile('output.mp4');
+    await ffmpeg.deleteFile('input.webm');
+    await ffmpeg.deleteFile('output.mp4');
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  } catch(e) {
+    console.warn('ffmpeg conversion failed:', e.message);
+    return null; // caller falls back to webm
+  }
+}
+
 function toggleVideoMuted(idx) {
   const card = S.cards[idx];
   card.bg.videoMuted = !(card.bg.videoMuted !== false ? true : false);
@@ -6016,10 +6064,24 @@ async function exportCardAsVideo(idx) {
     setStatus('Finalizando...', 96);
 
     await new Promise(res => { recorder.onstop = res; });
-    const blob = new Blob(chunks, { type: mimeType });
+    const webmBlob = new Blob(chunks, { type: mimeType });
     const tema = (S.renderAnalysis?.tema || 'card').replace(/[^a-zA-Z0-9]/g, '-').substring(0, 20);
-    triggerDownload(blob, `${tema}-card${String(idx + 1).padStart(2, '0')}.webm`);
-    setStatus('✅ Vídeo exportado!', 100);
+    const baseName = `${tema}-card${String(idx + 1).padStart(2, '0')}`;
+
+    // Try to convert to MP4 via ffmpeg.wasm
+    setStatus('Convertendo para MP4...', 97);
+    const mp4Blob = await convertWebmToMp4(webmBlob, (pct) => {
+      setStatus(`Convertendo para MP4... ${pct}%`, 97 + Math.round(pct * 0.03));
+    });
+
+    if (mp4Blob) {
+      triggerDownload(mp4Blob, `${baseName}.mp4`);
+      setStatus('✅ Exportado como .mp4!', 100);
+    } else {
+      // Fallback: download as webm
+      triggerDownload(webmBlob, `${baseName}.webm`);
+      setStatus('✅ Exportado como .webm (conversão MP4 indisponível)', 100);
+    }
     setTimeout(() => overlay.remove(), 2500);
 
   } catch(err) {
@@ -6759,7 +6821,7 @@ async function exportAllCards() {
 
 
 // ── EXPORT SINGLE CARD TO CANVAS 2D ──
-async function exportCardToCanvas(card, idx) {
+async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   // Force load all fonts used in canvas before measuring/drawing
   await document.fonts.ready;
   try {
@@ -6775,36 +6837,36 @@ async function exportCardToCanvas(card, idx) {
     ]);
   } catch(e) { /* fonts may already be loaded */ }
 
+  const EXW = _overrideW || EXPORT_W;
+  const EXH = _overrideH || EXPORT_H;
   const canvas = document.createElement('canvas');
-  canvas.width  = EXPORT_W; // 1080
-  canvas.height = EXPORT_H; // 1350
+  canvas.width  = EXW;
+  canvas.height = EXH;
   const ctx = canvas.getContext('2d');
   const b = getBrand();
 
-  // Preview card: 320×400px → Export: 1080×1350px
-  // Exact same 4:5 ratio → uniform scale factor SC = 3.375
-  const SC = EXPORT_W / 320;
+  const SC = EXW / 320;
 
   // ── Layer 1: Background ──
   if (card.bg.type === 'solid') {
     ctx.fillStyle = card.bg.color;
-    ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+    ctx.fillRect(0, 0, EXW, EXH);
   } else if (card.bg.type === 'gradient') {
     const angle = (card.bg.gradAngle || 180) * Math.PI / 180;
-    const cx2 = EXPORT_W/2, cy2 = EXPORT_H/2;
+    const cx2 = EXW/2, cy2 = EXH/2;
     const grad = ctx.createLinearGradient(
-      cx2 - Math.cos(angle)*EXPORT_W/2, cy2 - Math.sin(angle)*EXPORT_H/2,
-      cx2 + Math.cos(angle)*EXPORT_W/2, cy2 + Math.sin(angle)*EXPORT_H/2
+      cx2 - Math.cos(angle)*EXW/2, cy2 - Math.sin(angle)*EXH/2,
+      cx2 + Math.cos(angle)*EXW/2, cy2 + Math.sin(angle)*EXH/2
     );
     grad.addColorStop(0, card.bg.gradColors[0]);
     grad.addColorStop(1, card.bg.gradColors[1]);
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+    ctx.fillRect(0, 0, EXW, EXH);
   } else {
     // Determine background for image cards
     if (card.bg.boxMode) {
       ctx.fillStyle = card.bg.color || '#141210';
-      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+      ctx.fillRect(0, 0, EXW, EXH);
       if (card.bg.type === 'video' && card.bg.videoSrc) {
         // Draw current video frame in box
         const vidEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video[data-card-vid]`);
@@ -6812,33 +6874,33 @@ async function exportCardToCanvas(card, idx) {
           const bxW = (card.bg.boxW != null ? card.bg.boxW : 100) / 100;
           const bxH = (card.bg.boxH != null ? card.bg.boxH : 42)  / 100;
           const bxY = (card.bg.boxY != null ? card.bg.boxY : 10)  / 100;
-          const boxW = EXPORT_W * bxW, boxH = EXPORT_H * bxH;
-          const boxX = (EXPORT_W - boxW) / 2, boxY = EXPORT_H * bxY;
+          const boxW = EXW * bxW, boxH = EXH * bxH;
+          const boxX = (EXW - boxW) / 2, boxY = EXH * bxY;
           const scaleV = Math.max(boxW / vidEl.videoWidth, boxH / vidEl.videoHeight) * (card.bg.imageScale || 1);
           const rW = vidEl.videoWidth * scaleV, rH = vidEl.videoHeight * scaleV;
-          const ox = (card.bg.boxImgX || 0) * (EXPORT_W / 320);
-          const oy = (card.bg.boxImgY || 0) * (EXPORT_H / 400);
+          const ox = (card.bg.boxImgX || 0) * (EXW / 320);
+          const oy = (card.bg.boxImgY || 0) * (EXH / 400);
           ctx.save(); ctx.beginPath(); ctx.rect(boxX, boxY, boxW, boxH); ctx.clip();
           ctx.drawImage(vidEl, boxX + (boxW - rW) / 2 + ox, boxY + (boxH - rH) / 2 + oy, rW, rH);
           ctx.restore();
         }
       } else if (card.bg.type === 'image' && card.bg.imageSrc) {
-        await drawBoxImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H, SC);
+        await drawBoxImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXW, EXH, SC);
       }
     } else {
       ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+      ctx.fillRect(0, 0, EXW, EXH);
       if (card.bg.type === 'image' && card.bg.imageSrc) {
-        await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXPORT_W, EXPORT_H);
+        await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXW, EXH);
       } else if (card.bg.type === 'video' && card.bg.videoSrc) {
         // Draw current video frame full
         const vidEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video[data-card-vid]`);
         if (vidEl) {
-          const scaleV = Math.max(EXPORT_W / vidEl.videoWidth, EXPORT_H / vidEl.videoHeight) * (card.bg.imageScale || 1);
+          const scaleV = Math.max(EXW / vidEl.videoWidth, EXH / vidEl.videoHeight) * (card.bg.imageScale || 1);
           const rW = vidEl.videoWidth * scaleV, rH = vidEl.videoHeight * scaleV;
-          const ox = (card.bg.imageX || 0) * (EXPORT_W / 320);
-          const oy = (card.bg.imageY || 0) * (EXPORT_H / 400);
-          ctx.drawImage(vidEl, (EXPORT_W - rW) / 2 + ox, (EXPORT_H - rH) / 2 + oy, rW, rH);
+          const ox = (card.bg.imageX || 0) * (EXW / 320);
+          const oy = (card.bg.imageY || 0) * (EXH / 400);
+          ctx.drawImage(vidEl, (EXW - rW) / 2 + ox, (EXH - rH) / 2 + oy, rW, rH);
         }
       }
     }
@@ -6848,10 +6910,10 @@ async function exportCardToCanvas(card, idx) {
   // Normal mode: full card. Box mode: clip to box area only (preserves solid bg outside).
   if (card.overlay.visible) {
     const dirs = {
-      'bottom-up':  [EXPORT_W/2, EXPORT_H, EXPORT_W/2, 0],
-      'top-down':   [EXPORT_W/2, 0, EXPORT_W/2, EXPORT_H],
-      'left-right': [0, EXPORT_H/2, EXPORT_W, EXPORT_H/2],
-      'diagonal':   [0, EXPORT_H, EXPORT_W, 0],
+      'bottom-up':  [EXW/2, EXH, EXW/2, 0],
+      'top-down':   [EXW/2, 0, EXW/2, EXH],
+      'left-right': [0, EXH/2, EXW, EXH/2],
+      'diagonal':   [0, EXH, EXW, 0],
     };
     const [x1,y1,x2,y2] = dirs[card.overlay.direction] || dirs['bottom-up'];
     const reach = Math.max(0.01, Math.min(1, (card.overlay.reach || 60) / 100));
@@ -6870,12 +6932,12 @@ async function exportCardToCanvas(card, idx) {
       const bxW = (card.bg.boxW != null ? card.bg.boxW : 100) / 100;
       const bxH = (card.bg.boxH != null ? card.bg.boxH : 42)  / 100;
       const bxY = (card.bg.boxY != null ? card.bg.boxY : 10)  / 100;
-      const boxW = EXPORT_W * bxW, boxH = EXPORT_H * bxH;
-      const boxX = (EXPORT_W - boxW) / 2, boxY = EXPORT_H * bxY;
+      const boxW = EXW * bxW, boxH = EXH * bxH;
+      const boxX = (EXW - boxW) / 2, boxY = EXH * bxY;
       ctx.beginPath(); ctx.rect(boxX, boxY, boxW, boxH); ctx.clip();
     }
     ctx.fillStyle = oGrad;
-    ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+    ctx.fillRect(0, 0, EXW, EXH);
     ctx.restore();
   }
 
@@ -6900,13 +6962,13 @@ async function exportCardToCanvas(card, idx) {
       ctx.textAlign = 'center';
       ctx.fillStyle = hTaglineCol;
       ctx.font = `400 ${hFS}px 'Roboto', sans-serif`;
-      ctx.fillText((b.tagline||'').toUpperCase(), EXPORT_W/2, hY);
+      ctx.fillText((b.tagline||'').toUpperCase(), EXW/2, hY);
     }
     if (b.year) {
       ctx.textAlign = 'right';
       ctx.fillStyle = hYearCol;
       ctx.font = `400 ${hFS}px 'Roboto', sans-serif`;
-      ctx.fillText(String(b.year).toUpperCase(), EXPORT_W - hPad, hY);
+      ctx.fillText(String(b.year).toUpperCase(), EXW - hPad, hY);
     }
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
@@ -6927,7 +6989,7 @@ async function exportCardToCanvas(card, idx) {
     ctx.fillStyle = pnCol;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(`${String(idx+1).padStart(2,'0')} / ${String(S.cards.length).padStart(2,'0')}`, EXPORT_W - pnPad, EXPORT_H - pnPad);
+    ctx.fillText(`${String(idx+1).padStart(2,'0')} / ${String(S.cards.length).padStart(2,'0')}`, EXW - pnPad, EXH - pnPad);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     ctx.restore();
@@ -6948,7 +7010,7 @@ async function exportCardToCanvas(card, idx) {
     let avX = avPad + avR + avOX;
     let avY = avPlac === 'top'
       ? hdrHeight + avR + avOY
-      : EXPORT_H - ctaRowH - Math.round(20 * SC) - avR + avOY;
+      : EXH - ctaRowH - Math.round(20 * SC) - avR + avOY;
 
     // Instagram gradient ring (purple→red→orange→yellow)
     ctx.save();
@@ -7037,7 +7099,7 @@ async function exportCardToCanvas(card, idx) {
   // Mirror renderCardHtml: text container has top/bottom boundaries,
   // center is middle of that container — exactly like the HTML div with top+bottom set
   const tPad  = Math.round(20 * SC); // 68px
-  const availW = EXPORT_W - tPad * 2;
+  const availW = EXW - tPad * 2;
 
   // Replicate textTop / textBottom from renderCardHtml exactly
   const _avVisible = card.avatar.visible;
@@ -7050,7 +7112,7 @@ async function exportCardToCanvas(card, idx) {
   const _textTopSC    = Math.round(_textTopPx    * SC);
   const _textBotSC    = Math.round(_textBottomPx * SC);
   // Center of the text container — same as HTML
-  const CARD_CENTER_Y = _textTopSC + (EXPORT_H - _textTopSC - _textBotSC) / 2;
+  const CARD_CENTER_Y = _textTopSC + (EXH - _textTopSC - _textBotSC) / 2;
 
   // offsetY/X from user controls — same scale as preview (px * SC)
   const tOffY = (card.title.offsetY || 0) * SC;
@@ -7062,8 +7124,8 @@ async function exportCardToCanvas(card, idx) {
     ctx.fillStyle = card.title.color;
     const tAlign = card.title.align || 'left';
     ctx.textAlign = tAlign;
-    const tX = tAlign==='center' ? EXPORT_W/2 + tOffX
-              : tAlign==='right' ? EXPORT_W - tPad + tOffX
+    const tX = tAlign==='center' ? EXW/2 + tOffX
+              : tAlign==='right' ? EXW - tPad + tOffX
               : tPad + tOffX;
 
     // Set title font BEFORE wrapText so measureText is accurate
@@ -7094,9 +7156,9 @@ async function exportCardToCanvas(card, idx) {
     const totalBodyH = bodyLines2.length > 0 ? gapSC + bodyLines2.length * bFS2 * 1.42 : 0;
     const totalBlockH = effectiveTitleH + totalBodyH;
 
-    // In box mode: text positioned from pure card center (EXPORT_H/2), not text area center
+    // In box mode: text positioned from pure card center (EXH/2), not text area center
     // In normal mode: use CARD_CENTER_Y (accounts for header/footer/avatar)
-    const textCenterY = card.bg.boxMode ? (EXPORT_H / 2) : CARD_CENTER_Y;
+    const textCenterY = card.bg.boxMode ? (EXH / 2) : CARD_CENTER_Y;
     // y: first baseline = top of block + tFS*1.1 (consistent with effectiveTitleH)
     let y = textCenterY + tOffY - totalBlockH / 2 + tFS * 1.1;
 
@@ -7183,8 +7245,8 @@ async function exportCardToCanvas(card, idx) {
         let wx = tPad + tOffX;
         if (tAlign !== 'left') {
           const lineW = ctx.measureText(lineTrimmed).width;
-          wx = tAlign === 'center' ? (EXPORT_W - lineW) / 2 + tOffX
-             : EXPORT_W - tPad - lineW + tOffX;
+          wx = tAlign === 'center' ? (EXW - lineW) / 2 + tOffX
+             : EXW - tPad - lineW + tOffX;
         }
         for (const seg of segments) {
           ctx.fillStyle = seg.hl ? hlColor : card.title.color;
@@ -7213,7 +7275,7 @@ async function exportCardToCanvas(card, idx) {
       ctx.fillStyle = card.body.color;
       const bAlign = card.body.align || 'left';
       ctx.textAlign = bAlign;
-      const bX = bAlign==='center' ? EXPORT_W/2 : bAlign==='right' ? EXPORT_W - tPad : tPad;
+      const bX = bAlign==='center' ? EXW/2 : bAlign==='right' ? EXW - tPad : tPad;
       for (const line of bodyLines2) {
         ctx.fillText(line, bX, y);
         y += bFS2 * 1.42;
@@ -7232,10 +7294,10 @@ async function exportCardToCanvas(card, idx) {
     ctx.fillStyle = card.body.color;
     const bAlign3 = card.body.align || 'left';
     ctx.textAlign = bAlign3;
-    const bX3 = bAlign3==='center' ? EXPORT_W/2 : bAlign3==='right' ? EXPORT_W - tPad : tPad;
+    const bX3 = bAlign3==='center' ? EXW/2 : bAlign3==='right' ? EXW - tPad : tPad;
     const bOffY3 = (card.body.offsetY || 0) * SC;
     // In box mode preview HTML: bodyAbsY = 200 + offsetY (pure card center, not text area center)
-    let by = (EXPORT_H / 2) + bOffY3 + bFS3;
+    let by = (EXH / 2) + bOffY3 + bFS3;
     for (const line of bodyLines3) {
       ctx.fillText(line, bX3, by);
       by += bFS3 * 1.42;
@@ -7248,8 +7310,8 @@ async function exportCardToCanvas(card, idx) {
   if (card.cta.visible && card.cta.text) {
     const btnH   = Math.round(38 * SC); // 128px
     const btnPad = Math.round(20 * SC); // 68px
-    const btnY   = EXPORT_H - btnPad - btnH;
-    const btnW   = EXPORT_W - btnPad * 2;
+    const btnY   = EXH - btnPad - btnH;
+    const btnW   = EXW - btnPad * 2;
     const btnR   = Math.min(card.cta.radius * SC, btnH / 2);
     const ctaFS  = Math.round(12 * SC); // 40px
 
@@ -7261,7 +7323,7 @@ async function exportCardToCanvas(card, idx) {
     ctx.fillStyle = card.cta.textColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(card.cta.text, EXPORT_W / 2, btnY + btnH / 2);
+    ctx.fillText(card.cta.text, EXW / 2, btnY + btnH / 2);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     ctx.restore();
@@ -7317,82 +7379,26 @@ async function exportCardToCanvasEl(card, idx) {
 
 // ── CANVAS HELPERS ──
 
-// Builds a transparent canvas with only the "static" layers (overlay, header, text, CTA)
-// at the requested resolution — used by exportCardAsVideo so video+static share the same coordinate space
+// Builds the static layers canvas for video export at W×H
+// Uses exportCardToCanvas directly at the target resolution — same coordinate space as video frame loop
 async function buildStaticLayersCanvas(card, idx, W, H) {
-  await document.fonts.ready;
-  try {
-    await Promise.all([
-      document.fonts.load("700 48px 'Fraunces'"),
-      document.fonts.load("400 48px 'Fraunces'"),
-      document.fonts.load("600 48px 'Fraunces'"),
-      document.fonts.load("900 48px 'Fraunces'"),
-      document.fonts.load("400 48px 'Syne'"),
-      document.fonts.load("600 48px 'Syne'"),
-      document.fonts.load("700 48px 'Poppins'"),
-      document.fonts.load("400 48px 'Roboto'"),
-    ]);
-  } catch(e) {}
-
+  // Clone card: replace video bg with solid transparent so exportCardToCanvas skips video layer
+  const cardNoVid = JSON.parse(JSON.stringify(card));
+  // For box mode: keep solid bg color so the area outside the box renders correctly
+  // For full mode: transparent bg so video shows through
+  if (card.bg.boxMode) {
+    cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', imageSrc: null, videoSrc: null });
+  } else {
+    cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', color: 'rgba(0,0,0,0)', imageSrc: null, videoSrc: null });
+  }
+  // exportCardToCanvas now accepts override dimensions — renders everything at W×H natively
+  const blob = await exportCardToCanvas(cardNoVid, idx, W, H);
+  const bitmap = await createImageBitmap(blob);
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
-  // Start fully transparent — no background drawn here
-  ctx.clearRect(0, 0, W, H);
-
-  const SC = W / 320; // same scale factor as EXPORT_W/320 but for target W
-  const b = getBrand();
-
-  // ── Solid bg for box mode (the area outside the box needs the bg color) ──
-  if (card.bg.boxMode && (card.bg.type === 'image' || card.bg.type === 'video')) {
-    ctx.fillStyle = card.bg.color || '#141210';
-    ctx.fillRect(0, 0, W, H);
-    // Cut out the box area (leave transparent so video shows through)
-    const bxW = (card.bg.boxW != null ? card.bg.boxW : 100) / 100;
-    const bxH = (card.bg.boxH != null ? card.bg.boxH : 42)  / 100;
-    const bxY = (card.bg.boxY != null ? card.bg.boxY : 10)  / 100;
-    const boxW = W * bxW, boxH = H * bxH;
-    const boxX = (W - boxW) / 2, boxY = H * bxY;
-    ctx.clearRect(boxX, boxY, boxW, boxH);
-  }
-
-  // ── Overlay ──
-  if (card.overlay.visible) {
-    const dirs = {
-      'bottom-up':  [W/2, H, W/2, 0],
-      'top-down':   [W/2, 0, W/2, H],
-      'left-right': [0, H/2, W, H/2],
-      'diagonal':   [0, H, W, 0],
-    };
-    const [x1,y1,x2,y2] = dirs[card.overlay.direction] || dirs['bottom-up'];
-    const reach = Math.max(0.01, Math.min(1, (card.overlay.reach || 60) / 100));
-    const col = card.overlay.color || '#000000';
-    const r2 = parseInt(col.slice(1,3),16), g2 = parseInt(col.slice(3,5),16), b2 = parseInt(col.slice(5,7),16);
-    const opStart = Math.max(0, Math.min(1, parseFloat(card.overlay.opacityStart) || 0.85));
-    const opEnd   = Math.max(0, Math.min(1, parseFloat(card.overlay.opacityEnd)   || 0));
-    const oGrad = ctx.createLinearGradient(x1,y1,x2,y2);
-    oGrad.addColorStop(0,     `rgba(${r2},${g2},${b2},${opStart})`);
-    oGrad.addColorStop(reach, `rgba(${r2},${g2},${b2},${opEnd})`);
-    oGrad.addColorStop(1,     `rgba(${r2},${g2},${b2},${opEnd})`);
-    ctx.fillStyle = oGrad;
-    ctx.fillRect(0, 0, W, H);
-  }
-
-  // ── Delegate remaining layers to exportCardToCanvas scaled result ──
-  // Generate at full 1080×1350 but only draw layers 3-7 (no bg, no overlay)
-  // Simplest: generate full export, composite at target size
-  // We've already handled bg+overlay manually above so we need a version without them
-  // Use the full export but drawn at W×H scale — the scaling handles coordinate mapping
-  const cardForLayers = JSON.parse(JSON.stringify(card));
-  // Set bg to transparent solid so exportCardToCanvas draws no real bg
-  cardForLayers.bg = Object.assign({}, card.bg, { type: 'solid', color: 'rgba(0,0,0,0)', imageSrc: null, videoSrc: null });
-  cardForLayers.overlay = Object.assign({}, card.overlay, { visible: false }); // we drew overlay above
-
-  const layersBlob = await exportCardToCanvas(cardForLayers, idx);
-  const layersBitmap = await createImageBitmap(layersBlob);
-  ctx.drawImage(layersBitmap, 0, 0, W, H);
-  layersBitmap.close();
-
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
   return canvas;
 }
 
