@@ -5976,6 +5976,7 @@ async function exportCardAsVideo(idx) {
     form.append('scale',  String(card.bg.imageScale || 1));
     form.append('offsetX', String(card.bg.imageX || 0));
     form.append('offsetY', String(card.bg.imageY || 0));
+    form.append('muted', card.bg.videoMuted !== false ? 'true' : 'false');
 
     const res = await fetch(`${BACKEND_URL}/video/compose`, {
       method: 'POST',
@@ -7327,11 +7328,12 @@ async function buildStaticLayersCanvas(card, idx, W, H) {
   // Clone card: replace video bg with solid transparent so exportCardToCanvas skips video layer
   const cardNoVid = JSON.parse(JSON.stringify(card));
   // For box mode: keep solid bg color so the area outside the box renders correctly
-  // For full mode: transparent bg so video shows through
+  // For full mode: use a dark bg so isColorDark() returns true → white text (matches video preview)
   if (card.bg.boxMode) {
     cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', imageSrc: null, videoSrc: null });
   } else {
-    cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', color: 'rgba(0,0,0,0)', imageSrc: null, videoSrc: null });
+    // Use black bg so auto-color logic picks white text/icons (same as video bg behavior)
+    cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', color: '#000000', imageSrc: null, videoSrc: null });
   }
   // exportCardToCanvas now accepts override dimensions — renders everything at W×H natively
   const blob = await exportCardToCanvas(cardNoVid, idx, W, H);
