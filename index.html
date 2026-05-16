@@ -5920,7 +5920,7 @@ async function exportCardAsVideo(idx) {
     <div class="ex-title">Exportando vídeo...</div>
     <div class="export-progress-bar"><div class="export-progress-fill" id="vid-fill" style="width:0%"></div></div>
     <div class="export-status" id="vid-status">Preparando...</div>
-    <div id="vid-sub" style="font-size:0.72rem;color:var(--muted);max-width:260px;line-height:1.6;text-align:center">Gravando frame a frame. Aguarde.</div>
+    <div id="vid-sub" style="font-size:0.72rem;color:var(--muted);max-width:260px;line-height:1.6;text-align:center">Processando no servidor. Aguarde.</div>
   </div>`;
   document.body.appendChild(overlay);
 
@@ -5933,145 +5933,70 @@ async function exportCardAsVideo(idx) {
     if (d && sub) d.textContent = sub;
   };
 
-  let offVideo = null;
   try {
-    const EW = 640, EH = 800;
-    const FPS = 30;
-
-    // ── 1. Get live video for audio ──
-    const videoEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video`);
-    if (!videoEl) throw new Error('Vídeo não encontrado. Selecione o card primeiro.');
-
-    // ── 2. Use the live video element — browser already renders it ──
-    // Offscreen elements block drawImage in many browsers; the live preview element works
-    setStatus('Carregando vídeo...', 5);
-    offVideo = videoEl; // reuse live element
-    offVideo.loop = false;
-    offVideo.muted = true; // mute during capture to avoid feedback
-    if (offVideo.readyState < 3) {
-      await new Promise(res => {
-        offVideo.addEventListener('canplaythrough', res, { once: true });
-        setTimeout(res, 8000);
-      });
-    }
-    // Make sure the card is visible/scrolled into view so browser renders frames
-    const cardEl = document.querySelector(`.c-card[data-idx="${idx}"]`);
-    if (cardEl) cardEl.scrollIntoView({ block: 'center', behavior: 'instant' });
-
-    const duration = isFinite(offVideo.duration) && offVideo.duration > 0 ? offVideo.duration : 6;
-    const totalFrames = Math.round(duration * FPS);
-    setStatus('Gerando layers estáticos...', 8);
-
-    // ── 3. Static layers canvas (text, header, bg-outside-box) ──
-    const staticCanvas = await buildStaticLayersCanvas(card, idx, EW, EH);
-
-    setStatus('Capturando frames...', 12);
-
-    // ── 4 & 5. Seek frame-by-frame and capture ──
-    // seek-based capture: guarantees each frame is fully decoded before drawImage
-    const capturedFrames = [];
-    const recCanvas = document.createElement('canvas');
-    recCanvas.width = EW; recCanvas.height = EH;
-    const rctx = recCanvas.getContext('2d');
-
-    function drawVideoFrame() {
-      rctx.clearRect(0, 0, EW, EH);
-      if (card.bg.boxMode) {
-        rctx.fillStyle = card.bg.color || '#141210';
-        rctx.fillRect(0, 0, EW, EH);
-        const bxW = ((card.bg.boxW  ?? 100) / 100) * EW;
-        const bxH = ((card.bg.boxH  ?? 42)  / 100) * EH;
-        const bxX = (EW - bxW) / 2;
-        const bxY = ((card.bg.boxY  ?? 10)  / 100) * EH;
-        const vs  = Math.max(bxW / offVideo.videoWidth, bxH / offVideo.videoHeight) * (card.bg.imageScale || 1);
-        const vW  = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
-        const ox  = (card.bg.boxImgX || 0) * (EW / 320);
-        const oy  = (card.bg.boxImgY || 0) * (EH / 400);
-        rctx.save();
-        rctx.beginPath(); rctx.rect(bxX, bxY, bxW, bxH); rctx.clip();
-        rctx.drawImage(offVideo, bxX + (bxW - vW) / 2 + ox, bxY + (bxH - vH) / 2 + oy, vW, vH);
-        rctx.restore();
-      } else {
-        rctx.fillStyle = '#000'; rctx.fillRect(0, 0, EW, EH);
-        const vs = Math.max(EW / offVideo.videoWidth, EH / offVideo.videoHeight) * (card.bg.imageScale || 1);
-        const vW = offVideo.videoWidth * vs, vH = offVideo.videoHeight * vs;
-        const ox = (card.bg.imageX || 0) * (EW / 320);
-        const oy = (card.bg.imageY || 0) * (EH / 400);
-        rctx.drawImage(offVideo, (EW - vW) / 2 + ox, (EH - vH) / 2 + oy, vW, vH);
-      }
-      rctx.drawImage(staticCanvas, 0, 0, EW, EH);
-    }
-
-    for (let f = 0; f < totalFrames; f++) {
-      const t = f / FPS;
-      offVideo.currentTime = t;
-      await new Promise(res => {
-        offVideo.addEventListener('seeked', res, { once: true });
-        setTimeout(res, 500); // safety timeout per frame
-      });
-      drawVideoFrame();
-      capturedFrames.push(await createImageBitmap(recCanvas));
-      if (f % 5 === 0) setStatus(`Exportando para .mp4, aguarde... ${f} / ${totalFrames}`, 12 + Math.round((f / totalFrames) * 55));
-    }
-
-    setStatus('Codificando MP4...', 68, 'Usando VideoEncoder nativo...');
-
-    // ── 6. Encode to MP4 via mp4-muxer + VideoEncoder ──
+    const EW = 1080, EH = 1350;
     const tema = (S.renderAnalysis?.tema || 'card').replace(/[^a-zA-Z0-9]/g, '-').substring(0, 20);
     const baseName = `${tema}-card${String(idx + 1).padStart(2, '0')}`;
 
-    const mp4Blob = await encodeMp4WithMuxer(capturedFrames, null, EW, EH, FPS, (pct) => {
-      setStatus(`Codificando MP4... ${pct}%`, 68 + Math.round(pct * 0.28));
+    // ── 1. Recover original video File from IndexedDB ──
+    setStatus('Recuperando vídeo...', 8);
+    let videoFile = null;
+    if (card.bg.videoBlobKey) {
+      try {
+        const db = await _openIDB();
+        const tx = db.transaction(_IDB_STORE, 'readonly');
+        videoFile = await new Promise((res, rej) => {
+          const r = tx.objectStore(_IDB_STORE).get(card.bg.videoBlobKey);
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+        });
+      } catch(e) { console.warn('IDB read failed:', e); }
+    }
+    if (!videoFile) throw new Error('Arquivo de vídeo não encontrado. Faça o upload novamente.');
+
+    // ── 2. Build static layers PNG (text, overlay, header — sem o vídeo) ──
+    setStatus('Gerando elementos do card...', 20, 'Renderizando textos e overlays...');
+    const staticCanvas = await buildStaticLayersCanvas(card, idx, EW, EH);
+    const staticBlob = await new Promise(res => staticCanvas.toBlob(res, 'image/png'));
+
+    // ── 3. Send to Railway for server-side composition ──
+    setStatus('Enviando para o servidor...', 35, 'Isso pode levar alguns segundos...');
+    const form = new FormData();
+    form.append('video', videoFile);
+    form.append('overlay', staticBlob, 'overlay.png');
+    form.append('width',  String(EW));
+    form.append('height', String(EH));
+    form.append('boxMode', card.bg.boxMode ? 'true' : 'false');
+    if (card.bg.boxMode) {
+      form.append('boxX', String(Math.round(((1 - (card.bg.boxW ?? 100) / 100) / 2) * EW)));
+      form.append('boxY', String(Math.round(((card.bg.boxY ?? 10) / 100) * EH)));
+      form.append('boxW', String(Math.round(((card.bg.boxW ?? 100) / 100) * EW)));
+      form.append('boxH', String(Math.round(((card.bg.boxH ?? 42) / 100) * EH)));
+    }
+    form.append('scale',  String(card.bg.imageScale || 1));
+    form.append('offsetX', String(card.bg.imageX || 0));
+    form.append('offsetY', String(card.bg.imageY || 0));
+
+    const res = await fetch(`${BACKEND_URL}/video/compose`, {
+      method: 'POST',
+      body: form,
     });
 
-    if (mp4Blob) {
-      triggerDownload(mp4Blob, `${baseName}.mp4`);
-      setStatus('✅ Exportado como .mp4!', 100, 'Pronto para postar no Instagram!');
-    } else {
-      // Fallback: MediaRecorder webm
-      setStatus('VideoEncoder indisponível — gravando em .webm...', 68, 'Fallback: MediaRecorder');
-      const mimeType = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
-      const stream2 = recCanvas.captureStream(FPS);
-      const isMuted = card.bg.videoMuted !== false;
-      if (!isMuted) {
-        try {
-          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const src = audioCtx.createMediaElementSource(videoEl);
-          const dest = audioCtx.createMediaStreamDestination();
-          src.connect(dest); src.connect(audioCtx.destination);
-          dest.stream.getAudioTracks().forEach(t => stream2.addTrack(t));
-        } catch(e) {}
-      }
-      const rec2 = new MediaRecorder(stream2, { mimeType, videoBitsPerSecond: 8_000_000 });
-      const chunks2 = [];
-      rec2.ondataavailable = e => { if (e.data.size > 0) chunks2.push(e.data); };
-
-      // Re-seek and play for webm fallback
-      // Webm fallback: also use seek-based capture with MediaRecorder
-      rec2.start(100);
-      if (!isMuted && videoEl) { videoEl.currentTime = 0; videoEl.play().catch(()=>{}); }
-      for (let f2 = 0; f2 < totalFrames; f2++) {
-        offVideo.currentTime = f2 / FPS;
-        await new Promise(res => { offVideo.addEventListener('seeked', res, {once:true}); setTimeout(res, 500); });
-        drawVideoFrame();
-        if (f2 % 5 === 0) setStatus(`Exportando para .mp4, aguarde... ${f2}/${totalFrames}`, 68+Math.round((f2/totalFrames)*28));
-      }
-      offVideo.pause();
-      rec2.stop();
-      await new Promise(res => { rec2.onstop = res; });
-      const webmBlob = new Blob(chunks2, { type: mimeType });
-      triggerDownload(webmBlob, `${baseName}.webm`);
-      setStatus('✅ Exportado como .webm', 100, 'Converta para MP4 no HandBrake/CloudConvert');
+    if (!res.ok) {
+      const errText = await res.text().catch(() => res.statusText);
+      throw new Error(`Servidor retornou erro: ${errText}`);
     }
 
+    setStatus('Baixando .mp4...', 88, 'Quase pronto!');
+    const mp4Blob = await res.blob();
+    triggerDownload(mp4Blob, `${baseName}.mp4`);
+    setStatus('✅ Exportado como .mp4!', 100, 'Pronto para postar no Instagram!');
     setTimeout(() => overlay.remove(), 3000);
 
   } catch(err) {
     console.error('Video export error:', err);
-    setStatus('❌ Erro: ' + err.message, null);
-    setTimeout(() => overlay.remove(), 5000);
-  } finally {
-    if (offVideo) { offVideo.pause(); offVideo = null; }
+    setStatus('❌ Erro: ' + err.message, null, 'Verifique sua conexão e tente novamente.');
+    setTimeout(() => overlay.remove(), 6000);
   }
 }
 function setCardBgType(idx, type) {
@@ -6239,8 +6164,27 @@ function triggerBgVideoUpload(idx) {
     S.cards[idx].bg.imageScale  = 1;
     S.cards[idx].bg.imageX = 0; S.cards[idx].bg.imageY = 0;
     S.cards[idx].bg.boxImgX = 0; S.cards[idx].bg.boxImgY = 0;
+    S.cards[idx].bg.framePng    = null; // will be populated by Railway
     refreshCard(idx); renderCardSidebar();
     autoSave();
+
+    // ── Extract thumbnail frame from Railway (async, non-blocking) ──
+    // This frame is used in exportAllCards for the ZIP PNG
+    (async () => {
+      try {
+        const form = new FormData();
+        form.append('video', file);
+        form.append('t', '1'); // extract frame at 1s
+        const res = await fetch(`${BACKEND_URL}/video/frame`, { method: 'POST', body: form });
+        if (res.ok) {
+          const blob = await res.blob();
+          S.cards[idx].bg.framePng = await createImageBitmap(blob);
+          // Subtle indicator on card thumbnail (optional — no UI refresh needed)
+        }
+      } catch(e) {
+        console.warn('Frame extraction failed (non-critical):', e.message);
+      }
+    })();
   };
   inp.click();
 }
@@ -6763,10 +6707,24 @@ async function exportAllCards() {
 
     try {
       if (S.cards[i].bg.type === 'video') {
-        // For video cards: capture a static frame for the zip PNG
-        const blob = await exportCardToCanvas(S.cards[i], i);
-        pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.png`, blob });
-        // Note: use "Exportar este card (.mp4)" in sidebar for full video export
+        // Video cards: use pre-extracted frame PNG from Railway (stored on upload)
+        // Falls back to exportCardToCanvas (black frame) if frame not available
+        const framePng = S.cards[i].bg.framePng; // ImageBitmap stored at upload time
+        if (framePng) {
+          const EW = 1080, EH = 1350;
+          const composite = document.createElement('canvas');
+          composite.width = EW; composite.height = EH;
+          const cctx = composite.getContext('2d');
+          cctx.drawImage(framePng, 0, 0, EW, EH);
+          const staticCanvas = await buildStaticLayersCanvas(S.cards[i], i, EW, EH);
+          cctx.drawImage(staticCanvas, 0, 0, EW, EH);
+          const blob = await new Promise(res => composite.toBlob(res, 'image/png'));
+          pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.png`, blob });
+        } else {
+          // No frame extracted yet — export as-is (likely black bg)
+          const blob = await exportCardToCanvas(S.cards[i], i);
+          pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.png`, blob });
+        }
       } else {
         const blob = await exportCardToCanvas(S.cards[i], i);
         pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.png`, blob });
