@@ -7359,8 +7359,14 @@ async function buildStaticLayersCanvas(card, idx, W, H) {
   if (card.bg.boxMode) {
     cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', imageSrc: null, videoSrc: null });
   } else {
-    // Use black bg so auto-color logic picks white text/icons (same as video bg behavior)
-    cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', color: '#000000', imageSrc: null, videoSrc: null });
+    // Use transparent bg so video shows through, but force white text/icons via colorMode overrides
+    cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', color: 'rgba(0,0,0,0)', imageSrc: null, videoSrc: null });
+    // Force header, avatar, pagination to white (light mode on dark video)
+    if (cardNoVid.header)  { cardNoVid.header  = Object.assign({}, cardNoVid.header,  { colorMode: 'light' }); }
+    if (cardNoVid.avatar)  { cardNoVid.avatar  = Object.assign({}, cardNoVid.avatar,  { colorMode: 'light' }); }
+    if (cardNoVid.pagination) { cardNoVid.pagination = Object.assign({}, cardNoVid.pagination, { colorMode: 'light' }); }
+    if (cardNoVid.title)   { cardNoVid.title   = Object.assign({}, cardNoVid.title,   { color: cardNoVid.title.color || '#ffffff' }); }
+    if (cardNoVid.body)    { cardNoVid.body    = Object.assign({}, cardNoVid.body,    { color: cardNoVid.body.color  || 'rgba(255,255,255,0.82)' }); }
   }
   // exportCardToCanvas now accepts override dimensions — renders everything at W×H natively
   const blob = await exportCardToCanvas(cardNoVid, idx, W, H);
