@@ -3599,11 +3599,11 @@ function applyBrandToNewCards() {
 
     // Title color
     if (!prev.primary || card.title.color === prev.primary || card.title.color === '#ffffff' || card.title.color === prev.dark)
-      card.title.color = (isFirst || isLast || card.bg.type==='image') ? '#ffffff' : (b.dark || '#141210');
+      card.title.color = (isFirst || isLast || card.bg.type==='image' || card.bg.type==='video') ? '#ffffff' : (b.dark || '#141210');
 
     // Body color
     if (!prev.primary || card.body.color === 'rgba(255,255,255,0.85)' || card.body.color === prev.dark)
-      card.body.color = (isFirst || isLast || card.bg.type==='image') ? 'rgba(255,255,255,0.82)' : (b.dark || '#141210');
+      card.body.color = (isFirst || isLast || card.bg.type==='image' || card.bg.type==='video') ? 'rgba(255,255,255,0.82)' : (b.dark || '#141210');
 
     // Fonts
     card.title.fontFamily = b.fontDisplay || "'Fraunces', serif";
@@ -6949,7 +6949,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     const hFS   = Math.round(6.4 * SC); // 0.4rem equivalent — same for all three elements
     const hMode = card.header.colorMode || 'auto';
     const hDark = hMode==='light' ? true : hMode==='dark' ? false
-                : (isColorDark(card.bg.color) || card.bg.type==='image');
+                : (isColorDark(card.bg.color) || card.bg.type==='image' || card.bg.type==='video');
     const hHandleCol  = hDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
     const hTaglineCol = hDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
     const hYearCol    = hDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
@@ -6980,7 +6980,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   if (card.pageNum.visible) {
     const pnMode = card.pageNum.colorMode || 'auto';
     const pnDark = pnMode==='dark' ? true : pnMode==='light' ? false
-                 : (isColorDark(card.bg.color) || card.bg.type==='image');
+                 : (isColorDark(card.bg.color) || card.bg.type==='image' || card.bg.type==='video');
     const pnCol = pnDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.20)';
     const pnFS  = Math.round(6 * SC); // 20px
     const pnPad = Math.round(8 * SC); // 27px
