@@ -5987,7 +5987,7 @@ async function exportCardAsVideo(idx) {
     const staticBlob = await new Promise(res => staticCanvas.toBlob(res, 'image/png'));
 
     // ── 3. Send to Railway for server-side composition ──
-    setStatus('Enviando para o servidor...', 35, 'Isso pode levar alguns segundos...');
+    setStatus('Enviando para o servidor...', 35, 'Preparando upload...');
     const form = new FormData();
     form.append('video', videoFile);
     form.append('overlay', staticBlob, 'overlay.png');
@@ -6005,10 +6005,40 @@ async function exportCardAsVideo(idx) {
     form.append('offsetY', String(card.bg.imageY || 0));
     form.append('muted', card.bg.videoMuted !== false ? 'true' : 'false');
 
-    const res = await fetch(`${BACKEND_URL}/video/compose`, {
-      method: 'POST',
-      body: form,
-    });
+    // ── Animated progress while server processes ──
+    // Estimate: ~30s for a typical video. Progress goes 35→85% over that time.
+    const estMs = 35000;
+    const startPct = 35, endPct = 85;
+    const progressStart = Date.now();
+    const messages = [
+      { at: 0,    pct: 35, msg: 'Enviando vídeo...', sub: 'Upload em andamento...' },
+      { at: 0.15, pct: 42, msg: 'Processando no servidor...', sub: 'Passo 1: ajustando proporções' },
+      { at: 0.35, pct: 54, msg: 'Processando no servidor...', sub: 'Passo 2: aplicando elementos do card' },
+      { at: 0.55, pct: 66, msg: 'Renderizando vídeo...', sub: 'Quase lá...' },
+      { at: 0.75, pct: 76, msg: 'Finalizando...', sub: 'Preparando arquivo para download' },
+      { at: 0.90, pct: 83, msg: 'Finalizando...', sub: 'Comprimindo .mp4' },
+    ];
+    let msgIdx = 0;
+    const progressTimer = setInterval(() => {
+      const elapsed = Date.now() - progressStart;
+      const frac = Math.min(elapsed / estMs, 0.98);
+      const pct = Math.round(startPct + (endPct - startPct) * frac);
+      // Advance message stages
+      while (msgIdx < messages.length - 1 && frac >= messages[msgIdx + 1].at) msgIdx++;
+      const m = messages[msgIdx];
+      const elapsed_s = Math.round(elapsed / 1000);
+      setStatus(m.msg, pct, `${m.sub} (${elapsed_s}s)`);
+    }, 500);
+
+    let res;
+    try {
+      res = await fetch(`${BACKEND_URL}/video/compose`, {
+        method: 'POST',
+        body: form,
+      });
+    } finally {
+      clearInterval(progressTimer);
+    }
 
     if (!res.ok) {
       const errText = await res.text().catch(() => res.statusText);
