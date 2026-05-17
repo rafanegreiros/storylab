@@ -6979,9 +6979,12 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   // Preview: bottom-right, font ~6px, 8px from edges
   if (card.pageNum.visible) {
     const pnMode = card.pageNum.colorMode || 'auto';
-    const pnDark = pnMode==='dark' ? true : pnMode==='light' ? false
-                 : (isColorDark(card.bg.color) || card.bg.type==='image' || card.bg.type==='video');
-    const pnCol = pnDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.20)';
+    // For video/image cards always use white text; for others use colorMode logic
+    const pnCol = (card.bg.type === 'video' || card.bg.type === 'image')
+      ? 'rgba(255,255,255,0.55)'
+      : (pnMode === 'light' ? 'rgba(255,255,255,0.55)'
+        : pnMode === 'dark'  ? 'rgba(20,18,16,0.20)'
+        : isColorDark(card.bg.color) ? 'rgba(255,255,255,0.55)' : 'rgba(20,18,16,0.20)');
     const pnFS  = Math.round(6 * SC); // 20px
     const pnPad = Math.round(8 * SC); // 27px
     ctx.save();
