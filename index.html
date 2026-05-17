@@ -5952,7 +5952,34 @@ async function exportCardAsVideo(idx) {
         });
       } catch(e) { console.warn('IDB read failed:', e); }
     }
-    if (!videoFile) throw new Error('Arquivo de vídeo não encontrado. Faça o upload novamente.');
+
+    // If not in IndexedDB (e.g. after page reload), ask user to re-upload
+    if (!videoFile) {
+      overlay.remove();
+      const reupload = await new Promise(resolve => {
+        const inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'video/*';
+        inp.onchange = e => resolve(e.target.files[0] || null);
+        inp.oncancel = () => resolve(null);
+        inp.click();
+        // store back to IDB for future exports
+        inp.onchange = async (e) => {
+          const f = e.target.files[0];
+          if (!f) return resolve(null);
+          try {
+            const db = await _openIDB();
+            const tx2 = db.transaction(_IDB_STORE, 'readwrite');
+            tx2.objectStore(_IDB_STORE).put(f, card.bg.videoBlobKey || ('storylab_video_reup_' + Date.now()));
+          } catch(e2) {}
+          resolve(f);
+        };
+      });
+      if (!reupload) return; // user cancelled
+      videoFile = reupload;
+      // Re-show overlay
+      document.body.appendChild(overlay);
+      setStatus('Recuperando vídeo...', 8);
+    }
 
     // ── 2. Build static layers PNG (text, overlay, header — sem o vídeo) ──
     setStatus('Gerando elementos do card...', 20, 'Renderizando textos e overlays...');
