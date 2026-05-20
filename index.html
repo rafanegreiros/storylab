@@ -8,7 +8,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.383.0/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Poppins:wght@300;400;700&family=Roboto:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;0,900;1,300;1,600&family=Syne:wght@400;600;700;800&family=Syne+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Poppins:wght@300;400;700&family=Roboto:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;0,900;1,300;1,600&family=Syne:wght@400;600;700;800&family=Syne+Mono&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Montserrat:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 /* ── THEME SYSTEM ── */
 :root {
@@ -4771,6 +4771,9 @@ function defaultCardState(idx, titulo, corpo) {
       fontFamily: b.fontDisplay || "'Fraunces', serif",
       offsetX: 0,  // px offset from default position
       offsetY: 0,
+      italic: false,
+      underline: false,
+      uppercase: false,
     },
     body: {
       text: corpo || '',
@@ -4781,6 +4784,9 @@ function defaultCardState(idx, titulo, corpo) {
       fontFamily: b.fontBody || "'Syne', sans-serif",
       offsetX: 0,
       offsetY: 0,
+      italic: false,
+      underline: false,
+      uppercase: false,
     },
     // Layer 5: Components
     header: {
@@ -5194,21 +5200,47 @@ function renderCardHtml(card, idx, total) {
     titleHtml = titleHtml.replace(new RegExp(escaped, 'gi'), match =>
       `<span style="color:${card.title.highlight.color};">${match}</span>`);
   }
-  // Bold markers **text**
-  titleHtml = titleHtml.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Parse inline markers: **bold**, _italic_, {#color|text}, {FontName|text}
+  function parseInlineMarkers(text) {
+    // Escape HTML first to avoid XSS in text content
+    let out = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Bold **text**
+    out = out.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Italic _text_
+    out = out.replace(/_(.*?)_/g, '<em>$1</em>');
+    // Color {#rrggbb|text}
+    out = out.replace(/\{(#[0-9a-fA-F]{3,8})\|(.*?)\}/g, '<span style="color:$1;">$2</span>');
+    // Font family {FontName|text} — match names that don't start with #
+    out = out.replace(/\{([^#\|][^\|]*)\|(.*?)\}/g, (m, family, txt) => {
+      const familyMap = {
+        'Fraunces': "'Fraunces', serif",
+        'Poppins': "'Poppins', sans-serif",
+        'Roboto': "'Roboto', sans-serif",
+        'Playfair': "'Playfair Display', serif",
+        'Playfair Display': "'Playfair Display', serif",
+        'Montserrat': "'Montserrat', sans-serif",
+        'Inter': "'Inter', sans-serif",
+        'Syne': "'Syne', sans-serif",
+      };
+      const ff = familyMap[family] || family;
+      return `<span style="font-family:${ff};">${txt}</span>`;
+    });
+    return out;
+  }
+  titleHtml = parseInlineMarkers(titleHtml);
 
-  let bodyHtml = (card.body.text || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  let bodyHtml = parseInlineMarkers(card.body.text || '');
 
   layers += `<div style="position:absolute;top:${textTop};left:20px;right:20px;bottom:${textBottom};z-index:6;display:flex;flex-direction:column;justify-content:center;gap:6px;transform:translate(${titleOffX}px,${titleOffY}px);">
     <div contenteditable="true" spellcheck="false"
       data-field="title" data-idx="${idx}"
       onblur="updateCardText(${idx},'title',this.innerText)"
-      style="font-family:${card.title.fontFamily};font-weight:${card.title.weight};font-size:${card.title.size}px;line-height:1.1;color:${card.title.color};text-align:${card.title.align};outline:none;cursor:text;"
+      style="font-family:${card.title.fontFamily};font-weight:${card.title.weight};font-size:${card.title.size}px;line-height:1.1;color:${card.title.color};text-align:${card.title.align};outline:none;cursor:text;font-style:${card.title.italic?'italic':'normal'};text-decoration:${card.title.underline?'underline':'none'};text-transform:${card.title.uppercase?'uppercase':'none'};"
     >${titleHtml}</div>
     ${(!card.bg.boxMode && card.body.visible && card.body.text) ? `<div contenteditable="true" spellcheck="false"
       data-field="body" data-idx="${idx}"
       onblur="updateCardText(${idx},'body',this.innerText)"
-      style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyOffY}px;margin-left:${bodyOffX}px;"
+      style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyOffY}px;margin-left:${bodyOffX}px;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
     >${bodyHtml}</div>` : ''}
   </div>`;
 
@@ -5219,7 +5251,7 @@ function renderCardHtml(card, idx, total) {
       <div contenteditable="true" spellcheck="false"
         data-field="body" data-idx="${idx}"
         onblur="updateCardText(${idx},'body',this.innerText)"
-        style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;"
+        style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
       >${bodyHtml}</div>
     </div>`;
   }
@@ -5602,13 +5634,93 @@ function renderCardSidebar() {
       </div>` : ''}
   `);
 
+  const INLINE_FONTS = [
+    ["'Fraunces', serif",          'Fraunces'],
+    ["'Poppins', sans-serif",      'Poppins'],
+    ["'Roboto', sans-serif",       'Roboto'],
+    ["'Playfair Display', serif",  'Playfair Display'],
+    ["'Montserrat', sans-serif",   'Montserrat'],
+    ["'Inter', sans-serif",        'Inter'],
+    ["'Syne', sans-serif",         'Syne'],
+  ];
+
+  function fontSelect(fieldId, currentFamily, onChangeFn) {
+    return `<select onchange="${onChangeFn}(${idx},this.value)"
+      style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);font-size:0.78rem;cursor:pointer;outline:none;">
+      ${INLINE_FONTS.map(([val, label]) =>
+        `<option value="${val}" ${currentFamily===val?'selected':''} style="font-family:${val};">${label}</option>`
+      ).join('')}
+    </select>`;
+  }
+
+  function fmtBtn(label, active, onClick, title) {
+    return `<button onclick="${onClick}" title="${title||''}"
+      style="flex:1;padding:5px 4px;border-radius:5px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};background:${active?'rgba(0,113,227,0.12)':'transparent'};font-size:0.82rem;cursor:pointer;color:${active?'var(--accent)':'var(--muted)'};">${label}</button>`;
+  }
+
+  function inlineMarkerBar(taId, fieldPrefix) {
+    // Color picker for inline color marker
+    return `<div style="display:flex;flex-direction:column;gap:6px;">
+      <div class="field-label" style="margin-bottom:0;">Formatar seleção</div>
+      <div style="display:flex;gap:5px;align-items:center;">
+        ${fmtBtn('<strong style="font-size:0.9rem;">B</strong>', false, `applyInlineMarker('${taId}','**','**')`, 'Negrito')}
+        ${fmtBtn('<em style="font-size:0.9rem;">I</em>', false, `applyInlineMarker('${taId}','_','_')`, 'Itálico')}
+        <div style="position:relative;flex:1;" title="Cor inline">
+          <label style="display:flex;align-items:center;justify-content:center;gap:3px;padding:5px 4px;border-radius:5px;border:1.5px solid var(--border);cursor:pointer;font-size:0.72rem;color:var(--muted);background:transparent;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+            Cor
+            <input type="color" id="${taId}-inlinecolor" value="#ff6600"
+              style="position:absolute;opacity:0;width:100%;height:100%;inset:0;cursor:pointer;border:none;padding:0;"
+              onchange="applyInlineMarker('${taId}','{'+this.value+'|','}')"/>
+          </label>
+        </div>
+        <div style="position:relative;flex:1.4;" title="Família inline">
+          <select onchange="applyInlineMarker('${taId}','{'+this.value+'|','}')"
+            style="width:100%;padding:5px 4px;border-radius:5px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);font-size:0.62rem;cursor:pointer;outline:none;">
+            <option value="" disabled selected>Aa Fonte</option>
+            ${INLINE_FONTS.map(([val, label]) =>
+              `<option value="${label}">${label}</option>`
+            ).join('')}
+          </select>
+        </div>
+      </div>
+    </div>`;
+  }
+
   const titleSection = section('title', '', 'Headline / Título', `
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div>
-        <div class="field-label">Cor</div>
+        <div class="field-label" style="margin-bottom:5px;">Texto</div>
+        <textarea id="sidebar-title-text-${idx}"
+          oninput="S.cards[${idx}].title.text=this.value;refreshCard(${idx})"
+          style="min-height:72px;font-size:0.82rem;line-height:1.4;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;color:var(--ink);resize:vertical;padding:8px 10px;width:100%;font-family:'Roboto',sans-serif;"
+        >${(card.title.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+      </div>
+      ${inlineMarkerBar(`sidebar-title-text-${idx}`, 'title')}
+      <div>
+        <div class="field-label" style="margin-bottom:5px;">Estilo do bloco</div>
+        <div style="display:flex;gap:5px;">
+          ${fmtBtn('<em style="font-size:0.9rem;">I</em>', card.title.italic,    `setCardTitleItalic(${idx},${!card.title.italic})`,    'Itálico todo título')}
+          ${fmtBtn('<u style="font-size:0.9rem;">U</u>', card.title.underline, `setCardTitleUnderline(${idx},${!card.title.underline})`, 'Sublinhado todo título')}
+          ${fmtBtn('AA', card.title.uppercase, `setCardTitleUppercase(${idx},${!card.title.uppercase})`, 'Caixa alta todo título')}
+        </div>
+      </div>
+      <div>
+        <div class="field-label" style="margin-bottom:5px;">Família do bloco</div>
+        ${fontSelect(`sidebar-title-font-${idx}`, card.title.fontFamily, 'setCardTitleFont')}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="field-label" style="flex:1;margin:0;">Tamanho</span>
+        <button onmousedown="setCardTitleSize(${idx},Math.max(14,${card.title.size}-1));renderCardSidebar()"
+          style="width:26px;height:26px;border:1.5px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--ink2);cursor:pointer;font-size:1.1rem;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">−</button>
+        <span style="min-width:32px;text-align:center;font-size:0.88rem;font-family:'Roboto',sans-serif;">${card.title.size}px</span>
+        <button onmousedown="setCardTitleSize(${idx},Math.min(60,${card.title.size}+1));renderCardSidebar()"
+          style="width:26px;height:26px;border:1.5px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--ink2);cursor:pointer;font-size:1.1rem;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">+</button>
+      </div>
+      <div>
+        <div class="field-label">Cor do bloco</div>
         ${colorSwatches('title', card.title.color, `(c)=>setCardTitleColor(${idx},c)`)}
       </div>
-      ${slider('Tamanho', card.title.size, 14, 60, 1, `(v)=>setCardTitleSize(${idx},v)`)}
       <div>
         <div class="field-label" style="margin-bottom:6px;">Peso</div>
         <div style="display:flex;gap:5px;">
@@ -5652,10 +5764,37 @@ function renderCardSidebar() {
       ${toggle('Visível', card.body.visible, `toggleBodyVisible(${idx})`)}
       ${card.body.visible ? `
         <div>
+          <div class="field-label" style="margin-bottom:5px;">Texto</div>
+          <textarea id="sidebar-body-text-${idx}"
+            oninput="S.cards[${idx}].body.text=this.value;refreshCard(${idx})"
+            style="min-height:80px;font-size:0.82rem;line-height:1.4;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;color:var(--ink);resize:vertical;padding:8px 10px;width:100%;font-family:'Roboto',sans-serif;"
+          >${(card.body.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+        </div>
+        ${inlineMarkerBar(`sidebar-body-text-${idx}`, 'body')}
+        <div>
+          <div class="field-label" style="margin-bottom:5px;">Estilo do bloco</div>
+          <div style="display:flex;gap:5px;">
+            ${fmtBtn('<em style="font-size:0.9rem;">I</em>', card.body.italic,    `setCardBodyItalic(${idx},${!card.body.italic})`,    'Itálico todo corpo')}
+            ${fmtBtn('<u style="font-size:0.9rem;">U</u>', card.body.underline, `setCardBodyUnderline(${idx},${!card.body.underline})`, 'Sublinhado todo corpo')}
+            ${fmtBtn('AA', card.body.uppercase, `setCardBodyUppercase(${idx},${!card.body.uppercase})`, 'Caixa alta todo corpo')}
+          </div>
+        </div>
+        <div>
+          <div class="field-label" style="margin-bottom:5px;">Família do bloco</div>
+          ${fontSelect(`sidebar-body-font-${idx}`, card.body.fontFamily, 'setCardBodyFont')}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="field-label" style="flex:1;margin:0;">Tamanho</span>
+          <button onmousedown="setCardBodySize(${idx},Math.max(10,${card.body.size}-1));renderCardSidebar()"
+            style="width:26px;height:26px;border:1.5px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--ink2);cursor:pointer;font-size:1.1rem;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">−</button>
+          <span style="min-width:32px;text-align:center;font-size:0.88rem;font-family:'Roboto',sans-serif;">${card.body.size}px</span>
+          <button onmousedown="setCardBodySize(${idx},Math.min(28,${card.body.size}+1));renderCardSidebar()"
+            style="width:26px;height:26px;border:1.5px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--ink2);cursor:pointer;font-size:1.1rem;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">+</button>
+        </div>
+        <div>
           <div class="field-label">Cor</div>
           ${colorSwatches('body', card.body.color, `(c)=>setCardBodyColor(${idx},c)`)}
         </div>
-        ${slider('Tamanho', card.body.size, 10, 28, 1, `(v)=>setCardBodySize(${idx},v)`)}
         ${card.bg.boxMode
           ? slider('↕ Posição vertical (absoluta)', card.body.offsetY||0, -200, 200, 2, `(v)=>setCardBodyOffsetY(${idx},v)`)
           : slider('↕ Deslocamento vertical', card.body.offsetY||0, -60, 60, 2, `(v)=>setCardBodyOffsetY(${idx},v)`)
@@ -6319,6 +6458,32 @@ function setCtaRadius(idx, r) { S.cards[idx].cta.radius = parseInt(r); refreshCa
 function setCardTitleOffsetX(idx, v) { S.cards[idx].title.offsetX = parseInt(v); refreshCard(idx); }
 function setCardTitleOffsetY(idx, v) { S.cards[idx].title.offsetY = parseInt(v); refreshCard(idx); }
 function setCardBodyOffsetY(idx, v) { S.cards[idx].body.offsetY = parseInt(v); refreshCard(idx); }
+
+// ── Inline formatting setters ──
+function setCardTitleFont(idx, family) { S.cards[idx].title.fontFamily = family; refreshCard(idx); renderCardSidebar(); }
+function setCardBodyFont(idx, family)  { S.cards[idx].body.fontFamily  = family; refreshCard(idx); renderCardSidebar(); }
+function setCardTitleItalic(idx, v)    { S.cards[idx].title.italic    = v; refreshCard(idx); renderCardSidebar(); }
+function setCardTitleUnderline(idx, v) { S.cards[idx].title.underline = v; refreshCard(idx); renderCardSidebar(); }
+function setCardTitleUppercase(idx, v) { S.cards[idx].title.uppercase = v; refreshCard(idx); renderCardSidebar(); }
+function setCardBodyItalic(idx, v)     { S.cards[idx].body.italic     = v; refreshCard(idx); renderCardSidebar(); }
+function setCardBodyUnderline(idx, v)  { S.cards[idx].body.underline  = v; refreshCard(idx); renderCardSidebar(); }
+function setCardBodyUppercase(idx, v)  { S.cards[idx].body.uppercase  = v; refreshCard(idx); renderCardSidebar(); }
+
+// ── Inline marker helper — wraps selected text in textarea with a marker ──
+function applyInlineMarker(textareaId, open, close) {
+  const ta = document.getElementById(textareaId);
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selected = ta.value.slice(start, end);
+  if (!selected) return; // nothing selected
+  const before = ta.value.slice(0, start);
+  const after  = ta.value.slice(end);
+  ta.value = before + open + selected + close + after;
+  // Restore cursor after inserted marker
+  const newEnd = start + open.length + selected.length + close.length;
+  ta.setSelectionRange(newEnd, newEnd);
+  ta.dispatchEvent(new Event('input'));
+}
 function setAvatarPlacement(idx, placement) { S.cards[idx].avatar.placement = placement; refreshCard(idx); renderCardSidebar(); }
 function setAvatarOffsetX(idx, v) { if (!S.cards[idx]) return; S.cards[idx].avatar.offsetX = parseInt(v); refreshCard(idx); }
 function setAvatarOffsetY(idx, v) { if (!S.cards[idx]) return; S.cards[idx].avatar.offsetY = parseInt(v); refreshCard(idx); }
@@ -6834,8 +6999,140 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       document.fonts.load("600 48px 'Syne'"),
       document.fonts.load("700 48px 'Poppins'"),
       document.fonts.load("400 48px 'Poppins'"),
+      document.fonts.load("700 48px 'Playfair Display'"),
+      document.fonts.load("400 48px 'Playfair Display'"),
+      document.fonts.load("700 48px 'Montserrat'"),
+      document.fonts.load("400 48px 'Montserrat'"),
+      document.fonts.load("700 48px 'Inter'"),
+      document.fonts.load("400 48px 'Inter'"),
     ]);
   } catch(e) { /* fonts may already be loaded */ }
+
+  // ── Inline marker parser for canvas ──
+  // Returns array of segments: { text, bold, italic, color, family }
+  // Inherits defaults from blockStyle = { weight, italic, color, family }
+  function parseSegments(rawText, blockStyle) {
+    const { weight, italic: bItalic, color: bColor, family: bFamily } = blockStyle;
+    const segments = [];
+    // Tokenize by markers: **bold**, _italic_, {#color|text}, {FontName|text}
+    const re = /\*\*(.*?)\*\*|_(.*?)_|\{(#[0-9a-fA-F]{3,8})\|(.*?)\}|\{([^#\|][^\|]*)\|(.*?)\}|([^*_{]+|[*_{])/gs;
+    let match;
+    while ((match = re.exec(rawText)) !== null) {
+      if (match[1] !== undefined) {
+        // **bold**
+        segments.push({ text: match[1], weight: '700', italic: bItalic, color: bColor, family: bFamily });
+      } else if (match[2] !== undefined) {
+        // _italic_
+        segments.push({ text: match[2], weight: String(weight), italic: true, color: bColor, family: bFamily });
+      } else if (match[4] !== undefined) {
+        // {#color|text}
+        segments.push({ text: match[4], weight: String(weight), italic: bItalic, color: match[3], family: bFamily });
+      } else if (match[6] !== undefined) {
+        // {FontName|text}
+        const familyMap = {
+          'Fraunces': "'Fraunces', serif",
+          'Poppins': "'Poppins', sans-serif",
+          'Roboto': "'Roboto', sans-serif",
+          'Playfair': "'Playfair Display', serif",
+          'Playfair Display': "'Playfair Display', serif",
+          'Montserrat': "'Montserrat', sans-serif",
+          'Inter': "'Inter', sans-serif",
+          'Syne': "'Syne', sans-serif",
+        };
+        const ff = familyMap[match[5]] || match[5];
+        segments.push({ text: match[6], weight: String(weight), italic: bItalic, color: bColor, family: ff });
+      } else if (match[7] !== undefined) {
+        // Plain text
+        if (match[7]) segments.push({ text: match[7], weight: String(weight), italic: bItalic, color: bColor, family: bFamily });
+      }
+    }
+    return segments.filter(s => s.text);
+  }
+
+  // Measure a single line of segments on canvas
+  function measureSegments(ctx, segs, fontSize) {
+    let w = 0;
+    for (const seg of segs) {
+      ctx.font = `${seg.italic ? 'italic ' : ''}${seg.weight} ${fontSize}px ${seg.family}`;
+      w += ctx.measureText(seg.text).width;
+    }
+    return w;
+  }
+
+  // Draw a single line of segments; returns total width drawn
+  function drawSegments(ctx, segs, x, y, fontSize) {
+    let cx = x;
+    for (const seg of segs) {
+      ctx.font = `${seg.italic ? 'italic ' : ''}${seg.weight} ${fontSize}px ${seg.family}`;
+      ctx.fillStyle = seg.color;
+      ctx.fillText(seg.text, cx, y);
+      const segW = ctx.measureText(seg.text).width;
+      cx += segW;
+    }
+    return cx - x;
+  }
+
+  // Wrap text that may have inline segments — returns array of { segs, rawText } per line
+  function wrapSegmentedText(ctx, rawText, blockStyle, maxWidth, fontSize) {
+    // First strip markers to do plain-text wrapping for line breaks
+    const plain = rawText
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/_(.*?)_/g, '$1')
+      .replace(/\{#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
+      .replace(/\{[^#\|][^\|]*\|(.*?)\}/g, '$1');
+
+    // Use existing wrapText to get line break positions on plain text
+    ctx.font = `${blockStyle.italic ? 'italic ' : ''}${blockStyle.weight} ${fontSize}px ${blockStyle.family}`;
+    const lines = wrapText(ctx, plain, maxWidth, fontSize * 1.15);
+
+    // Map lines back to original rawText by consuming characters
+    const result = [];
+    let rawIdx = 0;
+    for (const line of lines) {
+      // Find the span in rawText that corresponds to this plain-text line
+      // Walk rawText consuming characters while producing `line.length` plain chars
+      let plainCount = 0;
+      const lineLen = line.length;
+      const rawStart = rawIdx;
+      while (rawIdx < rawText.length && plainCount < lineLen) {
+        const ch = rawText[rawIdx];
+        // Check if at start of a marker
+        if (rawText.startsWith('**', rawIdx)) {
+          // Skip opening **
+          rawIdx += 2;
+          while (rawIdx < rawText.length && !rawText.startsWith('**', rawIdx)) {
+            plainCount++; rawIdx++;
+          }
+          rawIdx += 2; // skip closing **
+        } else if (rawText[rawIdx] === '_' && rawText[rawIdx+1] !== '_') {
+          rawIdx++; // skip opening _
+          while (rawIdx < rawText.length && rawText[rawIdx] !== '_') {
+            plainCount++; rawIdx++;
+          }
+          rawIdx++; // skip closing _
+        } else if (rawText[rawIdx] === '{') {
+          const closeB = rawText.indexOf('}', rawIdx);
+          const pipe = rawText.indexOf('|', rawIdx);
+          if (pipe > rawIdx && closeB > pipe) {
+            rawIdx = pipe + 1; // skip to content
+            while (rawIdx < rawText.length && rawText[rawIdx] !== '}') {
+              plainCount++; rawIdx++;
+            }
+            rawIdx++; // skip }
+          } else {
+            plainCount++; rawIdx++;
+          }
+        } else {
+          plainCount++; rawIdx++;
+        }
+      }
+      // Skip whitespace separator between lines
+      while (rawIdx < rawText.length && rawText[rawIdx] === ' ') rawIdx++;
+      const rawSlice = rawText.slice(rawStart, rawIdx).trim();
+      result.push({ segs: parseSegments(rawSlice, blockStyle), rawLine: line });
+    }
+    return result;
+  }
 
   const EXW = _overrideW || EXPORT_W;
   const EXH = _overrideH || EXPORT_H;
@@ -7122,190 +7419,170 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   const tOffX = (card.title.offsetX || 0) * SC;
 
   if (card.title.text) {
-    ctx.save();
     const tFS = Math.round(card.title.size * SC);
-    ctx.fillStyle = card.title.color;
     const tAlign = card.title.align || 'left';
-    ctx.textAlign = tAlign;
-    const tX = tAlign==='center' ? EXW/2 + tOffX
-              : tAlign==='right' ? EXW - tPad + tOffX
-              : tPad + tOffX;
+    const tBlockStyle = {
+      weight: String(card.title.weight || 700),
+      italic: card.title.italic || false,
+      color: card.title.color,
+      family: card.title.fontFamily || "'Fraunces', serif",
+    };
 
-    // Set title font BEFORE wrapText so measureText is accurate
-    ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
-    const titleClean = card.title.text.replace(/\*\*(.*?)\*\*/g, '$1');
-    const titleLines = wrapText(ctx, titleClean, availW, tFS * 1.15);
+    // Apply block-level uppercase before wrapping
+    const titleRaw = card.title.uppercase
+      ? card.title.text.toUpperCase()
+      : card.title.text;
 
-    const totalTextH = titleLines.length * tFS * 1.1; // match CSS line-height:1.1
+    // Get wrapped lines with inline segment info
+    const titleWrapped = wrapSegmentedText(ctx, titleRaw, tBlockStyle, availW, tFS);
 
-    // In box mode: body is independent layer — don't include in title block height
-    const bodyClean2 = !card.bg.boxMode && card.body.visible && card.body.text
-      ? card.body.text.replace(/\*\*(.*?)\*\*/g, '$1') : '';
+    // Measure body for vertical centering
     const bFS2 = Math.round(card.body.size * SC);
-    let bodyLines2 = [];
-    if (bodyClean2) {
-      ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
-      bodyLines2 = wrapText(ctx, bodyClean2, availW, bFS2 * 1.6);
+    let bodyWrapped2 = [];
+    if (!card.bg.boxMode && card.body.visible && card.body.text) {
+      const bodyRaw2 = card.body.uppercase
+        ? card.body.text.toUpperCase()
+        : card.body.text;
+      const bBlockStyle2 = {
+        weight: '400',
+        italic: card.body.italic || false,
+        color: card.body.color,
+        family: card.body.fontFamily || "'Syne', sans-serif",
+      };
+      bodyWrapped2 = wrapSegmentedText(ctx, bodyRaw2, bBlockStyle2, availW, bFS2);
     }
-    // Restore title font after body wrapText
-    ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
-    // gap matches preview flex gap:6px only — bodyOffY is applied separately during render
-    const gapSC = Math.round(22 * SC); // flex gap calibrated to match preview spacing
-    // totalTextH = N lines * tFS*1.1, but last line doesn't need the trailing advance
-    // so effective title height = (N-1)*tFS*1.1 + tFS (baseline of last line)
-    // gap = 6px flex gap
-    // effectiveTitleH: all lines use tFS*1.1 (consistent with loop advance)
-    const effectiveTitleH = titleLines.length * tFS * 1.1;
-    const totalBodyH = bodyLines2.length > 0 ? gapSC + bodyLines2.length * bFS2 * 1.42 : 0;
-    const totalBlockH = effectiveTitleH + totalBodyH;
 
-    // In box mode: text positioned from pure card center (EXH/2), not text area center
-    // In normal mode: use CARD_CENTER_Y (accounts for header/footer/avatar)
+    const gapSC = Math.round(22 * SC);
+    const effectiveTitleH = titleWrapped.length * tFS * 1.1;
+    const totalBodyH = bodyWrapped2.length > 0 ? gapSC + bodyWrapped2.length * bFS2 * 1.42 : 0;
+    const totalBlockH = effectiveTitleH + totalBodyH;
     const textCenterY = card.bg.boxMode ? (EXH / 2) : CARD_CENTER_Y;
-    // y: first baseline = top of block + tFS*1.1 (consistent with effectiveTitleH)
     let y = textCenterY + tOffY - totalBlockH / 2 + tFS * 1.1;
 
-    // Draw title lines with highlight support
-    // Strategy: tokenize the full title text, mark each token as highlighted or not,
-    // then render line by line. This works regardless of how wrapText broke the lines.
-    const _norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    const hlWord = card.title.highlight?.word;
-    const hlColor = card.title.highlight?.color;
+    // Draw title lines
+    for (const { segs, rawLine } of titleWrapped) {
+      // Compute line width for alignment
+      const lineW = measureSegments(ctx, segs, tFS);
+      let lineX;
+      if (tAlign === 'center') lineX = (EXW - lineW) / 2 + tOffX;
+      else if (tAlign === 'right') lineX = EXW - tPad - lineW + tOffX;
+      else lineX = tPad + tOffX;
 
-    // Build token highlight map from the full title text
-    // Each token = { text, highlighted }
-    let tokenMap = null;
-    if (hlWord && hlColor) {
-      const fullText = titleClean.replace(/\n/g, ' '); // flatten for matching
-      const hlNormStr = _norm(hlWord.replace(/\n/g, ' ').trim());
-      const fullNorm = _norm(fullText);
-      // Find all occurrences of hlNorm in fullNorm
-      const hlRanges = []; // [{start, end}] in original fullText char positions
-      let searchFrom = 0;
-      while (true) {
-        const pos = fullNorm.indexOf(hlNormStr, searchFrom);
-        if (pos < 0) break;
-        // Map normalized pos back to original string positions
-        let normAcc = 0, origStart = fullText.length;
-        for (let ci = 0; ci < fullText.length; ci++) {
-          if (normAcc >= pos) { origStart = ci; break; }
-          normAcc += _norm(fullText[ci]).length;
+      // Apply highlight over segments if needed
+      const hlWord = card.title.highlight?.word;
+      const hlColor = card.title.highlight?.color;
+      if (hlWord && hlColor) {
+        // Re-color any segment that is or contains the highlight word
+        const hlLower = hlWord.toLowerCase();
+        for (const seg of segs) {
+          if (seg.text.toLowerCase().includes(hlLower)) {
+            // Split segment at highlight
+            const parts = seg.text.split(new RegExp(`(${hlWord.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'));
+            let px = lineX;
+            for (const part of parts) {
+              ctx.font = `${seg.italic ? 'italic ' : ''}${seg.weight} ${tFS}px ${seg.family}`;
+              ctx.fillStyle = part.toLowerCase() === hlLower ? hlColor : seg.color;
+              ctx.textAlign = 'left';
+              ctx.fillText(part, px, y);
+              px += ctx.measureText(part).width;
+            }
+            lineX = px;
+          } else {
+            ctx.font = `${seg.italic ? 'italic ' : ''}${seg.weight} ${tFS}px ${seg.family}`;
+            ctx.fillStyle = seg.color;
+            ctx.textAlign = 'left';
+            ctx.fillText(seg.text, lineX, y);
+            lineX += ctx.measureText(seg.text).width;
+          }
         }
-        let normAcc2 = 0, origEnd = fullText.length;
-        for (let ci = origStart; ci < fullText.length; ci++) {
-          if (normAcc2 >= hlNormStr.length) { origEnd = ci; break; }
-          normAcc2 += _norm(fullText[ci]).length;
-        }
-        hlRanges.push({ start: origStart, end: origEnd });
-        searchFrom = pos + 1;
-      }
-      tokenMap = { fullText, hlRanges };
-    }
-
-    // Helper: given a substring of fullText starting at globalOffset, split into highlighted segments
-    function getLineSegments(lineText, globalOffset) {
-      if (!tokenMap || !tokenMap.hlRanges.length) {
-        return [{ text: lineText, hl: false }];
-      }
-      const segments = [];
-      let pos = 0;
-      while (pos < lineText.length) {
-        const absPos = globalOffset + pos;
-        // Check if absPos falls inside a highlight range
-        const range = tokenMap.hlRanges.find(r => absPos >= r.start && absPos < r.end);
-        if (range) {
-          const hlLen = Math.min(range.end - absPos, lineText.length - pos);
-          segments.push({ text: lineText.slice(pos, pos + hlLen), hl: true });
-          pos += hlLen;
-        } else {
-          // Find start of next highlight range
-          const nextRange = tokenMap.hlRanges
-            .filter(r => r.start > absPos)
-            .sort((a, b) => a.start - b.start)[0];
-          const end = nextRange ? Math.min(nextRange.start - globalOffset, lineText.length) : lineText.length;
-          segments.push({ text: lineText.slice(pos, end), hl: false });
-          pos = end;
-        }
-      }
-      return segments;
-    }
-
-    ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
-    ctx.fillStyle = card.title.color;
-    ctx.textAlign = tAlign;
-
-    // Track global character offset as we walk through lines
-    // wrapText flattens \n to spaces when splitting, so we reconstruct by joining lines with space
-    let globalOffset = 0;
-    for (const line of titleLines) {
-      const lineTrimmed = line.replace(/\n/g, ' ');
-      const segments = getLineSegments(lineTrimmed, globalOffset);
-      const hasHighlight = segments.some(s => s.hl);
-
-      if (hasHighlight) {
-        ctx.textAlign = 'left';
-        ctx.font = `${card.title.weight} ${tFS}px ${card.title.fontFamily || "'Fraunces', serif"}`;
-        let wx = tPad + tOffX;
-        if (tAlign !== 'left') {
-          const lineW = ctx.measureText(lineTrimmed).width;
-          wx = tAlign === 'center' ? (EXW - lineW) / 2 + tOffX
-             : EXW - tPad - lineW + tOffX;
-        }
-        for (const seg of segments) {
-          ctx.fillStyle = seg.hl ? hlColor : card.title.color;
-          ctx.fillText(seg.text, wx, y);
-          wx += ctx.measureText(seg.text).width;
-        }
-        ctx.textAlign = tAlign;
       } else {
-        ctx.fillStyle = card.title.color;
-        ctx.fillText(lineTrimmed, tX, y);
+        ctx.textAlign = 'left';
+        drawSegments(ctx, segs, lineX, y, tFS);
       }
-      ctx.fillStyle = card.title.color;
-      // Advance globalOffset: line length + 1 for the space/newline wrapText consumed
-      globalOffset += lineTrimmed.length + 1;
+
+      // Underline for title block
+      if (card.title.underline) {
+        const ulY = y + Math.round(tFS * 0.12);
+        let ulX;
+        if (tAlign === 'center') ulX = (EXW - lineW) / 2 + tOffX;
+        else if (tAlign === 'right') ulX = EXW - tPad - lineW + tOffX;
+        else ulX = tPad + tOffX;
+        ctx.save();
+        ctx.strokeStyle = card.title.color;
+        ctx.lineWidth = Math.max(1, Math.round(tFS * 0.06));
+        ctx.beginPath(); ctx.moveTo(ulX, ulY); ctx.lineTo(ulX + lineW, ulY); ctx.stroke();
+        ctx.restore();
+      }
+
       y += tFS * 1.1;
     }
-    ctx.restore();
 
     // Body (normal mode — rendered as part of title block)
-    if (bodyClean2 && bodyLines2.length) {
-      // After title loop, y is one line ahead — subtract it, then add flex gap only
+    if (bodyWrapped2.length) {
       const bOffYsc = (card.body.offsetY || 0) * SC;
       y = y - tFS * 1.1 + gapSC + bOffYsc;
-      ctx.save();
-      ctx.font = `400 ${bFS2}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
-      ctx.fillStyle = card.body.color;
       const bAlign = card.body.align || 'left';
-      ctx.textAlign = bAlign;
-      const bX = bAlign==='center' ? EXW/2 : bAlign==='right' ? EXW - tPad : tPad;
-      for (const line of bodyLines2) {
-        ctx.fillText(line, bX, y);
+      for (const { segs: bSegs } of bodyWrapped2) {
+        const bLineW = measureSegments(ctx, bSegs, bFS2);
+        let bX;
+        if (bAlign === 'center') bX = (EXW - bLineW) / 2;
+        else if (bAlign === 'right') bX = EXW - tPad - bLineW;
+        else bX = tPad;
+        ctx.textAlign = 'left';
+        drawSegments(ctx, bSegs, bX, y, bFS2);
+
+        // Underline for body block
+        if (card.body.underline) {
+          const ulY2 = y + Math.round(bFS2 * 0.12);
+          ctx.save();
+          ctx.strokeStyle = card.body.color;
+          ctx.lineWidth = Math.max(1, Math.round(bFS2 * 0.06));
+          ctx.beginPath(); ctx.moveTo(bX, ulY2); ctx.lineTo(bX + bLineW, ulY2); ctx.stroke();
+          ctx.restore();
+        }
+
         y += bFS2 * 1.42;
       }
-      ctx.restore();
     }
   }
 
   // Body in box mode — independent layer, position from card center (mirrors preview HTML)
   if (card.bg.boxMode && card.body.visible && card.body.text) {
     const bFS3 = Math.round(card.body.size * SC);
-    const bodyClean3 = card.body.text.replace(/\*\*(.*?)\*\*/g, '$1');
-    ctx.save();
-    ctx.font = `400 ${bFS3}px ${card.body.fontFamily || "'Syne', sans-serif"}`;
-    const bodyLines3 = wrapText(ctx, bodyClean3, availW, bFS3 * 1.6);
-    ctx.fillStyle = card.body.color;
+    const bodyRaw3 = card.body.uppercase
+      ? card.body.text.toUpperCase()
+      : card.body.text;
+    const bBlockStyle3 = {
+      weight: '400',
+      italic: card.body.italic || false,
+      color: card.body.color,
+      family: card.body.fontFamily || "'Syne', sans-serif",
+    };
+    const bodyWrapped3 = wrapSegmentedText(ctx, bodyRaw3, bBlockStyle3, availW, bFS3);
     const bAlign3 = card.body.align || 'left';
-    ctx.textAlign = bAlign3;
-    const bX3 = bAlign3==='center' ? EXW/2 : bAlign3==='right' ? EXW - tPad : tPad;
     const bOffY3 = (card.body.offsetY || 0) * SC;
-    // In box mode preview HTML: bodyAbsY = 200 + offsetY (pure card center, not text area center)
     let by = (EXH / 2) + bOffY3 + bFS3;
-    for (const line of bodyLines3) {
-      ctx.fillText(line, bX3, by);
+
+    for (const { segs: bSegs3 } of bodyWrapped3) {
+      const bLineW3 = measureSegments(ctx, bSegs3, bFS3);
+      let bX3;
+      if (bAlign3 === 'center') bX3 = (EXW - bLineW3) / 2;
+      else if (bAlign3 === 'right') bX3 = EXW - tPad - bLineW3;
+      else bX3 = tPad;
+      ctx.textAlign = 'left';
+      drawSegments(ctx, bSegs3, bX3, by, bFS3);
+
+      if (card.body.underline) {
+        const ulY3 = by + Math.round(bFS3 * 0.12);
+        ctx.save();
+        ctx.strokeStyle = card.body.color;
+        ctx.lineWidth = Math.max(1, Math.round(bFS3 * 0.06));
+        ctx.beginPath(); ctx.moveTo(bX3, ulY3); ctx.lineTo(bX3 + bLineW3, ulY3); ctx.stroke();
+        ctx.restore();
+      }
+
       by += bFS3 * 1.42;
     }
-    ctx.restore();
   }
 
   // ── Layer 7: CTA button ──
@@ -8339,11 +8616,17 @@ function migrateCard(card) {
   if (card.title.offsetX == null) card.title.offsetX = 0;
   if (card.title.offsetY == null) card.title.offsetY = 0;
   if (!card.title.fontFamily)     card.title.fontFamily = "'Fraunces', serif";
+  if (card.title.italic    == null) card.title.italic    = false;
+  if (card.title.underline == null) card.title.underline = false;
+  if (card.title.uppercase == null) card.title.uppercase = false;
   // Body
   card.body = card.body || {};
   if (card.body.offsetX == null) card.body.offsetX = 0;
   if (card.body.offsetY == null) card.body.offsetY = 0;
   if (!card.body.fontFamily)     card.body.fontFamily  = "'Syne', sans-serif";
+  if (card.body.italic    == null) card.body.italic    = false;
+  if (card.body.underline == null) card.body.underline = false;
+  if (card.body.uppercase == null) card.body.uppercase = false;
   // Components
   card.header = card.header || { visible: true, bgColor: 'transparent' };
   card.cta    = card.cta    || { visible: false };
