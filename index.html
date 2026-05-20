@@ -3286,11 +3286,11 @@ async function loadBrandFontsAndWait(fontDisplay, fontBody) {
   });
   const links = [];
   fontsNeeded.forEach(name => {
-    const id = 'gf-' + name.replace(/\s/g,'-');
+    const id = 'gf-' + name.replace(/\s/g,'-') + '-all';
     if (!document.getElementById(id)) {
       const link = document.createElement('link');
       link.id = id; link.rel = 'stylesheet';
-      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;600;700;900&display=swap`;
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap`;
       document.head.appendChild(link);
       links.push(new Promise(res => { link.onload = res; link.onerror = res; }));
     }
@@ -3313,15 +3313,15 @@ async function loadBrandFontsAndWait(fontDisplay, fontBody) {
 function loadBrandFonts(b) {
   const fontsNeeded = new Set();
   [b.fontDisplay, b.fontBody].forEach(f => {
-    const m = f.match(/'([^']+)'/);
+    const m = (f||'').match(/'([^']+)'/);
     if (m) fontsNeeded.add(m[1]);
   });
   fontsNeeded.forEach(name => {
-    const id = 'gf-' + name.replace(/\s/g,'-');
+    const id = 'gf-' + name.replace(/\s/g,'-') + '-all';
     if (!document.getElementById(id)) {
       const link = document.createElement('link');
       link.id = id; link.rel = 'stylesheet';
-      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;600;700;900&display=swap`;
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap`;
       document.head.appendChild(link);
     }
   });
@@ -4453,7 +4453,7 @@ async function applyCustomFont(type) {
     const formattedName = fontName.replace(/ /g, '+');
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = `https://fonts.googleapis.com/css2?family=${formattedName}:wght@400;700&display=swap`;
+    link.href = `https://fonts.googleapis.com/css2?family=${formattedName}:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap`;
 
     await new Promise((resolve, reject) => {
       link.onload = resolve;
@@ -5200,31 +5200,21 @@ function renderCardHtml(card, idx, total) {
     titleHtml = titleHtml.replace(new RegExp(escaped, 'gi'), match =>
       `<span style="color:${card.title.highlight.color};">${match}</span>`);
   }
-  // Parse inline markers: **bold**, _italic_, {#color|text}, {FontName|text}
+  // Parse inline markers: **bold**, _italic_, __underline__, ~~strike~~, {#color|text}, {w700|text}
   function parseInlineMarkers(text) {
-    // Escape HTML first to avoid XSS in text content
     let out = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     // Bold **text**
     out = out.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Underline __text__ (before italic to avoid conflict)
+    out = out.replace(/__(.*?)__/g, '<u>$1</u>');
     // Italic _text_
     out = out.replace(/_(.*?)_/g, '<em>$1</em>');
+    // Strikethrough ~~text~~
+    out = out.replace(/~~(.*?)~~/g, '<s>$1</s>');
     // Color {#rrggbb|text}
     out = out.replace(/\{(#[0-9a-fA-F]{3,8})\|(.*?)\}/g, '<span style="color:$1;">$2</span>');
-    // Font family {FontName|text} — match names that don't start with #
-    out = out.replace(/\{([^#\|][^\|]*)\|(.*?)\}/g, (m, family, txt) => {
-      const familyMap = {
-        'Fraunces': "'Fraunces', serif",
-        'Poppins': "'Poppins', sans-serif",
-        'Roboto': "'Roboto', sans-serif",
-        'Playfair': "'Playfair Display', serif",
-        'Playfair Display': "'Playfair Display', serif",
-        'Montserrat': "'Montserrat', sans-serif",
-        'Inter': "'Inter', sans-serif",
-        'Syne': "'Syne', sans-serif",
-      };
-      const ff = familyMap[family] || family;
-      return `<span style="font-family:${ff};">${txt}</span>`;
-    });
+    // Inline weight {w700|text}
+    out = out.replace(/\{w(\d{3})\|(.*?)\}/g, '<span style="font-weight:$1;">$2</span>');
     return out;
   }
   titleHtml = parseInlineMarkers(titleHtml);
@@ -5645,10 +5635,20 @@ function renderCardSidebar() {
   ];
 
   function fontSelect(fieldId, currentFamily, onChangeFn) {
+    // Only show brand fonts (display + body) — not full list
+    const brandFonts = [];
+    const displayFamily = b.fontDisplay || "'Fraunces', serif";
+    const bodyFamily    = b.fontBody    || "'Syne', sans-serif";
+    const displayName = (displayFamily.match(/'([^']+)'/) || [])[1] || 'Display';
+    const bodyName    = (bodyFamily.match(/'([^']+)'/)    || [])[1] || 'Body';
+    brandFonts.push([displayFamily, `${displayName} (Títulos)`]);
+    if (bodyFamily !== displayFamily) {
+      brandFonts.push([bodyFamily, `${bodyName} (Corpo)`]);
+    }
     return `<select onchange="${onChangeFn}(${idx},this.value)"
       style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);font-size:0.78rem;cursor:pointer;outline:none;">
-      ${INLINE_FONTS.map(([val, label]) =>
-        `<option value="${val}" ${currentFamily===val?'selected':''} style="font-family:${val};">${label}</option>`
+      ${brandFonts.map(([val, label]) =>
+        `<option value="${val}" ${currentFamily===val?'selected':''}>${label}</option>`
       ).join('')}
     </select>`;
   }
@@ -5658,31 +5658,33 @@ function renderCardSidebar() {
       style="flex:1;padding:5px 4px;border-radius:5px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};background:${active?'rgba(0,113,227,0.12)':'transparent'};font-size:0.82rem;cursor:pointer;color:${active?'var(--accent)':'var(--muted)'};">${label}</button>`;
   }
 
-  function inlineMarkerBar(taId, fieldPrefix) {
-    // Color picker for inline color marker
-    return `<div style="display:flex;flex-direction:column;gap:6px;">
+  function inlineMarkerBar(taId) {
+    // Weight grid: 9 weights compact
+    const weightLabels = [
+      ['100','Thin'],['200','XL'],['300','Lt'],['400','Rg'],
+      ['500','Md'],['600','SB'],['700','Bd'],['800','EB'],['900','Bk']
+    ];
+    const weightBtns = weightLabels.map(([w, label]) =>
+      `<button onclick="applyWeightMarker('${taId}','${w}')" title="Peso ${w} — ${label}"
+        style="flex:1;padding:4px 2px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);font-size:0.58rem;cursor:pointer;color:var(--muted);font-weight:${w};min-width:0;">${label}</button>`
+    ).join('');
+
+    return `<div style="display:flex;flex-direction:column;gap:7px;">
       <div class="field-label" style="margin-bottom:0;">Formatar seleção</div>
-      <div style="display:flex;gap:5px;align-items:center;">
-        ${fmtBtn('<strong style="font-size:0.9rem;">B</strong>', false, `applyInlineMarker('${taId}','**','**')`, 'Negrito')}
-        ${fmtBtn('<em style="font-size:0.9rem;">I</em>', false, `applyInlineMarker('${taId}','_','_')`, 'Itálico')}
-        <div style="position:relative;flex:1;" title="Cor inline">
-          <label style="display:flex;align-items:center;justify-content:center;gap:3px;padding:5px 4px;border-radius:5px;border:1.5px solid var(--border);cursor:pointer;font-size:0.72rem;color:var(--muted);background:transparent;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
-            Cor
-            <input type="color" id="${taId}-inlinecolor" value="#ff6600"
-              style="position:absolute;opacity:0;width:100%;height:100%;inset:0;cursor:pointer;border:none;padding:0;"
-              onchange="applyInlineMarker('${taId}','{'+this.value+'|','}')"/>
-          </label>
-        </div>
-        <div style="position:relative;flex:1.4;" title="Família inline">
-          <select onchange="applyInlineMarker('${taId}','{'+this.value+'|','}')"
-            style="width:100%;padding:5px 4px;border-radius:5px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);font-size:0.62rem;cursor:pointer;outline:none;">
-            <option value="" disabled selected>Aa Fonte</option>
-            ${INLINE_FONTS.map(([val, label]) =>
-              `<option value="${label}">${label}</option>`
-            ).join('')}
-          </select>
-        </div>
+      <div style="display:flex;gap:4px;align-items:center;">
+        ${fmtBtn('<strong>B</strong>', false, `applyWeightMarker('${taId}','700')`, 'Negrito (700)')}
+        ${fmtBtn('<em>I</em>',         false, `applyInlineMarker('${taId}','_','_')`, 'Itálico')}
+        ${fmtBtn('<u>U</u>',           false, `applyInlineMarker('${taId}','__','__')`, 'Sublinhado')}
+        ${fmtBtn('<s>S</s>',           false, `applyInlineMarker('${taId}','~~','~~')`, 'Riscado')}
+        <label title="Cor inline" style="flex:1;display:flex;align-items:center;justify-content:center;padding:5px 4px;border-radius:5px;border:1.5px solid var(--border);cursor:pointer;font-size:0.75rem;color:var(--muted);background:transparent;position:relative;gap:3px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z"/><path d="M12 12v10M8 16h8"/></svg>Cor
+          <input type="color" value="#ff6600"
+            style="position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer;border:none;padding:0;"
+            onchange="applyColorMarker('${taId}',this.value)"/>
+        </label>
+      </div>
+      <div style="display:flex;gap:3px;">
+        ${weightBtns}
       </div>
     </div>`;
   }
@@ -5696,7 +5698,7 @@ function renderCardSidebar() {
           style="min-height:72px;font-size:0.82rem;line-height:1.4;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;color:var(--ink);resize:vertical;padding:8px 10px;width:100%;font-family:'Roboto',sans-serif;"
         >${(card.title.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
       </div>
-      ${inlineMarkerBar(`sidebar-title-text-${idx}`, 'title')}
+      ${inlineMarkerBar(`sidebar-title-text-${idx}`)}
       <div>
         <div class="field-label" style="margin-bottom:5px;">Estilo do bloco</div>
         <div style="display:flex;gap:5px;">
@@ -5770,7 +5772,7 @@ function renderCardSidebar() {
             style="min-height:80px;font-size:0.82rem;line-height:1.4;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;color:var(--ink);resize:vertical;padding:8px 10px;width:100%;font-family:'Roboto',sans-serif;"
           >${(card.body.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
         </div>
-        ${inlineMarkerBar(`sidebar-body-text-${idx}`, 'body')}
+        ${inlineMarkerBar(`sidebar-body-text-${idx}`)}
         <div>
           <div class="field-label" style="margin-bottom:5px;">Estilo do bloco</div>
           <div style="display:flex;gap:5px;">
@@ -6469,19 +6471,135 @@ function setCardBodyItalic(idx, v)     { S.cards[idx].body.italic     = v; refre
 function setCardBodyUnderline(idx, v)  { S.cards[idx].body.underline  = v; refreshCard(idx); renderCardSidebar(); }
 function setCardBodyUppercase(idx, v)  { S.cards[idx].body.uppercase  = v; refreshCard(idx); renderCardSidebar(); }
 
-// ── Inline marker helper — wraps selected text in textarea with a marker ──
+// ── Inline marker helper — wraps/unwraps selected text in textarea ──
+// If the selection is already wrapped by open+close, removes the markers (toggle off).
+// Otherwise wraps the selection (toggle on).
 function applyInlineMarker(textareaId, open, close) {
   const ta = document.getElementById(textareaId);
   if (!ta) return;
   const start = ta.selectionStart, end = ta.selectionEnd;
   const selected = ta.value.slice(start, end);
-  if (!selected) return; // nothing selected
+  if (!selected) return;
+
   const before = ta.value.slice(0, start);
   const after  = ta.value.slice(end);
-  ta.value = before + open + selected + close + after;
-  // Restore cursor after inserted marker
-  const newEnd = start + open.length + selected.length + close.length;
-  ta.setSelectionRange(newEnd, newEnd);
+
+  // Check if selection is already wrapped: text before ends with `open` AND text after starts with `close`
+  const alreadyWrapped =
+    before.endsWith(open) && after.startsWith(close);
+
+  // Also check if the selected text itself starts with open and ends with close
+  const selfWrapped =
+    selected.startsWith(open) && selected.endsWith(close) && selected.length > open.length + close.length;
+
+  if (alreadyWrapped) {
+    // Remove the markers from surrounding context
+    const newBefore = before.slice(0, before.length - open.length);
+    const newAfter  = after.slice(close.length);
+    ta.value = newBefore + selected + newAfter;
+    ta.setSelectionRange(newBefore.length, newBefore.length + selected.length);
+  } else if (selfWrapped) {
+    // Remove markers from within the selection
+    const inner = selected.slice(open.length, selected.length - close.length);
+    ta.value = before + inner + after;
+    ta.setSelectionRange(start, start + inner.length);
+  } else {
+    // Wrap with markers
+    ta.value = before + open + selected + close + after;
+    const newEnd = start + open.length + selected.length + close.length;
+    ta.setSelectionRange(start + open.length, start + open.length + selected.length);
+  }
+  ta.dispatchEvent(new Event('input'));
+}
+
+// ── Inline weight marker — wraps/unwraps {w700|text} ──
+function applyWeightMarker(textareaId, weight) {
+  const ta = document.getElementById(textareaId);
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selected = ta.value.slice(start, end);
+  if (!selected) return;
+
+  const before = ta.value.slice(0, start);
+  const after  = ta.value.slice(end);
+  const open = `{w${weight}|`, close = `}`;
+
+  // Check if already wrapped with this exact weight marker
+  const alreadyWrapped = before.endsWith(open) && after.startsWith(close);
+  const selfWrapped = selected.startsWith(open) && selected.endsWith(close);
+
+  // Check if wrapped with any weight marker (to replace with new weight)
+  const anyWeightRe = /^\{w(\d{3})\|(.+)\}$/s;
+  const anyMatch = selected.match(anyWeightRe);
+
+  if (alreadyWrapped) {
+    // Toggle off: same weight — remove markers
+    const newBefore = before.slice(0, before.length - open.length);
+    const newAfter  = after.slice(close.length);
+    ta.value = newBefore + selected + newAfter;
+    ta.setSelectionRange(newBefore.length, newBefore.length + selected.length);
+  } else if (anyMatch) {
+    if (anyMatch[1] === weight) {
+      // Same weight — toggle off (remove marker from selection)
+      const inner = anyMatch[2];
+      ta.value = before + inner + after;
+      ta.setSelectionRange(start, start + inner.length);
+    } else {
+      // Different weight — replace weight
+      const inner = anyMatch[2];
+      const newMarker = `{w${weight}|${inner}}`;
+      ta.value = before + newMarker + after;
+      ta.setSelectionRange(start, start + newMarker.length);
+    }
+  } else {
+    // Wrap with weight marker
+    const newMarker = `{w${weight}|${selected}}`;
+    ta.value = before + newMarker + after;
+    ta.setSelectionRange(start + open.length, start + open.length + selected.length);
+  }
+  ta.dispatchEvent(new Event('input'));
+}
+
+// ── Inline color marker — wraps/unwraps {#color|text} ──
+function applyColorMarker(textareaId, color) {
+  const ta = document.getElementById(textareaId);
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selected = ta.value.slice(start, end);
+  if (!selected) return;
+
+  const before = ta.value.slice(0, start);
+  const after  = ta.value.slice(end);
+
+  // Check if selection already has a color marker — replace it
+  const colorRe = /^\{(#[0-9a-fA-F]{3,8})\|(.+)\}$/s;
+  const selfWrapped = selected.match(colorRe);
+  const anyColorOpen = /\{#[0-9a-fA-F]{3,8}\|$/.test(before) && after.startsWith('}');
+
+  if (anyColorOpen) {
+    // Toggle off or replace: remove surrounding marker then re-wrap with new color
+    const innerBefore = before.replace(/\{#[0-9a-fA-F]{3,8}\|$/, '');
+    const innerAfter = after.slice(1);
+    const newMarker = `{${color}|${selected}}`;
+    ta.value = innerBefore + newMarker + innerAfter;
+    ta.setSelectionRange(innerBefore.length + color.length + 2, innerBefore.length + color.length + 2 + selected.length);
+  } else if (selfWrapped && selfWrapped[1] === color) {
+    // Same color — toggle off
+    const inner = selfWrapped[2];
+    ta.value = before + inner + after;
+    ta.setSelectionRange(start, start + inner.length);
+  } else if (selfWrapped) {
+    // Different color — replace
+    const inner = selfWrapped[2];
+    const newMarker = `{${color}|${inner}}`;
+    ta.value = before + newMarker + after;
+    ta.setSelectionRange(start, start + newMarker.length);
+  } else {
+    // Wrap
+    const newMarker = `{${color}|${selected}}`;
+    ta.value = before + newMarker + after;
+    ta.setSelectionRange(start + color.length + 2, start + color.length + 2 + selected.length);
+  }
   ta.dispatchEvent(new Event('input'));
 }
 function setAvatarPlacement(idx, placement) { S.cards[idx].avatar.placement = placement; refreshCard(idx); renderCardSidebar(); }
@@ -6989,61 +7107,65 @@ async function exportAllCards() {
 async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   // Force load all fonts used in canvas before measuring/drawing
   await document.fonts.ready;
+  // Dynamically preload all weights of the brand fonts actually used in this card
   try {
-    await Promise.all([
-      document.fonts.load("700 48px 'Fraunces'"),
-      document.fonts.load("400 48px 'Fraunces'"),
-      document.fonts.load("600 48px 'Fraunces'"),
-      document.fonts.load("900 48px 'Fraunces'"),
-      document.fonts.load("400 48px 'Syne'"),
-      document.fonts.load("600 48px 'Syne'"),
-      document.fonts.load("700 48px 'Poppins'"),
-      document.fonts.load("400 48px 'Poppins'"),
-      document.fonts.load("700 48px 'Playfair Display'"),
-      document.fonts.load("400 48px 'Playfair Display'"),
-      document.fonts.load("700 48px 'Montserrat'"),
-      document.fonts.load("400 48px 'Montserrat'"),
-      document.fonts.load("700 48px 'Inter'"),
-      document.fonts.load("400 48px 'Inter'"),
-    ]);
+    const b = getBrand();
+    const allWeights = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+    const fontsToLoad = new Set();
+    // Always load brand fonts
+    [b.fontDisplay, b.fontBody].forEach(f => {
+      const m = (f||'').match(/'([^']+)'/);
+      if (m) fontsToLoad.add(m[1]);
+    });
+    // Also load card-specific font families if overridden
+    [card.title.fontFamily, card.body.fontFamily].forEach(f => {
+      const m = (f||'').match(/'([^']+)'/);
+      if (m) fontsToLoad.add(m[1]);
+    });
+    const loadPromises = [];
+    fontsToLoad.forEach(name => {
+      allWeights.forEach(w => {
+        loadPromises.push(document.fonts.load(`${w} 48px '${name}'`).catch(() => {}));
+        loadPromises.push(document.fonts.load(`italic ${w} 48px '${name}'`).catch(() => {}));
+      });
+    });
+    await Promise.all(loadPromises);
   } catch(e) { /* fonts may already be loaded */ }
 
   // ── Inline marker parser for canvas ──
-  // Returns array of segments: { text, bold, italic, color, family }
-  // Inherits defaults from blockStyle = { weight, italic, color, family }
+  // Supported markers:
+  //   **text**        → bold (weight 700)
+  //   _text_          → italic
+  //   __text__        → underline (drawn manually on canvas)
+  //   {#rrggbb|text}  → color override
+  //   {w100|text}     → weight override (100–900), keeps block family
+  //   ~~text~~        → strikethrough (drawn manually)
   function parseSegments(rawText, blockStyle) {
     const { weight, italic: bItalic, color: bColor, family: bFamily } = blockStyle;
     const segments = [];
-    // Tokenize by markers: **bold**, _italic_, {#color|text}, {FontName|text}
-    const re = /\*\*(.*?)\*\*|_(.*?)_|\{(#[0-9a-fA-F]{3,8})\|(.*?)\}|\{([^#\|][^\|]*)\|(.*?)\}|([^*_{]+|[*_{])/gs;
+    const re = /\*\*(.*?)\*\*|__(.*?)__(?!_)|_(.*?)_|\{(#[0-9a-fA-F]{3,8})\|(.*?)\}|\{w(\d{3})\|(.*?)\}|~~(.*?)~~|([^*_~{]+|[*_~{])/gs;
     let match;
     while ((match = re.exec(rawText)) !== null) {
       if (match[1] !== undefined) {
         // **bold**
-        segments.push({ text: match[1], weight: '700', italic: bItalic, color: bColor, family: bFamily });
+        segments.push({ text: match[1], weight: '700', italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false });
       } else if (match[2] !== undefined) {
+        // __underline__
+        segments.push({ text: match[2], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: true });
+      } else if (match[3] !== undefined) {
         // _italic_
-        segments.push({ text: match[2], weight: String(weight), italic: true, color: bColor, family: bFamily });
-      } else if (match[4] !== undefined) {
+        segments.push({ text: match[3], weight: String(weight), italic: true, color: bColor, family: bFamily, strike: false, underline: false });
+      } else if (match[5] !== undefined) {
         // {#color|text}
-        segments.push({ text: match[4], weight: String(weight), italic: bItalic, color: match[3], family: bFamily });
-      } else if (match[6] !== undefined) {
-        // {FontName|text}
-        const familyMap = {
-          'Fraunces': "'Fraunces', serif",
-          'Poppins': "'Poppins', sans-serif",
-          'Roboto': "'Roboto', sans-serif",
-          'Playfair': "'Playfair Display', serif",
-          'Playfair Display': "'Playfair Display', serif",
-          'Montserrat': "'Montserrat', sans-serif",
-          'Inter': "'Inter', sans-serif",
-          'Syne': "'Syne', sans-serif",
-        };
-        const ff = familyMap[match[5]] || match[5];
-        segments.push({ text: match[6], weight: String(weight), italic: bItalic, color: bColor, family: ff });
+        segments.push({ text: match[5], weight: String(weight), italic: bItalic, color: match[4], family: bFamily, strike: false, underline: false });
       } else if (match[7] !== undefined) {
-        // Plain text
-        if (match[7]) segments.push({ text: match[7], weight: String(weight), italic: bItalic, color: bColor, family: bFamily });
+        // {w700|text} — inline weight override
+        segments.push({ text: match[7], weight: match[6], italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false });
+      } else if (match[8] !== undefined) {
+        // ~~strikethrough~~
+        segments.push({ text: match[8], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: true, underline: false });
+      } else if (match[9] !== undefined) {
+        if (match[9]) segments.push({ text: match[9], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false });
       }
     }
     return segments.filter(s => s.text);
@@ -7067,6 +7189,24 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       ctx.fillStyle = seg.color;
       ctx.fillText(seg.text, cx, y);
       const segW = ctx.measureText(seg.text).width;
+      // Strikethrough
+      if (seg.strike) {
+        ctx.save();
+        ctx.strokeStyle = seg.color;
+        ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.06));
+        const strikeY = y - fontSize * 0.3;
+        ctx.beginPath(); ctx.moveTo(cx, strikeY); ctx.lineTo(cx + segW, strikeY); ctx.stroke();
+        ctx.restore();
+      }
+      // Inline underline
+      if (seg.underline) {
+        ctx.save();
+        ctx.strokeStyle = seg.color;
+        ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.06));
+        const ulY = y + Math.round(fontSize * 0.12);
+        ctx.beginPath(); ctx.moveTo(cx, ulY); ctx.lineTo(cx + segW, ulY); ctx.stroke();
+        ctx.restore();
+      }
       cx += segW;
     }
     return cx - x;
@@ -7074,59 +7214,51 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
   // Wrap text that may have inline segments — returns array of { segs, rawText } per line
   function wrapSegmentedText(ctx, rawText, blockStyle, maxWidth, fontSize) {
-    // First strip markers to do plain-text wrapping for line breaks
+    // Strip markers to get plain text for line-break calculation
     const plain = rawText
       .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/__(.*?)__/g, '$1')
       .replace(/_(.*?)_/g, '$1')
+      .replace(/~~(.*?)~~/g, '$1')
       .replace(/\{#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
-      .replace(/\{[^#\|][^\|]*\|(.*?)\}/g, '$1');
+      .replace(/\{w\d{3}\|(.*?)\}/g, '$1');
 
-    // Use existing wrapText to get line break positions on plain text
     ctx.font = `${blockStyle.italic ? 'italic ' : ''}${blockStyle.weight} ${fontSize}px ${blockStyle.family}`;
     const lines = wrapText(ctx, plain, maxWidth, fontSize * 1.15);
 
-    // Map lines back to original rawText by consuming characters
     const result = [];
     let rawIdx = 0;
     for (const line of lines) {
-      // Find the span in rawText that corresponds to this plain-text line
-      // Walk rawText consuming characters while producing `line.length` plain chars
       let plainCount = 0;
       const lineLen = line.length;
       const rawStart = rawIdx;
       while (rawIdx < rawText.length && plainCount < lineLen) {
-        const ch = rawText[rawIdx];
-        // Check if at start of a marker
         if (rawText.startsWith('**', rawIdx)) {
-          // Skip opening **
           rawIdx += 2;
-          while (rawIdx < rawText.length && !rawText.startsWith('**', rawIdx)) {
-            plainCount++; rawIdx++;
-          }
-          rawIdx += 2; // skip closing **
-        } else if (rawText[rawIdx] === '_' && rawText[rawIdx+1] !== '_') {
-          rawIdx++; // skip opening _
-          while (rawIdx < rawText.length && rawText[rawIdx] !== '_') {
-            plainCount++; rawIdx++;
-          }
-          rawIdx++; // skip closing _
+          while (rawIdx < rawText.length && !rawText.startsWith('**', rawIdx)) { plainCount++; rawIdx++; }
+          rawIdx += 2;
+        } else if (rawText.startsWith('~~', rawIdx)) {
+          rawIdx += 2;
+          while (rawIdx < rawText.length && !rawText.startsWith('~~', rawIdx)) { plainCount++; rawIdx++; }
+          rawIdx += 2;
+        } else if (rawText.startsWith('__', rawIdx)) {
+          rawIdx += 2;
+          while (rawIdx < rawText.length && !rawText.startsWith('__', rawIdx)) { plainCount++; rawIdx++; }
+          rawIdx += 2;
+        } else if (rawText[rawIdx] === '_' && !rawText.startsWith('__', rawIdx)) {
+          rawIdx++;
+          while (rawIdx < rawText.length && rawText[rawIdx] !== '_') { plainCount++; rawIdx++; }
+          rawIdx++;
         } else if (rawText[rawIdx] === '{') {
           const closeB = rawText.indexOf('}', rawIdx);
           const pipe = rawText.indexOf('|', rawIdx);
           if (pipe > rawIdx && closeB > pipe) {
-            rawIdx = pipe + 1; // skip to content
-            while (rawIdx < rawText.length && rawText[rawIdx] !== '}') {
-              plainCount++; rawIdx++;
-            }
-            rawIdx++; // skip }
-          } else {
-            plainCount++; rawIdx++;
-          }
-        } else {
-          plainCount++; rawIdx++;
-        }
+            rawIdx = pipe + 1;
+            while (rawIdx < rawText.length && rawText[rawIdx] !== '}') { plainCount++; rawIdx++; }
+            rawIdx++;
+          } else { plainCount++; rawIdx++; }
+        } else { plainCount++; rawIdx++; }
       }
-      // Skip whitespace separator between lines
       while (rawIdx < rawText.length && rawText[rawIdx] === ' ') rawIdx++;
       const rawSlice = rawText.slice(rawStart, rawIdx).trim();
       result.push({ segs: parseSegments(rawSlice, blockStyle), rawLine: line });
