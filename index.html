@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.383.0/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Poppins:wght@300;400;700&family=Roboto:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;0,900;1,300;1,600&family=Syne:wght@400;600;700;800&family=Syne+Mono&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Montserrat:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
 /* ── THEME SYSTEM ── */
 :root {
@@ -3958,14 +3959,13 @@ function clearImage() {
 
 async function analyzeImage() {
   try {
-    // Auth handled by backend
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const token = getAuthToken();
+    const API = (window.STORYLAB_API || 'https://storylab-api-production.up.railway.app');
+    const res = await fetch(`${API}/api/claude`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true"
+        "Authorization": "Bearer " + token
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
@@ -5195,7 +5195,7 @@ function renderCardHtml(card, idx, total) {
   const bodyOffX = card.body.offsetX || 0;
   const bodyOffY = card.body.offsetY || 0;
 
-  // Parse inline markers: **bold**, _italic_, __underline__, ~~strike~~, {#color|text}, {w700|text}
+  // Parse inline markers: **bold**, _italic_, __underline__, ~~strike~~, {#color|text}, {w700|text}, {bg#color|text}
   function parseInlineMarkers(text) {
     let out = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     // Bold **text**
@@ -5206,7 +5206,9 @@ function renderCardHtml(card, idx, total) {
     out = out.replace(/_(.*?)_/g, '<em>$1</em>');
     // Strikethrough ~~text~~
     out = out.replace(/~~(.*?)~~/g, '<s>$1</s>');
-    // Color {#rrggbb|text}
+    // Background color {bg#rrggbb|text} — process before fg color
+    out = out.replace(/\{bg(#[0-9a-fA-F]{3,8})\|(.*?)\}/g, '<mark style="background:$1;color:inherit;padding:0 2px;border-radius:2px;">$2</mark>');
+    // Foreground color {#rrggbb|text}
     out = out.replace(/\{(#[0-9a-fA-F]{3,8})\|(.*?)\}/g, '<span style="color:$1;">$2</span>');
     // Inline weight {w700|text}
     out = out.replace(/\{w(\d{3})\|(.*?)\}/g, '<span style="font-weight:$1;">$2</span>');
@@ -5803,14 +5805,17 @@ function renderCardSidebar() {
         ${fmtBtn('<em>I</em>',         false, `applyInlineMarker('${taId}','_','_')`,   'Itálico')}
         ${fmtBtn('<u>U</u>',           false, `applyInlineMarker('${taId}','__','__')`, 'Sublinhado')}
         ${fmtBtn('<s>S</s>',           false, `applyInlineMarker('${taId}','~~','~~')`, 'Riscado')}
-        <label title="Cor inline" style="flex:1;display:flex;align-items:center;justify-content:center;padding:5px 4px;border-radius:5px;border:1.5px solid var(--border);cursor:pointer;font-size:0.75rem;color:var(--muted);background:transparent;position:relative;gap:3px;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M19 11H7.83l4.88-4.88c.39-.39.39-1.03 0-1.42-.39-.39-1.02-.39-1.41 0l-6.59 6.59c-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L7.83 13H19c.55 0 1-.45 1-1s-.45-1-1-1z"/>
-            <rect x="2" y="19" width="20" height="3" rx="1" fill="currentColor" stroke="none"/>
-          </svg>Cor
+        <label title="Cor do texto" style="flex:1;display:flex;align-items:center;justify-content:center;padding:5px 4px;border-radius:5px;border:1.5px solid var(--border);cursor:pointer;font-size:0.78rem;color:var(--muted);background:transparent;position:relative;gap:3px;">
+          <i class="bi bi-paint-bucket"></i>
           <input type="color" value="#ff6600"
             style="position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer;border:none;padding:0;"
             onchange="applyColorMarker('${taId}',this.value)"/>
+        </label>
+        <label title="Cor de fundo (marca-texto)" style="flex:1;display:flex;align-items:center;justify-content:center;padding:5px 4px;border-radius:5px;border:1.5px solid var(--border);cursor:pointer;font-size:0.78rem;color:var(--muted);background:transparent;position:relative;gap:3px;">
+          <i class="bi bi-highlighter"></i>
+          <input type="color" value="#ffcc00"
+            style="position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer;border:none;padding:0;"
+            onchange="applyBgColorMarker('${taId}',this.value)"/>
         </label>
       </div>
       <div class="field-label" style="margin-bottom:0;margin-top:2px;">Pesos disponíveis</div>
@@ -6713,7 +6718,44 @@ function applyWeightMarker(textareaId, weight) {
   ta.dispatchEvent(new Event('input'));
 }
 
-// ── Inline color marker — wraps/unwraps {#color|text} ──
+// ── Inline background color marker — wraps/unwraps {bg#color|text} ──
+function applyBgColorMarker(textareaId, color) {
+  const ta = document.getElementById(textareaId);
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selected = ta.value.slice(start, end);
+  if (!selected) return;
+
+  const before = ta.value.slice(0, start);
+  const after  = ta.value.slice(end);
+  const open = `{bg${color}|`, close = `}`;
+
+  const bgRe = /^\{bg(#[0-9a-fA-F]{3,8})\|(.+)\}$/s;
+  const selfWrapped = selected.match(bgRe);
+  const anyBgOpen = /\{bg#[0-9a-fA-F]{3,8}\|$/.test(before) && after.startsWith('}');
+
+  if (anyBgOpen) {
+    const innerBefore = before.replace(/\{bg#[0-9a-fA-F]{3,8}\|$/, '');
+    const innerAfter = after.slice(1);
+    const newMarker = `{bg${color}|${selected}}`;
+    ta.value = innerBefore + newMarker + innerAfter;
+    ta.setSelectionRange(innerBefore.length + open.length, innerBefore.length + open.length + selected.length);
+  } else if (selfWrapped && selfWrapped[1] === color) {
+    const inner = selfWrapped[2];
+    ta.value = before + inner + after;
+    ta.setSelectionRange(start, start + inner.length);
+  } else if (selfWrapped) {
+    const inner = selfWrapped[2];
+    const newMarker = `{bg${color}|${inner}}`;
+    ta.value = before + newMarker + after;
+    ta.setSelectionRange(start, start + newMarker.length);
+  } else {
+    const newMarker = `{bg${color}|${selected}}`;
+    ta.value = before + newMarker + after;
+    ta.setSelectionRange(start + open.length, start + open.length + selected.length);
+  }
+  ta.dispatchEvent(new Event('input'));
+}
 function applyColorMarker(textareaId, color) {
   const ta = document.getElementById(textareaId);
   if (!ta) return;
@@ -7265,12 +7307,10 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     const b = getBrand();
     const allWeights = [100, 200, 300, 400, 500, 600, 700, 800, 900];
     const fontsToLoad = new Set();
-    // Always load brand fonts
     [b.fontDisplay, b.fontBody].forEach(f => {
       const m = (f||'').match(/'([^']+)'/);
       if (m) fontsToLoad.add(m[1]);
     });
-    // Also load card-specific font families if overridden
     [card.title.fontFamily, card.body.fontFamily].forEach(f => {
       const m = (f||'').match(/'([^']+)'/);
       if (m) fontsToLoad.add(m[1]);
@@ -7283,42 +7323,64 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       });
     });
     await Promise.all(loadPromises);
-  } catch(e) { /* fonts may already be loaded */ }
+  } catch(e) {}
+
+  // ── Font warmup: force the browser to actually render each font before measureText ──
+  // Without this, measureText can return incorrect widths even after fonts.load() resolves,
+  // causing wrapText to break words mid-character instead of at word boundaries.
+  const _warmupCanvas = document.createElement('canvas');
+  _warmupCanvas.width = 200; _warmupCanvas.height = 50;
+  const _wctx = _warmupCanvas.getContext('2d');
+  const _warmupFamilies = [card.title.fontFamily, card.body.fontFamily].filter(Boolean);
+  const _warmupWeights = [String(card.title.weight || 700), '400'];
+  for (const fam of _warmupFamilies) {
+    for (const wt of _warmupWeights) {
+      _wctx.font = `${wt} 32px ${fam}`;
+      _wctx.measureText('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz');
+    }
+  }
+  // Brief yield to let the browser flush font rendering
+  await new Promise(r => setTimeout(r, 50));
 
   // ── Inline marker parser for canvas ──
   // Supported markers:
-  //   **text**        → bold (weight 700)
-  //   _text_          → italic
-  //   __text__        → underline (drawn manually on canvas)
-  //   {#rrggbb|text}  → color override
-  //   {w100|text}     → weight override (100–900), keeps block family
-  //   ~~text~~        → strikethrough (drawn manually)
+  //   **text**          → bold (weight 700)
+  //   _text_            → italic
+  //   __text__          → underline (drawn manually on canvas)
+  //   {#rrggbb|text}    → foreground color override
+  //   {bg#rrggbb|text}  → background color (highlight/marker)
+  //   {w100|text}       → weight override (100–900), keeps block family
+  //   ~~text~~          → strikethrough (drawn manually)
   function parseSegments(rawText, blockStyle) {
     const { weight, italic: bItalic, color: bColor, family: bFamily } = blockStyle;
     const segments = [];
-    const re = /\*\*(.*?)\*\*|__(.*?)__(?!_)|_(.*?)_|\{(#[0-9a-fA-F]{3,8})\|(.*?)\}|\{w(\d{3})\|(.*?)\}|~~(.*?)~~|([^*_~{]+|[*_~{])/gs;
+    // Order matters: {bg#...} must come before {#...} to avoid false matches
+    const re = /\*\*(.*?)\*\*|__(.*?)__(?!_)|_(.*?)_|\{bg(#[0-9a-fA-F]{3,8})\|(.*?)\}|\{(#[0-9a-fA-F]{3,8})\|(.*?)\}|\{w(\d{3})\|(.*?)\}|~~(.*?)~~|([^*_~{]+|[*_~{])/gs;
     let match;
     while ((match = re.exec(rawText)) !== null) {
       if (match[1] !== undefined) {
         // **bold**
-        segments.push({ text: match[1], weight: '700', italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false });
+        segments.push({ text: match[1], weight: '700', italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false, bgColor: null });
       } else if (match[2] !== undefined) {
         // __underline__
-        segments.push({ text: match[2], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: true });
+        segments.push({ text: match[2], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: true, bgColor: null });
       } else if (match[3] !== undefined) {
         // _italic_
-        segments.push({ text: match[3], weight: String(weight), italic: true, color: bColor, family: bFamily, strike: false, underline: false });
+        segments.push({ text: match[3], weight: String(weight), italic: true, color: bColor, family: bFamily, strike: false, underline: false, bgColor: null });
       } else if (match[5] !== undefined) {
-        // {#color|text}
-        segments.push({ text: match[5], weight: String(weight), italic: bItalic, color: match[4], family: bFamily, strike: false, underline: false });
+        // {bg#color|text} — background highlight
+        segments.push({ text: match[5], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false, bgColor: match[4] });
       } else if (match[7] !== undefined) {
-        // {w700|text} — inline weight override
-        segments.push({ text: match[7], weight: match[6], italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false });
-      } else if (match[8] !== undefined) {
-        // ~~strikethrough~~
-        segments.push({ text: match[8], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: true, underline: false });
+        // {#color|text} — foreground color
+        segments.push({ text: match[7], weight: String(weight), italic: bItalic, color: match[6], family: bFamily, strike: false, underline: false, bgColor: null });
       } else if (match[9] !== undefined) {
-        if (match[9]) segments.push({ text: match[9], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false });
+        // {w700|text} — inline weight override
+        segments.push({ text: match[9], weight: match[8], italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false, bgColor: null });
+      } else if (match[10] !== undefined) {
+        // ~~strikethrough~~
+        segments.push({ text: match[10], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: true, underline: false, bgColor: null });
+      } else if (match[11] !== undefined) {
+        if (match[11]) segments.push({ text: match[11], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false, bgColor: null });
       }
     }
     return segments.filter(s => s.text);
@@ -7339,9 +7401,22 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     let cx = x;
     for (const seg of segs) {
       ctx.font = `${seg.italic ? 'italic ' : ''}${seg.weight} ${fontSize}px ${seg.family}`;
+      const segW = ctx.measureText(seg.text).width;
+      // Background highlight — draw before text
+      if (seg.bgColor) {
+        const padH = Math.round(fontSize * 0.12);
+        const padV = Math.round(fontSize * 0.08);
+        ctx.save();
+        ctx.fillStyle = seg.bgColor;
+        ctx.beginPath();
+        ctx.roundRect
+          ? ctx.roundRect(cx - padV, y - fontSize + padH, segW + padV * 2, fontSize + padH, Math.round(fontSize * 0.1))
+          : ctx.rect(cx - padV, y - fontSize + padH, segW + padV * 2, fontSize + padH);
+        ctx.fill();
+        ctx.restore();
+      }
       ctx.fillStyle = seg.color;
       ctx.fillText(seg.text, cx, y);
-      const segW = ctx.measureText(seg.text).width;
       // Strikethrough
       if (seg.strike) {
         ctx.save();
@@ -7373,6 +7448,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       .replace(/__(.*?)__/g, '$1')
       .replace(/_(.*?)_/g, '$1')
       .replace(/~~(.*?)~~/g, '$1')
+      .replace(/\{bg#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
       .replace(/\{#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
       .replace(/\{w\d{3}\|(.*?)\}/g, '$1');
 
