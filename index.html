@@ -4888,6 +4888,8 @@ Responda SOMENTE JSON:
     S.activeCardIdx = 0;
     S.step = 4;
     _lastAppliedBrand = { ...getBrand() }; // record brand at generation time
+    _undoStack.length = 0; // clear history on new generation
+    pushUndoSnapshot();    // seed undo stack with initial state
     initSidebar();
     renderFinal();
     autoSave();
@@ -5193,13 +5195,6 @@ function renderCardHtml(card, idx, total) {
   const bodyOffX = card.body.offsetX || 0;
   const bodyOffY = card.body.offsetY || 0;
 
-  // Render title with optional word highlight
-  let titleHtml = card.title.text || '';
-  if (card.title.highlight && card.title.highlight.word) {
-    const escaped = card.title.highlight.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    titleHtml = titleHtml.replace(new RegExp(escaped, 'gi'), match =>
-      `<span style="color:${card.title.highlight.color};">${match}</span>`);
-  }
   // Parse inline markers: **bold**, _italic_, __underline__, ~~strike~~, {#color|text}, {w700|text}
   function parseInlineMarkers(text) {
     let out = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -5217,7 +5212,7 @@ function renderCardHtml(card, idx, total) {
     out = out.replace(/\{w(\d{3})\|(.*?)\}/g, '<span style="font-weight:$1;">$2</span>');
     return out;
   }
-  titleHtml = parseInlineMarkers(titleHtml);
+  const titleHtml = parseInlineMarkers(card.title.text || '');
 
   let bodyHtml = parseInlineMarkers(card.body.text || '');
 
@@ -5397,6 +5392,116 @@ function scrollCarousel(dir) {
 }
 
 // ── SIDEBAR PANEL FOR CARD EDITING ──
+// ── Font weight registry ──
+// Static table of known weights per family (normal weights only; italic mirrors same weights).
+// Source: Google Fonts axis data. Families not listed fall back to dynamic detection.
+const FONT_WEIGHT_TABLE = {
+  // Variable / full range
+  'Roboto Flex':        [100,200,300,400,500,600,700,800,900],
+  'Inter':              [100,200,300,400,500,600,700,800,900],
+  'Montserrat':         [100,200,300,400,500,600,700,800,900],
+  'Nunito':             [200,300,400,500,600,700,800,900],
+  'Nunito Sans':        [200,300,400,500,600,700,800,900],
+  'Raleway':            [100,200,300,400,500,600,700,800,900],
+  'Poppins':            [100,200,300,400,500,600,700,800,900],
+  'Open Sans':          [300,400,500,600,700,800],
+  'Lato':               [100,300,400,700,900],
+  'Source Sans 3':      [200,300,400,500,600,700,800,900],
+  'Oswald':             [200,300,400,500,600,700],
+  'Syne':               [400,500,600,700,800],
+  'Fraunces':           [100,200,300,400,500,600,700,800,900],
+  'Playfair Display':   [400,500,600,700,800,900],
+  'Merriweather':       [300,400,700,900],
+  'Cormorant Garamond': [300,400,500,600,700],
+  'EB Garamond':        [400,500,600,700,800],
+  'IBM Plex Serif':     [100,200,300,400,500,600,700],
+  'IBM Plex Sans':      [100,200,300,400,500,600,700],
+  'IBM Plex Mono':      [100,200,300,400,500,600,700],
+  'Roboto':             [100,300,400,500,700,900],
+  'Roboto Condensed':   [100,200,300,400,500,600,700,800,900],
+  'Roboto Serif':       [100,200,300,400,500,600,700,800,900],
+  'Roboto Mono':        [100,200,300,400,500,600,700],
+  'Noto Sans':          [100,200,300,400,500,600,700,800,900],
+  'Noto Serif':         [100,200,300,400,500,600,700,800,900],
+  'Ubuntu':             [300,400,500,700],
+  'Work Sans':          [100,200,300,400,500,600,700,800,900],
+  'DM Sans':            [100,200,300,400,500,600,700,800,900],
+  'DM Serif Display':   [400],
+  'DM Serif Text':      [400],
+  'Space Grotesk':      [300,400,500,600,700],
+  'Space Mono':         [400,700],
+  'Manrope':            [200,300,400,500,600,700,800],
+  'Karla':              [200,300,400,500,600,700,800],
+  'Mulish':             [200,300,400,500,600,700,800,900],
+  'Jost':               [100,200,300,400,500,600,700,800,900],
+  'Cabin':              [400,500,600,700],
+  'Barlow':             [100,200,300,400,500,600,700,800,900],
+  'Barlow Condensed':   [100,200,300,400,500,600,700,800,900],
+  'Titillium Web':      [200,300,400,600,700,900],
+  'Exo 2':              [100,200,300,400,500,600,700,800,900],
+  'Outfit':             [100,200,300,400,500,600,700,800,900],
+  'Plus Jakarta Sans':  [200,300,400,500,600,700,800],
+  'Be Vietnam Pro':     [100,200,300,400,500,600,700,800,900],
+  'Quicksand':          [300,400,500,600,700],
+  'Josefin Sans':       [100,200,300,400,500,600,700],
+  'Josefin Slab':       [100,200,300,400,500,600,700],
+  'Abril Fatface':      [400],
+  'Anton':              [400],
+  'Bebas Neue':         [400],
+  'Righteous':          [400],
+  'Pacifico':           [400],
+  'Lobster':            [400],
+  'Satisfy':            [400],
+  'Dancing Script':     [400,500,600,700],
+  'Great Vibes':        [400],
+  'Caveat':             [400,500,600,700],
+  'Permanent Marker':   [400],
+  'Patrick Hand':       [400],
+  'Architects Daughter':[400],
+  'Syne Mono':          [400],
+  'Courier Prime':      [400,700],
+  'Fira Code':          [300,400,500,600,700],
+  'JetBrains Mono':     [100,200,300,400,500,600,700,800],
+  'Source Code Pro':    [200,300,400,500,600,700,800,900],
+};
+
+// Cache of dynamically detected weights per font name
+const _fontWeightCache = {};
+
+// Get available weights for a font: static table first, dynamic detection for unknowns
+async function getFontWeights(fontName) {
+  if (!fontName) return [400, 700];
+  if (FONT_WEIGHT_TABLE[fontName]) return FONT_WEIGHT_TABLE[fontName];
+  if (_fontWeightCache[fontName]) return _fontWeightCache[fontName];
+
+  // Dynamic detection: try each weight and see which ones load successfully
+  const allWeights = [100,200,300,400,500,600,700,800,900];
+  const available = [];
+  const checks = allWeights.map(async w => {
+    try {
+      const results = await document.fonts.load(`${w} 16px "${fontName}"`);
+      if (results.length > 0) available.push(w);
+    } catch(e) {}
+  });
+  await Promise.all(checks);
+  const sorted = available.sort((a,b) => a-b);
+  _fontWeightCache[fontName] = sorted.length ? sorted : [400, 700];
+  return _fontWeightCache[fontName];
+}
+
+// Synchronous version using cache only (for rendering sidebar without await)
+function getFontWeightsSync(fontName) {
+  if (!fontName) return [400, 700];
+  if (FONT_WEIGHT_TABLE[fontName]) return FONT_WEIGHT_TABLE[fontName];
+  return _fontWeightCache[fontName] || null; // null = not yet detected
+}
+
+// Trigger async detection and re-render sidebar when done
+async function detectAndRefreshWeights(fontName, taId) {
+  await getFontWeights(fontName);
+  renderCardSidebar();
+}
+
 function renderCardSidebar() {
   const sidebarBody = document.getElementById('sidebar-body');
   if (!sidebarBody || !S.cards.length) return;
@@ -5658,34 +5763,58 @@ function renderCardSidebar() {
       style="flex:1;padding:5px 4px;border-radius:5px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};background:${active?'rgba(0,113,227,0.12)':'transparent'};font-size:0.82rem;cursor:pointer;color:${active?'var(--accent)':'var(--muted)'};">${label}</button>`;
   }
 
-  function inlineMarkerBar(taId) {
-    // Weight grid: 9 weights compact
-    const weightLabels = [
-      ['100','Thin'],['200','XL'],['300','Lt'],['400','Rg'],
-      ['500','Md'],['600','SB'],['700','Bd'],['800','EB'],['900','Bk']
-    ];
-    const weightBtns = weightLabels.map(([w, label]) =>
-      `<button onclick="applyWeightMarker('${taId}','${w}')" title="Peso ${w} — ${label}"
-        style="flex:1;padding:4px 2px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);font-size:0.58rem;cursor:pointer;color:var(--muted);font-weight:${w};min-width:0;">${label}</button>`
-    ).join('');
+  function inlineMarkerBar(taId, blockFamily) {
+    // Extract font name from CSS family string e.g. "'IBM Plex Serif', serif" → "IBM Plex Serif"
+    const fontName = (blockFamily || '').match(/'([^']+)'/)?.[1] || '';
+    const knownWeights = getFontWeightsSync(fontName);
+
+    const weightLabels = {
+      100: 'Thin', 200: 'XLight', 300: 'Light', 400: 'Regular',
+      500: 'Medium', 600: 'SemiBold', 700: 'Bold', 800: 'ExtraBold', 900: 'Black'
+    };
+
+    let weightBtns;
+    if (knownWeights === null) {
+      // Not yet detected — show loading state and trigger detection
+      weightBtns = `<div style="font-size:0.72rem;color:var(--muted);padding:4px 0;" id="${taId}-weights-loading">
+        Detectando pesos…
+      </div>`;
+      // Trigger async detection (will re-render sidebar when done)
+      detectAndRefreshWeights(fontName, taId);
+    } else {
+      weightBtns = `<div style="display:flex;flex-wrap:wrap;gap:3px;">
+        ${knownWeights.map(w => {
+          const label = weightLabels[w] || w;
+          const shortLabel = w === 400 ? 'Rg' : w === 700 ? 'Bd' : w === 300 ? 'Lt' :
+            w === 500 ? 'Md' : w === 600 ? 'SB' : w === 100 ? 'Th' :
+            w === 200 ? 'XL' : w === 800 ? 'EB' : w === 900 ? 'Bk' : String(w);
+          return `<button onclick="applyWeightMarker('${taId}','${w}')" title="${label} (${w})"
+            style="padding:4px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);
+                   font-size:0.68rem;cursor:pointer;color:var(--muted);font-weight:${w};min-width:36px;text-align:center;"
+          >${shortLabel}</button>`;
+        }).join('')}
+      </div>`;
+    }
 
     return `<div style="display:flex;flex-direction:column;gap:7px;">
       <div class="field-label" style="margin-bottom:0;">Formatar seleção</div>
       <div style="display:flex;gap:4px;align-items:center;">
         ${fmtBtn('<strong>B</strong>', false, `applyWeightMarker('${taId}','700')`, 'Negrito (700)')}
-        ${fmtBtn('<em>I</em>',         false, `applyInlineMarker('${taId}','_','_')`, 'Itálico')}
+        ${fmtBtn('<em>I</em>',         false, `applyInlineMarker('${taId}','_','_')`,   'Itálico')}
         ${fmtBtn('<u>U</u>',           false, `applyInlineMarker('${taId}','__','__')`, 'Sublinhado')}
         ${fmtBtn('<s>S</s>',           false, `applyInlineMarker('${taId}','~~','~~')`, 'Riscado')}
         <label title="Cor inline" style="flex:1;display:flex;align-items:center;justify-content:center;padding:5px 4px;border-radius:5px;border:1.5px solid var(--border);cursor:pointer;font-size:0.75rem;color:var(--muted);background:transparent;position:relative;gap:3px;">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z"/><path d="M12 12v10M8 16h8"/></svg>Cor
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 11H7.83l4.88-4.88c.39-.39.39-1.03 0-1.42-.39-.39-1.02-.39-1.41 0l-6.59 6.59c-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L7.83 13H19c.55 0 1-.45 1-1s-.45-1-1-1z"/>
+            <rect x="2" y="19" width="20" height="3" rx="1" fill="currentColor" stroke="none"/>
+          </svg>Cor
           <input type="color" value="#ff6600"
             style="position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer;border:none;padding:0;"
             onchange="applyColorMarker('${taId}',this.value)"/>
         </label>
       </div>
-      <div style="display:flex;gap:3px;">
-        ${weightBtns}
-      </div>
+      <div class="field-label" style="margin-bottom:0;margin-top:2px;">Pesos disponíveis</div>
+      ${weightBtns}
     </div>`;
   }
 
@@ -5698,7 +5827,7 @@ function renderCardSidebar() {
           style="min-height:72px;font-size:0.82rem;line-height:1.4;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;color:var(--ink);resize:vertical;padding:8px 10px;width:100%;font-family:'Roboto',sans-serif;"
         >${(card.title.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
       </div>
-      ${inlineMarkerBar(`sidebar-title-text-${idx}`)}
+      ${inlineMarkerBar(`sidebar-title-text-${idx}`, card.title.fontFamily)}
       <div>
         <div class="field-label" style="margin-bottom:5px;">Estilo do bloco</div>
         <div style="display:flex;gap:5px;">
@@ -5740,17 +5869,6 @@ function renderCardSidebar() {
         </div>
       </div>
       <div>
-        <div class="field-label" style="margin-bottom:6px;">Destaque de palavra</div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <input id="hl-word-${idx}" type="text" placeholder="palavra" value="${card.title.highlight?.word||''}"
-            style="flex:1;padding:6px 8px;font-size:0.8rem;border-radius:5px;" />
-          <input type="color" id="hl-color-${idx}" value="${card.title.highlight?.color||'#ffcc00'}"
-            style="width:34px;height:32px;border:none;border-radius:5px;cursor:pointer;background:none;"/>
-          <button onclick="applyHighlight(${idx})" style="padding:6px 10px;border-radius:5px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:0.72rem;color:var(--ink2);">OK</button>
-          <button onclick="clearHighlight(${idx})" style="padding:6px 8px;border-radius:5px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:0.72rem;color:var(--muted);">✕</button>
-        </div>
-      </div>
-      <div>
         <div class="field-label" style="margin-bottom:6px;">Posição do bloco de texto</div>
         ${card.bg.boxMode
           ? slider('↕ Vertical', card.title.offsetY||0, -200, 200, 2, `(v)=>setCardTitleOffsetY(${idx},v)`)
@@ -5772,7 +5890,7 @@ function renderCardSidebar() {
             style="min-height:80px;font-size:0.82rem;line-height:1.4;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;color:var(--ink);resize:vertical;padding:8px 10px;width:100%;font-family:'Roboto',sans-serif;"
           >${(card.body.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
         </div>
-        ${inlineMarkerBar(`sidebar-body-text-${idx}`)}
+        ${inlineMarkerBar(`sidebar-body-text-${idx}`, card.body.fontFamily)}
         <div>
           <div class="field-label" style="margin-bottom:5px;">Estilo do bloco</div>
           <div style="display:flex;gap:5px;">
@@ -5951,7 +6069,54 @@ const TEMPLATE_PLACEHOLDER_MIME = 'image/png';
 // ── CARD CONTROL FUNCTIONS ──
 let _cardEditSaveTimer = null;
 
+// ── Undo history ──
+// Stores snapshots of S.cards per active card change.
+// Max 50 snapshots to keep memory bounded.
+const _undoStack = [];
+const _UNDO_MAX = 50;
+let _undoIsRestoring = false;
+
+function pushUndoSnapshot() {
+  if (_undoIsRestoring) return;
+  // Deep-clone cards array (JSON round-trip is safe here — no functions or DOM refs in S.cards)
+  try {
+    const snapshot = JSON.parse(JSON.stringify(S.cards));
+    // Avoid pushing identical consecutive snapshots
+    if (_undoStack.length > 0) {
+      const last = JSON.stringify(_undoStack[_undoStack.length - 1]);
+      if (last === JSON.stringify(snapshot)) return;
+    }
+    _undoStack.push(snapshot);
+    if (_undoStack.length > _UNDO_MAX) _undoStack.shift();
+  } catch(e) {}
+}
+
+function undoLastChange() {
+  if (_undoStack.length < 2) return; // need at least current + one previous
+  _undoIsRestoring = true;
+  _undoStack.pop(); // remove current state
+  const prev = _undoStack[_undoStack.length - 1];
+  try {
+    S.cards = JSON.parse(JSON.stringify(prev));
+    renderFinal();
+    renderCardSidebar();
+  } catch(e) {}
+  _undoIsRestoring = false;
+}
+
+// Global keyboard handler for Ctrl+Z / Cmd+Z
+document.addEventListener('keydown', (e) => {
+  // Only fire when NOT inside a textarea or input (those have native undo)
+  const tag = document.activeElement?.tagName?.toLowerCase();
+  if (tag === 'textarea' || tag === 'input') return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    e.preventDefault();
+    undoLastChange();
+  }
+});
+
 function refreshCard(idx) {
+  pushUndoSnapshot();
   const scroll = document.getElementById('carousel-scroll');
   if (!scroll) return;
   const wraps = scroll.querySelectorAll('.c-card-wrap');
@@ -6414,18 +6579,6 @@ function setCardTitleColor(idx, color) { S.cards[idx].title.color = color; refre
 function setCardTitleSize(idx, size) { S.cards[idx].title.size = parseInt(size); refreshCard(idx); }
 function setCardTitleWeight(idx, w) { S.cards[idx].title.weight = parseInt(w); refreshCard(idx); renderCardSidebar(); }
 function setCardTitleAlign(idx, align) { S.cards[idx].title.align = align; refreshCard(idx); renderCardSidebar(); }
-function applyHighlight(idx) {
-  const word = document.getElementById(`hl-word-${idx}`)?.value?.trim();
-  const color = document.getElementById(`hl-color-${idx}`)?.value || '#ffcc00';
-  if (!word) return;
-  S.cards[idx].title.highlight = { word, color };
-  refreshCard(idx);
-}
-function clearHighlight(idx) {
-  S.cards[idx].title.highlight = null;
-  refreshCard(idx); renderCardSidebar();
-}
-
 // Body controls
 function toggleBodyVisible(idx) { S.cards[idx].body.visible = !S.cards[idx].body.visible; refreshCard(idx); renderCardSidebar(); }
 function setCardBodyColor(idx, color)  { S.cards[idx].body.color  = color; refreshCard(idx); }
@@ -7268,13 +7421,17 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
   const EXW = _overrideW || EXPORT_W;
   const EXH = _overrideH || EXPORT_H;
+
+  // SC: canvas pixels per preview pixel
+  // Use actual rendered card width from DOM for accurate text wrap matching
+  const _cardEl = document.querySelector(`.c-card[data-idx="${idx}"]`);
+  const _previewCardW = _cardEl ? _cardEl.getBoundingClientRect().width : 320;
+  const SC = EXW / _previewCardW;
   const canvas = document.createElement('canvas');
   canvas.width  = EXW;
   canvas.height = EXH;
   const ctx = canvas.getContext('2d');
   const b = getBrand();
-
-  const SC = EXW / 320;
 
   // ── Layer 1: Background ──
   if (card.bg.type === 'solid') {
@@ -7600,37 +7757,8 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       else if (tAlign === 'right') lineX = EXW - tPad - lineW + tOffX;
       else lineX = tPad + tOffX;
 
-      // Apply highlight over segments if needed
-      const hlWord = card.title.highlight?.word;
-      const hlColor = card.title.highlight?.color;
-      if (hlWord && hlColor) {
-        // Re-color any segment that is or contains the highlight word
-        const hlLower = hlWord.toLowerCase();
-        for (const seg of segs) {
-          if (seg.text.toLowerCase().includes(hlLower)) {
-            // Split segment at highlight
-            const parts = seg.text.split(new RegExp(`(${hlWord.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'));
-            let px = lineX;
-            for (const part of parts) {
-              ctx.font = `${seg.italic ? 'italic ' : ''}${seg.weight} ${tFS}px ${seg.family}`;
-              ctx.fillStyle = part.toLowerCase() === hlLower ? hlColor : seg.color;
-              ctx.textAlign = 'left';
-              ctx.fillText(part, px, y);
-              px += ctx.measureText(part).width;
-            }
-            lineX = px;
-          } else {
-            ctx.font = `${seg.italic ? 'italic ' : ''}${seg.weight} ${tFS}px ${seg.family}`;
-            ctx.fillStyle = seg.color;
-            ctx.textAlign = 'left';
-            ctx.fillText(seg.text, lineX, y);
-            lineX += ctx.measureText(seg.text).width;
-          }
-        }
-      } else {
-        ctx.textAlign = 'left';
-        drawSegments(ctx, segs, lineX, y, tFS);
-      }
+      ctx.textAlign = 'left';
+      drawSegments(ctx, segs, lineX, y, tFS);
 
       // Underline for title block
       if (card.title.underline) {
