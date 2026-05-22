@@ -3960,7 +3960,7 @@ function clearImage() {
 async function analyzeImage() {
   try {
     const token = getAuthToken();
-    const API = (window.STORYLAB_API || 'https://storylab-api-production.up.railway.app');
+    const API = (window.STORYLAB_API || BACKEND_URL);
     const res = await fetch(`${API}/api/claude`, {
       method: "POST",
       headers: {
