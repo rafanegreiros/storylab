@@ -8434,6 +8434,10 @@ function brandHeaderHtml(isDark, num, total, card) {
   const template = card?.header?.template || 'signature';
   const freeText = card?.header?.freeText || '';
 
+  const hCol   = isDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
+  const subCol = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
+  const dimCol = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
+
   const baseStyle = `font-family:${b.fontBody || "'Roboto', sans-serif"};font-size:0.4rem;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;flex-shrink:0;`;
   const wrapStyle = `font-family:${b.fontBody || "'Roboto', sans-serif"};font-size:0.4rem;letter-spacing:0.8px;text-transform:uppercase;flex:1;min-width:0;word-break:break-word;white-space:normal;`;
 
