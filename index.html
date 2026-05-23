@@ -2843,19 +2843,23 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
       <!-- Handle / Marca -->
       <div>
         <div class="modal-label" style="margin-bottom:6px">Marca nos cards <span style="font-weight:400;opacity:0.6">(topo, discreto)</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 72px;gap:8px;">
+        <!-- Row 1: Handle (narrow) · Nicho (medium) · Frase Central (wide) -->
+        <div style="display:grid;grid-template-columns:1fr 1.2fr 2fr;gap:8px;margin-bottom:8px;">
           <div>
             <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">@ Handle</div>
             <input class="modal-input" id="brand-handle" type="text" placeholder="@bystorylab" style="margin-bottom:0;padding:8px 10px;"/>
           </div>
           <div>
-            <div class="modal-label">NICHO / CATEGORIA</div>
-            <input class="modal-input" id="brand-nicho" type="text" placeholder="ex: Marketing Digital, Finanças, Saúde..." style="margin-bottom:0;padding:8px 10px;"/>
+            <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Nicho / Categoria</div>
+            <input class="modal-input" id="brand-nicho" type="text" placeholder="ex: Marketing Digital, Finanças..." style="margin-bottom:0;padding:8px 10px;"/>
           </div>
           <div>
-            <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Frase central</div>
+            <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Frase Central</div>
             <input class="modal-input" id="brand-tagline" type="text" placeholder="Carrosséis com posicionamento e autoridade." style="margin-bottom:0;padding:8px 10px;"/>
           </div>
+        </div>
+        <!-- Row 2: Ano (compact) -->
+        <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;">
           <div>
             <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Ano</div>
             <input class="modal-input" id="brand-year" type="text" placeholder="2026" style="margin-bottom:0;padding:8px 10px;"/>
@@ -5996,9 +6000,9 @@ function renderCardSidebar() {
   const _bvSwap = getBrand();
 
   const componentsSection = section('components', '', 'Componentes', `
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div class="field-label">Cabeçalho</div>
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="display:flex;flex-direction:column;gap:6px;padding:12px 0 14px;border-bottom:1px solid var(--border);">
+        <div style="font-size:0.58rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Cabeçalho</div>
         ${toggle('Visível', card.header.visible, `toggleHeader(${idx})`)}
         ${(()=>{
           if (!card.header.visible) return '';
@@ -6011,6 +6015,7 @@ function renderCardSidebar() {
           html += '</div>';
           if (curHeaderTmpl === 'free') {
             html += '<input type="text" value="' + (card.header.freeText||'').replace(/"/g,'&quot;') + '" oninput="S.cards[' + idx + '].header.freeText=this.value;refreshCard(' + idx + ')" placeholder="ex: Episódio 3 · Série Marketing" style="width:100%;padding:6px 10px;font-size:0.78rem;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);margin-top:2px;"/>';
+            html += '<button onclick="applyHeaderFreeTextToAll(' + idx + ')" style="width:100%;margin-top:4px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);font-size:0.72rem;cursor:pointer;color:var(--muted);text-align:left;">↗ Aplicar este texto a todos os cards</button>';
           }
           html += '<div style="display:flex;gap:4px;margin-top:2px;">';
           ['auto','light','dark'].forEach(m => {
@@ -6021,8 +6026,8 @@ function renderCardSidebar() {
           return html;
         })()}
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div class="field-label">Avatar + Handle</div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:12px 0 14px;border-bottom:1px solid var(--border);">
+        <div style="font-size:0.58rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Avatar + Handle</div>
         ${toggle('Visível', card.avatar.visible, `toggleAvatar(${idx})`)}
         ${card.avatar.visible ? `
         <div style="margin-top:4px;">
@@ -6041,8 +6046,8 @@ function renderCardSidebar() {
           </div>
         </div>` : ''}
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div class="field-label">Rodapé</div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:12px 0 14px;border-bottom:1px solid var(--border);">
+        <div style="font-size:0.58rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Rodapé</div>
         ${toggle('Visível', card.footer ? card.footer.visible : card.pageNum?.visible !== false, `toggleFooter(${idx})`)}
         ${(()=>{
           const fvis = card.footer ? card.footer.visible : card.pageNum?.visible !== false;
@@ -6068,8 +6073,8 @@ function renderCardSidebar() {
           return html;
         })()}
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div class="field-label">Botão CTA</div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:12px 0 0;">
+        <div style="font-size:0.58rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Botão CTA</div>
         ${toggle('Visível', card.cta.visible, `toggleCta(${idx})`)}
         ${card.cta.visible ? `
           <div style="margin-top:6px;display:flex;flex-direction:column;gap:8px;">
@@ -6709,6 +6714,18 @@ function setHeaderTemplate(idx, tmpl) {
   if (!S.cards[idx].header) S.cards[idx].header = {};
   S.cards[idx].header.template = tmpl;
   refreshCard(idx); renderCardSidebar();
+}
+
+function applyHeaderFreeTextToAll(idx) {
+  const text = S.cards[idx].header?.freeText || '';
+  S.cards.forEach((card, i) => {
+    if (!card.header) card.header = {};
+    card.header.template = 'free';
+    card.header.freeText = text;
+    if (i !== idx) refreshCard(i);
+  });
+  refreshCard(idx);
+  renderCardSidebar();
 }
 
 function toggleFooter(idx) {
@@ -7754,29 +7771,32 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     ctx.font = hFont;
     ctx.textBaseline = swapped ? 'bottom' : 'top';
 
-    // Build left/center/right content per template
-    let leftText='', centerText='', rightText='';
+    // Build left/left2/right content per template (all left-aligned)
+    let leftText='', leftText2='', rightText='';
     if (tmpl === 'signature') {
-      leftText=b.handle||''; centerText=b.tagline||''; rightText=b.year||'';
+      leftText=b.handle||''; leftText2=b.tagline||''; rightText=b.year||'';
     } else if (tmpl === 'brand') {
       leftText=b.name||''; rightText=b.handle||'';
     } else if (tmpl === 'niche') {
-      leftText=b.handle||''; centerText=b.nicho||''; rightText=b.year||'';
+      leftText=b.handle||''; leftText2=b.nicho||''; rightText=b.year||'';
     } else if (tmpl === 'simple') {
-      centerText=b.handle||'';
+      leftText=b.handle||'';
     } else if (tmpl === 'authority') {
-      leftText=b.name||''; centerText=b.handle||''; rightText=b.year||'';
+      leftText=b.name||''; leftText2=b.handle||''; rightText=b.year||'';
     } else if (tmpl === 'free') {
-      centerText=(card.header.freeText||'');
+      leftText=(card.header.freeText||'');
     }
 
+    // Draw: left / left2 (was center, now left-aligned after handle) / right
     if (leftText) {
       ctx.textAlign = 'left'; ctx.fillStyle = hCol;
       ctx.fillText(leftText.toUpperCase(), hPad, hBaseY);
     }
-    if (centerText) {
-      ctx.textAlign = 'center'; ctx.fillStyle = subCol;
-      ctx.fillText(centerText.toUpperCase(), EXW/2, hBaseY);
+    if (leftText2) {
+      // Measure leftText to position left2 after a gap
+      const lw = leftText ? ctx.measureText(leftText.toUpperCase()).width + Math.round(6*SC) : 0;
+      ctx.textAlign = 'left'; ctx.fillStyle = subCol;
+      ctx.fillText(leftText2.toUpperCase(), hPad + lw, hBaseY);
     }
     if (rightText) {
       ctx.textAlign = 'right'; ctx.fillStyle = dimCol;
@@ -8401,9 +8421,9 @@ function brandHeaderHtml(isDark, num, total, card) {
   let left = '', center = '', right = '';
 
   if (template === 'signature') {
-    // @handle · frase central · ano
+    // @handle · frase central · ano — tagline left-aligned
     left   = span(b.handle || '', hCol);
-    center = span(b.tagline || '', subCol, 'flex:1;text-align:center;');
+    center = span(b.tagline || '', subCol, 'flex:1;text-align:left;');
     right  = span(b.year || '', dimCol);
   } else if (template === 'brand') {
     // nome da empresa · @handle
@@ -8412,18 +8432,18 @@ function brandHeaderHtml(isDark, num, total, card) {
   } else if (template === 'niche') {
     // @handle · nicho · ano
     left   = span(b.handle || '', hCol);
-    center = span(b.nicho || '', subCol, 'flex:1;text-align:center;');
+    center = span(b.nicho || '', subCol, 'flex:1;text-align:left;');
     right  = span(b.year || '', dimCol);
   } else if (template === 'simple') {
-    // só @handle (centralizado)
-    center = span(b.handle || '', hCol, 'flex:1;text-align:center;');
+    // só @handle — left aligned
+    left   = span(b.handle || '', hCol);
   } else if (template === 'authority') {
     // nome · @handle · ano
     left   = span(b.name || '', hCol);
-    center = span(b.handle || '', subCol, 'flex:1;text-align:center;');
+    center = span(b.handle || '', subCol, 'flex:1;text-align:left;');
     right  = span(b.year || '', dimCol);
   } else if (template === 'free') {
-    center = span(freeText || '', hCol, 'flex:1;text-align:center;');
+    left = span(freeText || '', hCol);
   }
 
   if (!left && !center && !right) return '';
