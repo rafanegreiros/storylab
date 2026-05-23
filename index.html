@@ -2849,6 +2849,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
             <input class="modal-input" id="brand-handle" type="text" placeholder="@bystorylab" style="margin-bottom:0;padding:8px 10px;"/>
           </div>
           <div>
+            <div class="modal-label">NICHO / CATEGORIA</div>
+            <input class="modal-input" id="brand-nicho" type="text" placeholder="ex: Marketing Digital, Finanças, Saúde..." style="margin-bottom:0;padding:8px 10px;"/>
+          </div>
+          <div>
             <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Frase central</div>
             <input class="modal-input" id="brand-tagline" type="text" placeholder="Carrosséis com posicionamento e autoridade." style="margin-bottom:0;padding:8px 10px;"/>
           </div>
@@ -2958,6 +2962,8 @@ const BRAND_DEFAULTS = {
   primary: '#0071e3', accent: '#2de300', dark: '#2f2d2d', light: '#eaeaec', cta: '#e3fe03',
   fontDisplay: "'Poppins', sans-serif", fontBody: "'Roboto', sans-serif",
   handle: '@bystorylab', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
+  nicho: '',
+  headerFooterSwapped: false, // when true, header renders at bottom and footer at top
   colorRoles: { text: 'light', ctaRole: 'cta', titleColor: 'dark', bodyColor: 'dark' }
 };
 
@@ -3386,6 +3392,7 @@ function openBrand() {
   document.getElementById('brand-handle').value = b.handle || '';
   document.getElementById('brand-tagline').value = b.tagline || '';
   document.getElementById('brand-year').value = b.year || new Date().getFullYear();
+  if (document.getElementById('brand-nicho')) document.getElementById('brand-nicho').value = b.nicho || '';
   // Render avatar preview
   const preview = document.getElementById('brand-avatar-preview');
   if (preview) {
@@ -3666,6 +3673,7 @@ function saveBrand() {
     handle:   document.getElementById('brand-handle').value.trim(),
     tagline:  document.getElementById('brand-tagline').value.trim(),
     year:     document.getElementById('brand-year').value.trim(),
+    nicho:    document.getElementById('brand-nicho')?.value.trim() || '',
     colorRoles: getColorRolesFromUI(),
     cta: document.getElementById('brand-cta')?.value || '#ff5c35',
     avatarImg: _pendingAvatarImg !== undefined ? _pendingAvatarImg : (existing.avatarImg || null),
@@ -3960,7 +3968,7 @@ function clearImage() {
 async function analyzeImage() {
   try {
     const token = getAuthToken();
-    const API = (window.STORYLAB_API || BACKEND_URL);
+    const API = (window.STORYLAB_API || 'https://storylab-api-production.up.railway.app');
     const res = await fetch(`${API}/api/claude`, {
       method: "POST",
       headers: {
@@ -4792,6 +4800,16 @@ function defaultCardState(idx, titulo, corpo) {
     header: {
       visible: true,
       bgColor: 'transparent',
+      template: 'signature', // 'signature'|'brand'|'niche'|'simple'|'authority'|'free'
+      freeText: '',           // used when template === 'free'
+      colorMode: 'auto',
+    },
+    footer: {
+      visible: true,
+      template: 'numeric',   // 'numeric'|'progress'|'dots'|'text'|'none'
+      freeText: '',           // used when template === 'text'
+      colorMode: 'auto',
+      // toggle: swap header ↔ footer position globally handled by brand setting
     },
     cta: {
       visible: idx === 0 || false,
@@ -4807,6 +4825,7 @@ function defaultCardState(idx, titulo, corpo) {
     },
     pageNum: {
       visible: true,
+      colorMode: 'auto',
     },
     // Layout hint
     layout: idx === 0 ? 'cover' : 'text',
@@ -5146,20 +5165,40 @@ function renderCardHtml(card, idx, total) {
     }
   }
 
-  // Layer: header (brand)
+  // Layer: header (brand) — position depends on headerFooterSwapped
+  const _b = getBrand();
+  const _swapped = !!_b.headerFooterSwapped;
+
   if (card.header.visible) {
     const _hMode = card.header.colorMode || 'auto';
-    // 'light' = texto claro (branco) para fundos escuros; 'dark' = texto escuro para fundos claros
     const _hDark = _hMode==='light' ? true : _hMode==='dark' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
-    layers += brandHeaderHtml(_hDark, num, total);
+    const headerHtml = brandHeaderHtml(_hDark, num, total, card);
+    if (_swapped) {
+      // Render header at bottom — wrap in a bottom-positioned container
+      layers += headerHtml.replace('top:0;', 'top:auto;bottom:0;').replace('padding:10px 14px', 'padding:8px 14px 10px');
+    } else {
+      layers += headerHtml;
+    }
   }
 
-  // Layer: page number
-  if (card.pageNum.visible) {
+  // Layer: footer (replaces pageNum)
+  if (card.footer ? card.footer.visible : card.pageNum?.visible) {
+    const _fMode = card.footer?.colorMode || card.pageNum?.colorMode || 'auto';
+    const _fDark = _fMode==='light' ? true : _fMode==='dark' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
+    const footerHtml = brandFooterHtml(_fDark, num, total, card);
+    if (_swapped && footerHtml) {
+      // Render footer at top
+      layers += footerHtml
+        .replace('bottom:10px;', 'bottom:auto;top:10px;')
+        .replace('bottom:0;', 'bottom:auto;top:0;');
+    } else {
+      layers += footerHtml;
+    }
+  } else if (card.pageNum?.visible && !card.footer) {
+    // Legacy fallback
     const _pnMode = card.pageNum.colorMode || 'auto';
-    // 'light' = texto claro (branco) para fundos escuros; 'dark' = texto escuro para fundos claros
     const _pnDark = _pnMode==='light' ? true : _pnMode==='dark' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
-    layers += brandCounterHtml(_pnDark, num, total);
+    layers += brandCounterHtml(_pnDark, num, total, card);
   }
 
   // Layer: avatar + handle
@@ -5188,8 +5227,10 @@ function renderCardHtml(card, idx, total) {
   }
 
   // Layer: text content
+  const _hasFooter = (card.footer ? card.footer.visible : card.pageNum?.visible) &&
+                     (card.footer?.template || 'numeric') !== 'none';
   const textTop = card.avatar.visible && card.avatar.placement === 'top' ? '80px' : (card.header.visible ? '44px' : '20px');
-  const textBottom = card.cta.visible ? '70px' : (card.avatar.visible && card.avatar.placement === 'bottom' ? '80px' : (card.pageNum.visible ? '28px' : '20px'));
+  const textBottom = card.cta.visible ? '70px' : (card.avatar.visible && card.avatar.placement === 'bottom' ? '80px' : (_hasFooter ? '28px' : '20px'));
   const titleOffX = card.title.offsetX || 0;
   const titleOffY = card.title.offsetY || 0;
   const bodyOffX = card.body.offsetX || 0;
@@ -5935,14 +5976,50 @@ function renderCardSidebar() {
     </div>
   `);
 
+  const HEADER_TEMPLATES = [
+    ['signature', 'Assinatura', '@handle · frase · ano'],
+    ['brand',     'Marca',      'Nome · @handle'],
+    ['niche',     'Nicho',      '@handle · nicho · ano'],
+    ['simple',    'Simples',    'Só @handle'],
+    ['authority', 'Autoridade', 'Nome · @handle · ano'],
+    ['free',      'Livre',      'Texto personalizado'],
+  ];
+  const FOOTER_TEMPLATES = [
+    ['numeric',  'Numérico',  '01 / 12'],
+    ['progress', 'Progresso', 'Barra + nº'],
+    ['dots',     'Pontos',    '● ● ○ ○ ○'],
+    ['text',     'Texto',     'CTA / texto fixo'],
+    ['none',     'Oculto',    'Sem rodapé'],
+  ];
+  const curHeaderTmpl = card.header?.template || 'signature';
+  const curFooterTmpl = card.footer?.template || 'numeric';
+  const _bvSwap = getBrand();
+
   const componentsSection = section('components', '', 'Componentes', `
     <div style="display:flex;flex-direction:column;gap:12px;">
       <div style="display:flex;flex-direction:column;gap:6px;">
-        <div class="field-label">Header / Marca</div>
+        <div class="field-label">Cabeçalho</div>
         ${toggle('Visível', card.header.visible, `toggleHeader(${idx})`)}
-        ${card.header.visible ? `<div style="display:flex;gap:4px;margin-top:2px;">
-          ${['auto','light','dark'].map(m=>`<button onclick="setHeaderColorMode(${idx},'${m}')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ${(card.header.colorMode||'auto')===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.58rem;cursor:pointer;color:${(card.header.colorMode||'auto')===m?'var(--accent)':'var(--muted)'};">${m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro'}</button>`).join('')}
-        </div>` : ''}
+        ${(()=>{
+          if (!card.header.visible) return '';
+          const CHKSVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3"><polyline points="20,6 9,17 4,12"/></svg>';
+          let html = '<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;">';
+          HEADER_TEMPLATES.forEach(([val, label, desc]) => {
+            const a = curHeaderTmpl === val;
+            html += '<button onclick="setHeaderTemplate(' + idx + ',\'' + val + '\')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;border:1.5px solid ' + (a?'var(--accent)':'var(--border)') + ';background:' + (a?'rgba(0,113,227,0.08)':'transparent') + ';cursor:pointer;width:100%;text-align:left;"><div style="flex:1;"><div style="font-size:0.72rem;font-weight:600;color:' + (a?'var(--accent)':'var(--ink)') + ';">' + label + '</div><div style="font-size:0.6rem;color:var(--muted);">' + desc + '</div></div>' + (a ? CHKSVG : '') + '</button>';
+          });
+          html += '</div>';
+          if (curHeaderTmpl === 'free') {
+            html += '<input type="text" value="' + (card.header.freeText||'').replace(/"/g,'&quot;') + '" oninput="S.cards[' + idx + '].header.freeText=this.value;refreshCard(' + idx + ')" placeholder="ex: Episódio 3 · Série Marketing" style="width:100%;padding:6px 10px;font-size:0.78rem;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);margin-top:2px;"/>';
+          }
+          html += '<div style="display:flex;gap:4px;margin-top:2px;">';
+          ['auto','light','dark'].forEach(m => {
+            const a2 = (card.header.colorMode||'auto') === m;
+            html += '<button onclick="setHeaderColorMode(' + idx + ',\'' + m + '\')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ' + (a2?'var(--accent)':'var(--border)') + ';background:transparent;font-size:0.58rem;cursor:pointer;color:' + (a2?'var(--accent)':'var(--muted)') + ';">' + (m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro') + '</button>';
+          });
+          html += '</div>';
+          return html;
+        })()}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Avatar + Handle</div>
@@ -5965,11 +6042,31 @@ function renderCardSidebar() {
         </div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
-        <div class="field-label">Número de página</div>
-        ${toggle('Visível', card.pageNum.visible, `togglePageNum(${idx})`)}
-        ${card.pageNum.visible ? `<div style="display:flex;gap:4px;margin-top:4px;">
-          ${['auto','light','dark'].map(m=>`<button onclick="setPageNumColor(${idx},'${m}')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ${(card.pageNum.colorMode||'auto')===m?'var(--accent)':'var(--border)'};background:transparent;font-size:0.58rem;cursor:pointer;color:${(card.pageNum.colorMode||'auto')===m?'var(--accent)':'var(--muted)'};">${m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro'}</button>`).join('')}
-        </div>` : ''}
+        <div class="field-label">Rodapé</div>
+        ${toggle('Visível', card.footer ? card.footer.visible : card.pageNum?.visible !== false, `toggleFooter(${idx})`)}
+        ${(()=>{
+          const fvis = card.footer ? card.footer.visible : card.pageNum?.visible !== false;
+          if (!fvis) return '';
+          const CHKSVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3"><polyline points="20,6 9,17 4,12"/></svg>';
+          let html = '<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;">';
+          FOOTER_TEMPLATES.forEach(([val, label, desc]) => {
+            const a = curFooterTmpl === val;
+            html += '<button onclick="setFooterTemplate(' + idx + ',\'' + val + '\')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;border:1.5px solid ' + (a?'var(--accent)':'var(--border)') + ';background:' + (a?'rgba(0,113,227,0.08)':'transparent') + ';cursor:pointer;width:100%;text-align:left;"><div style="flex:1;"><div style="font-size:0.72rem;font-weight:600;color:' + (a?'var(--accent)':'var(--ink)') + ';">' + label + '</div><div style="font-size:0.6rem;color:var(--muted);">' + desc + '</div></div>' + (a ? CHKSVG : '') + '</button>';
+          });
+          html += '</div>';
+          if (curFooterTmpl === 'text') {
+            html += '<input type="text" value="' + (card.footer?.freeText||'').replace(/"/g,'&quot;') + '" oninput="if(!S.cards[' + idx + '].footer)S.cards[' + idx + '].footer={};S.cards[' + idx + '].footer.freeText=this.value;refreshCard(' + idx + ')" placeholder="ex: Salve para não perder →" style="width:100%;padding:6px 10px;font-size:0.78rem;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);margin-top:2px;"/>';
+          }
+          html += '<div style="display:flex;gap:4px;margin-top:2px;">';
+          ['auto','light','dark'].forEach(m => {
+            const a2 = (card.footer?.colorMode||'auto') === m;
+            html += '<button onclick="setFooterColorMode(' + idx + ',\'' + m + '\')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ' + (a2?'var(--accent)':'var(--border)') + ';background:transparent;font-size:0.58rem;cursor:pointer;color:' + (a2?'var(--accent)':'var(--muted)') + ';">' + (m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro') + '</button>';
+          });
+          html += '</div>';
+          const swapped = !!_bvSwap.headerFooterSwapped;
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:7px;background:var(--surface2);border:1.5px solid var(--border);margin-top:4px;"><div><div style="font-size:0.72rem;font-weight:600;color:var(--ink);">↕ Inverter cabeçalho/rodapé</div><div style="font-size:0.6rem;color:var(--muted);">Troca as posições globalmente</div></div>' + toggle('', swapped, 'toggleHeaderFooterSwap()') + '</div>';
+          return html;
+        })()}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div class="field-label">Botão CTA</div>
@@ -6606,9 +6703,41 @@ function toggleSidebarSection(id) {
   window._sidebarOpen[id] = !isOpen;
   if (chevron) chevron.textContent = isOpen ? '▼' : '▲';
 }
-function togglePageNum(idx) { S.cards[idx].pageNum.visible = !S.cards[idx].pageNum.visible; refreshCard(idx); renderCardSidebar(); }
-function setPageNumColor(idx, mode) { S.cards[idx].pageNum.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
+function toggleHeader(idx) { S.cards[idx].header.visible = !S.cards[idx].header.visible; refreshCard(idx); renderCardSidebar(); }
 function setHeaderColorMode(idx, mode) { S.cards[idx].header.colorMode = mode; refreshCard(idx); renderCardSidebar(); }
+function setHeaderTemplate(idx, tmpl) {
+  if (!S.cards[idx].header) S.cards[idx].header = {};
+  S.cards[idx].header.template = tmpl;
+  refreshCard(idx); renderCardSidebar();
+}
+
+function toggleFooter(idx) {
+  if (!S.cards[idx].footer) S.cards[idx].footer = { visible: true, template: 'numeric', freeText: '', colorMode: 'auto' };
+  S.cards[idx].footer.visible = !S.cards[idx].footer.visible;
+  refreshCard(idx); renderCardSidebar();
+}
+function setFooterTemplate(idx, tmpl) {
+  if (!S.cards[idx].footer) S.cards[idx].footer = { visible: true, template: 'numeric', freeText: '', colorMode: 'auto' };
+  S.cards[idx].footer.template = tmpl;
+  refreshCard(idx); renderCardSidebar();
+}
+function setFooterColorMode(idx, mode) {
+  if (!S.cards[idx].footer) S.cards[idx].footer = { visible: true, template: 'numeric', freeText: '', colorMode: 'auto' };
+  S.cards[idx].footer.colorMode = mode;
+  refreshCard(idx); renderCardSidebar();
+}
+
+function toggleHeaderFooterSwap() {
+  const allBrands = getAllBrands();
+  const activeId = localStorage.getItem('storylab_active_brand_id');
+  const bidx = allBrands.findIndex(b2 => b2.id === activeId);
+  if (bidx >= 0) {
+    allBrands[bidx].headerFooterSwapped = !allBrands[bidx].headerFooterSwapped;
+    localStorage.setItem('storylab_brands', JSON.stringify(allBrands));
+  }
+  S.cards.forEach((_, i) => refreshCard(i));
+  renderCardSidebar();
+}
 function toggleCta(idx) { S.cards[idx].cta.visible = !S.cards[idx].cta.visible; refreshCard(idx); renderCardSidebar(); }
 function setCtaBg(idx, color) { S.cards[idx].cta.bgColor = color; refreshCard(idx); renderCardSidebar(); }
 function setCtaText(idx, color) { S.cards[idx].cta.textColor = color; refreshCard(idx); renderCardSidebar(); }
@@ -7606,57 +7735,126 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   // ── Layer 3: Header ──
   // Preview: ~10px top, 8px sides, font ~7px → SC gives ~24px font, ~27px Y
   if (card.header.visible) {
-    const hPad  = Math.round(8  * SC); // 27px
+    const hPad  = Math.round(14 * SC);
     const hY    = Math.round(10 * SC);
-    const hFS   = Math.round(6.4 * SC); // 0.4rem equivalent — same for all three elements
+    const hFS   = Math.round(6.4 * SC);
     const hMode = card.header.colorMode || 'auto';
     const hDark = hMode==='light' ? true : hMode==='dark' ? false
                 : (isColorDark(card.bg.color) || card.bg.type==='image' || card.bg.type==='video');
-    const hHandleCol  = hDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
-    const hTaglineCol = hDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
-    const hYearCol    = hDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
+    const hCol   = hDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
+    const subCol = hDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
+    const dimCol = hDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
+    const hFont  = `400 ${hFS}px ${b.fontBody || "'Roboto', sans-serif"}`;
+    const tmpl   = card.header.template || 'signature';
+    const swapped = !!b.headerFooterSwapped;
+    // In swapped mode, header renders at the bottom
+    const hBaseY = swapped ? EXH - hY - hFS : hY;
+
     ctx.save();
-    ctx.font = `400 ${hFS}px 'Roboto', sans-serif`;
-    ctx.fillStyle = hHandleCol;
-    ctx.textBaseline = 'top';
-    ctx.fillText((b.handle || '').toUpperCase(), hPad, hY);
-    if (b.tagline) {
-      ctx.textAlign = 'center';
-      ctx.fillStyle = hTaglineCol;
-      ctx.font = `400 ${hFS}px 'Roboto', sans-serif`;
-      ctx.fillText((b.tagline||'').toUpperCase(), EXW/2, hY);
+    ctx.font = hFont;
+    ctx.textBaseline = swapped ? 'bottom' : 'top';
+
+    // Build left/center/right content per template
+    let leftText='', centerText='', rightText='';
+    if (tmpl === 'signature') {
+      leftText=b.handle||''; centerText=b.tagline||''; rightText=b.year||'';
+    } else if (tmpl === 'brand') {
+      leftText=b.name||''; rightText=b.handle||'';
+    } else if (tmpl === 'niche') {
+      leftText=b.handle||''; centerText=b.nicho||''; rightText=b.year||'';
+    } else if (tmpl === 'simple') {
+      centerText=b.handle||'';
+    } else if (tmpl === 'authority') {
+      leftText=b.name||''; centerText=b.handle||''; rightText=b.year||'';
+    } else if (tmpl === 'free') {
+      centerText=(card.header.freeText||'');
     }
-    if (b.year) {
-      ctx.textAlign = 'right';
-      ctx.fillStyle = hYearCol;
-      ctx.font = `400 ${hFS}px 'Roboto', sans-serif`;
-      ctx.fillText(String(b.year).toUpperCase(), EXW - hPad, hY);
+
+    if (leftText) {
+      ctx.textAlign = 'left'; ctx.fillStyle = hCol;
+      ctx.fillText(leftText.toUpperCase(), hPad, hBaseY);
     }
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
+    if (centerText) {
+      ctx.textAlign = 'center'; ctx.fillStyle = subCol;
+      ctx.fillText(centerText.toUpperCase(), EXW/2, hBaseY);
+    }
+    if (rightText) {
+      ctx.textAlign = 'right'; ctx.fillStyle = dimCol;
+      ctx.fillText(rightText.toUpperCase(), EXW - hPad, hBaseY);
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
-  // ── Layer 4: Page counter ──
-  // Preview: bottom-right, font ~6px, 8px from edges
-  if (card.pageNum.visible) {
-    const pnMode = card.pageNum.colorMode || 'auto';
-    // For video/image cards always use white text; for others use colorMode logic
-    const pnCol = (card.bg.type === 'video' || card.bg.type === 'image')
-      ? 'rgba(255,255,255,0.55)'
-      : (pnMode === 'light' ? 'rgba(255,255,255,0.55)'
-        : pnMode === 'dark'  ? 'rgba(20,18,16,0.20)'
-        : isColorDark(card.bg.color) ? 'rgba(255,255,255,0.55)' : 'rgba(20,18,16,0.20)');
-    const pnFS  = Math.round(6 * SC); // 20px
-    const pnPad = Math.round(8 * SC); // 27px
+  // ── Layer 4: Footer (replaces pageNum) ──
+  const _footerVisible = card.footer ? card.footer.visible : card.pageNum?.visible;
+  const _footerTemplate = card.footer?.template || 'numeric';
+  if (_footerVisible && _footerTemplate !== 'none') {
+    const fMode = card.footer?.colorMode || card.pageNum?.colorMode || 'auto';
+    const fDark = (card.bg.type==='video'||card.bg.type==='image')
+      ? true
+      : fMode==='light' ? true : fMode==='dark' ? false
+      : isColorDark(card.bg.color);
+    const fColor = fDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.20)';
+    const fFS    = Math.round(6 * SC);
+    const fPad   = Math.round(10 * SC);
+    const swapped = !!b.headerFooterSwapped;
+    // In swapped mode, footer renders at the top
+    const fBaseY = swapped ? fPad + fFS : EXH - fPad;
+    const fFont  = `300 ${fFS}px ${b.fontBody || "'Roboto', sans-serif"}`;
+
     ctx.save();
-    ctx.font = `300 ${pnFS}px 'Poppins', sans-serif`;
-    ctx.fillStyle = pnCol;
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(`${String(idx+1).padStart(2,'0')} / ${String(S.cards.length).padStart(2,'0')}`, EXW - pnPad, EXH - pnPad);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
+    if (_footerTemplate === 'numeric') {
+      ctx.font = fFont;
+      ctx.fillStyle = fColor;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = swapped ? 'top' : 'bottom';
+      ctx.fillText(`${String(idx+1).padStart(2,'0')} / ${String(S.cards.length).padStart(2,'0')}`, EXW - fPad, fBaseY);
+    } else if (_footerTemplate === 'progress') {
+      const trackH = Math.round(2 * SC);
+      const trackY = swapped ? fPad : EXH - fPad - trackH;
+      const trackW = EXW - fPad * 3 - Math.round(24 * SC);
+      const trackX = fPad;
+      const fillW  = Math.round(trackW * ((idx+1) / S.cards.length));
+      const trackCol = fDark ? 'rgba(255,255,255,0.12)' : 'rgba(20,18,16,0.10)';
+      // Track background
+      ctx.fillStyle = trackCol;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(trackX, trackY, trackW, trackH, trackH/2) : ctx.rect(trackX, trackY, trackW, trackH); ctx.fill();
+      // Progress fill
+      ctx.fillStyle = b.accent || '#0071e3';
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(trackX, trackY, fillW, trackH, trackH/2) : ctx.rect(trackX, trackY, fillW, trackH); ctx.fill();
+      // Counter
+      ctx.font = `300 ${Math.round(5.5*SC)}px ${b.fontBody||"'Roboto',sans-serif"}`;
+      ctx.fillStyle = fColor;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = swapped ? 'top' : 'bottom';
+      ctx.fillText(`${String(idx+1).padStart(2,'0')}/${String(S.cards.length).padStart(2,'0')}`, EXW - fPad, fBaseY);
+    } else if (_footerTemplate === 'dots') {
+      const dotH   = Math.round(3 * SC);
+      const gapW   = Math.round(3 * SC);
+      const activW = Math.round(12 * SC);
+      const inactW = Math.round(5 * SC);
+      const dotY   = swapped ? fPad : EXH - fPad - dotH;
+      const totalW = S.cards.length * inactW + (idx) * (activW - inactW) + (S.cards.length - 1) * gapW;
+      let dx = (EXW - totalW) / 2;
+      for (let di = 0; di < S.cards.length; di++) {
+        const isActive = di <= idx;
+        const dw = di === idx ? activW : inactW;
+        ctx.fillStyle = isActive ? (b.accent||'#0071e3') : (fDark?'rgba(255,255,255,0.18)':'rgba(20,18,16,0.15)');
+        ctx.beginPath(); ctx.roundRect ? ctx.roundRect(dx, dotY, dw, dotH, dotH/2) : ctx.rect(dx, dotY, dw, dotH); ctx.fill();
+        dx += dw + gapW;
+      }
+    } else if (_footerTemplate === 'text') {
+      const ftText = card.footer?.freeText || '';
+      if (ftText) {
+        ctx.font = `400 ${Math.round(6*SC)}px ${b.fontBody||"'Roboto',sans-serif"}`;
+        ctx.fillStyle = fColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = swapped ? 'top' : 'bottom';
+        ctx.fillText(ftText.toUpperCase(), EXW/2, fBaseY);
+      }
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
@@ -8180,25 +8378,105 @@ function triggerDownload(blob, filename) {
 
 
 
-function brandHeaderHtml(isDark, num, total) {
+// ── Header template renderer ──
+function brandHeaderHtml(isDark, num, total, card) {
   const b = getBrand();
-  const hasHeader = b.handle || b.tagline || b.year;
-  if (!hasHeader) return '';
-  const fb = b.fontBody;
-  // All elements neutral — subtle white on dark, subtle black on light
-  const handleColor = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(20,18,16,0.4)';
-  const subtleColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
-  const yearColor   = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
+  const template = card?.header?.template || 'signature';
+  const freeText = card?.header?.freeText || '';
+
+  const hCol   = isDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
+  const subCol = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
+  const dimCol = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
+
+  const ff = b.fontBody || "'Roboto', sans-serif";
+  const base = `font-family:${ff};font-size:0.4rem;letter-spacing:1px;text-transform:uppercase;`;
+
+  function span(text, color, extra='') {
+    return `<span style="${base}color:${color};${extra}">${text}</span>`;
+  }
+  function dot(color) {
+    return `<span style="font-size:0.35rem;color:${subCol};margin:0 4px;">·</span>`;
+  }
+
+  let left = '', center = '', right = '';
+
+  if (template === 'signature') {
+    // @handle · frase central · ano
+    left   = span(b.handle || '', hCol);
+    center = span(b.tagline || '', subCol, 'flex:1;text-align:center;');
+    right  = span(b.year || '', dimCol);
+  } else if (template === 'brand') {
+    // nome da empresa · @handle
+    left   = span(b.name || '', hCol);
+    right  = span(b.handle || '', subCol);
+  } else if (template === 'niche') {
+    // @handle · nicho · ano
+    left   = span(b.handle || '', hCol);
+    center = span(b.nicho || '', subCol, 'flex:1;text-align:center;');
+    right  = span(b.year || '', dimCol);
+  } else if (template === 'simple') {
+    // só @handle (centralizado)
+    center = span(b.handle || '', hCol, 'flex:1;text-align:center;');
+  } else if (template === 'authority') {
+    // nome · @handle · ano
+    left   = span(b.name || '', hCol);
+    center = span(b.handle || '', subCol, 'flex:1;text-align:center;');
+    right  = span(b.year || '', dimCol);
+  } else if (template === 'free') {
+    center = span(freeText || '', hCol, 'flex:1;text-align:center;');
+  }
+
+  if (!left && !center && !right) return '';
+
   return `<div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;pointer-events:none;">
-    <span style="font-family:'Roboto',sans-serif;font-size:0.4rem;letter-spacing:1px;color:${handleColor};font-weight:400;text-transform:uppercase">${b.handle||''}</span>
-    <span style="font-family:'Roboto',sans-serif;font-size:0.4rem;letter-spacing:0.8px;color:${subtleColor};flex:1;text-align:center;text-transform:uppercase">${b.tagline||''}</span>
-    <span style="font-family:'Roboto',sans-serif;font-size:0.4rem;letter-spacing:1.2px;color:${yearColor};font-weight:400;text-transform:uppercase">${b.year||''}</span>
+    ${left}${center}${right}
   </div>`;
 }
 
-function brandCounterHtml(isDark, num, total) {
-  const color = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.2)';
-  return `<div style="position:absolute;bottom:10px;right:14px;z-index:5;font-family:'Poppins',sans-serif;font-weight:300;font-size:0.58rem;letter-spacing:1px;color:${color};pointer-events:none">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</div>`;
+// ── Footer template renderer ──
+function brandFooterHtml(isDark, num, total, card) {
+  const b = getBrand();
+  const template = card?.footer?.template || 'numeric';
+  const freeText = card?.footer?.freeText || '';
+  const color    = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.20)';
+  const accent   = b.accent || '#0071e3';
+  const ff       = b.fontBody || "'Roboto', sans-serif";
+
+  if (template === 'none') return '';
+
+  if (template === 'numeric') {
+    return `<div style="position:absolute;bottom:10px;right:14px;z-index:5;font-family:${ff};font-weight:300;font-size:0.58rem;letter-spacing:1px;color:${color};pointer-events:none;">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</div>`;
+  }
+
+  if (template === 'progress') {
+    const pct = total > 1 ? Math.round((num / total) * 100) : 100;
+    const trackCol = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(20,18,16,0.10)';
+    return `<div style="position:absolute;bottom:0;left:0;right:0;z-index:5;padding:0 14px 10px;display:flex;align-items:center;gap:6px;pointer-events:none;">
+      <div style="flex:1;height:2px;border-radius:2px;background:${trackCol};overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${accent};border-radius:2px;transition:width 0.3s;"></div>
+      </div>
+      <span style="font-family:${ff};font-size:0.38rem;letter-spacing:0.8px;color:${color};">${String(num).padStart(2,'0')}/${String(total).padStart(2,'0')}</span>
+    </div>`;
+  }
+
+  if (template === 'dots') {
+    const dots = Array.from({length: total}, (_, i) => {
+      const active = i < num;
+      return `<div style="width:${active ? 12 : 5}px;height:3px;border-radius:3px;background:${active ? accent : (isDark?'rgba(255,255,255,0.18)':'rgba(20,18,16,0.15)')};transition:width 0.3s;"></div>`;
+    }).join('');
+    return `<div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:3px;pointer-events:none;">${dots}</div>`;
+  }
+
+  if (template === 'text') {
+    return `<div style="position:absolute;bottom:10px;left:14px;right:14px;z-index:5;text-align:center;font-family:${ff};font-size:0.4rem;letter-spacing:0.8px;text-transform:uppercase;color:${color};pointer-events:none;">${freeText}</div>`;
+  }
+
+  return '';
+}
+
+// Legacy aliases (backward compat)
+function brandCounterHtml(isDark, num, total, card) {
+  return brandFooterHtml(isDark, num, total, card);
 }
 
 function extractJSON(text) {
@@ -8965,6 +9243,21 @@ function migrateCard(card) {
   if (card.body.uppercase == null) card.body.uppercase = false;
   // Components
   card.header = card.header || { visible: true, bgColor: 'transparent' };
+  if (!card.header.template)   card.header.template  = 'signature';
+  if (!card.header.freeText)   card.header.freeText  = '';
+  if (!card.header.colorMode)  card.header.colorMode = 'auto';
+  // Migrate old pageNum into new footer structure
+  if (!card.footer) {
+    card.footer = {
+      visible:   card.pageNum ? card.pageNum.visible !== false : true,
+      template:  'numeric',
+      freeText:  '',
+      colorMode: card.pageNum?.colorMode || 'auto',
+    };
+  }
+  if (!card.footer.template)  card.footer.template  = 'numeric';
+  if (!card.footer.freeText)  card.footer.freeText  = '';
+  if (!card.footer.colorMode) card.footer.colorMode = 'auto';
   card.cta    = card.cta    || { visible: false };
   card.avatar = card.avatar || { visible: false };
   return card;
