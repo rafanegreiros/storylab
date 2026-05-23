@@ -3418,6 +3418,7 @@ function openBrand() {
   ['primary','accent','dark','light','cta'].forEach(key => {
     const pick = document.getElementById('brand-'+key);
     const hex  = document.getElementById('brand-'+key+'-hex');
+    if (!pick || !hex) return; // element may not exist in DOM
     pick.addEventListener('input', () => { hex.value = pick.value; updateBrandPreview(); renderColorRoleSwatches(); });
     hex.addEventListener('input', () => {
       if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) { pick.value = hex.value; updateBrandPreview(); renderColorRoleSwatches(); }
