@@ -2867,6 +2867,77 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
         </div>
       </div>
 
+      <!-- Cabeçalho: estilo tipográfico -->
+      <div>
+        <div class="modal-label" style="margin-bottom:6px;">Estilo do cabeçalho <span style="font-weight:400;opacity:0.6">(header, global)</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div>
+            <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Peso</div>
+            <select class="modal-input" id="brand-header-weight" style="margin-bottom:0;padding:7px 10px;">
+              <option value="300">Leve (300)</option>
+              <option value="400" selected>Regular (400)</option>
+              <option value="700">Negrito (700)</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Família</div>
+            <select class="modal-input" id="brand-header-font-role" style="margin-bottom:0;padding:7px 10px;">
+              <option value="body" selected>Corpo (body)</option>
+              <option value="display">Display (título)</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Cor personalizada</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="color" id="brand-header-color-custom" value="#ffffff"
+                style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;padding:2px;background:none;"/>
+              <span style="font-size:0.72rem;color:var(--muted);">Opcional — sobrepõe auto/claro/escuro</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Separador -->
+      <div>
+        <div class="modal-label" style="margin-bottom:6px;">Separador <span style="font-weight:400;opacity:0.6">(linha abaixo do cabeçalho)</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;gap:6px;">
+            <button type="button" onclick="_setSepStyle('none')"    id="brand-sep-btn-none"    style="flex:1;padding:7px;border-radius:7px;border:1.5px solid var(--accent);background:rgba(0,113,227,0.08);font-size:0.75rem;cursor:pointer;color:var(--accent);">Nenhum</button>
+            <button type="button" onclick="_setSepStyle('solid')"   id="brand-sep-btn-solid"   style="flex:1;padding:7px;border-radius:7px;border:1.5px solid var(--border);background:transparent;font-size:0.75rem;cursor:pointer;color:var(--muted);">Sólido</button>
+            <button type="button" onclick="_setSepStyle('dashed')"  id="brand-sep-btn-dashed"  style="flex:1;padding:7px;border-radius:7px;border:1.5px solid var(--border);background:transparent;font-size:0.75rem;cursor:pointer;color:var(--muted);">Pontilhado</button>
+          </div>
+          <input type="hidden" id="brand-sep-style" value="none"/>
+          <div id="brand-sep-options" style="display:none;flex-direction:column;gap:8px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div>
+                <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Espessura</div>
+                <div style="display:flex;gap:4px;">
+                  <button type="button" onclick="_setSepSize(1)" id="brand-sep-btn-s1" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid var(--accent);background:rgba(0,113,227,0.08);font-size:0.75rem;cursor:pointer;color:var(--accent);">1px</button>
+                  <button type="button" onclick="_setSepSize(2)" id="brand-sep-btn-s2" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid var(--border);background:transparent;font-size:0.75rem;cursor:pointer;color:var(--muted);">2px</button>
+                </div>
+                <input type="hidden" id="brand-sep-size" value="1"/>
+              </div>
+              <div>
+                <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Cor</div>
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <button type="button" onclick="_setSepColorRole('accent')"  id="brand-sep-btn-ca" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid var(--accent);background:rgba(0,113,227,0.08);font-size:0.68rem;cursor:pointer;color:var(--accent);">Destaque</button>
+                  <button type="button" onclick="_setSepColorRole('subtle')"  id="brand-sep-btn-cs" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid var(--border);background:transparent;font-size:0.68rem;cursor:pointer;color:var(--muted);">Sutil</button>
+                  <input type="color" id="brand-sep-color-custom" value="#ffffff"
+                    style="width:30px;height:30px;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;padding:1px;background:none;" title="Cor personalizada"
+                    onchange="_setSepColorRole('custom')"/>
+                  <input type="hidden" id="brand-sep-color-role" value="accent"/>
+                </div>
+              </div>
+            </div>
+            <!-- Preview da linha separadora -->
+            <div style="padding:6px 0 2px;">
+              <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Preview</div>
+              <div id="brand-sep-preview" style="height:1px;background:var(--accent);border-radius:2px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- Footer fixo com ações -->
@@ -2967,7 +3038,16 @@ const BRAND_DEFAULTS = {
   fontDisplay: "'Poppins', sans-serif", fontBody: "'Roboto', sans-serif",
   handle: '@bystorylab', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
   nicho: '',
-  headerFooterSwapped: false, // when true, header renders at bottom and footer at top
+  headerFooterSwapped: false,
+  // Header style overrides (global, apply to all cards)
+  headerWeight: 400,        // 300 | 400 | 700
+  headerFontRole: 'body',   // 'display' | 'body'
+  headerColorCustom: null,  // null = use colorMode per card; '#hex' = forced color
+  // Separator
+  separatorStyle: 'none',   // 'none' | 'solid' | 'dashed'
+  separatorSize: 1,         // 1 | 2 (px)
+  separatorColorRole: 'accent', // 'accent' | 'subtle' | 'custom'
+  separatorColorCustom: null,
   colorRoles: { text: 'light', ctaRole: 'cta', titleColor: 'dark', bodyColor: 'dark' }
 };
 
@@ -3397,6 +3477,14 @@ function openBrand() {
   document.getElementById('brand-tagline').value = b.tagline || '';
   document.getElementById('brand-year').value = b.year || new Date().getFullYear();
   if (document.getElementById('brand-nicho')) document.getElementById('brand-nicho').value = b.nicho || '';
+  if (document.getElementById('brand-header-weight'))       document.getElementById('brand-header-weight').value       = b.headerWeight || 400;
+  if (document.getElementById('brand-header-font-role'))    document.getElementById('brand-header-font-role').value    = b.headerFontRole || 'body';
+  if (document.getElementById('brand-header-color-custom')) document.getElementById('brand-header-color-custom').value = b.headerColorCustom || '#ffffff';
+  if (document.getElementById('brand-sep-style'))           document.getElementById('brand-sep-style').value           = b.separatorStyle || 'none';
+  if (document.getElementById('brand-sep-size'))            document.getElementById('brand-sep-size').value            = b.separatorSize || 1;
+  if (document.getElementById('brand-sep-color-role'))      document.getElementById('brand-sep-color-role').value      = b.separatorColorRole || 'accent';
+  if (document.getElementById('brand-sep-color-custom'))    document.getElementById('brand-sep-color-custom').value    = b.separatorColorCustom || '#ffffff';
+  _syncSepUI(b);
   // Render avatar preview
   const preview = document.getElementById('brand-avatar-preview');
   if (preview) {
@@ -3679,6 +3767,13 @@ function saveBrand() {
     tagline:  document.getElementById('brand-tagline').value.trim(),
     year:     document.getElementById('brand-year').value.trim(),
     nicho:    document.getElementById('brand-nicho')?.value.trim() || '',
+    headerWeight:       parseInt(document.getElementById('brand-header-weight')?.value || '400'),
+    headerFontRole:     document.getElementById('brand-header-font-role')?.value || 'body',
+    headerColorCustom:  document.getElementById('brand-header-color-custom')?.value || null,
+    separatorStyle:     document.getElementById('brand-sep-style')?.value || 'none',
+    separatorSize:      parseInt(document.getElementById('brand-sep-size')?.value || '1'),
+    separatorColorRole: document.getElementById('brand-sep-color-role')?.value || 'accent',
+    separatorColorCustom: document.getElementById('brand-sep-color-custom')?.value || null,
     colorRoles: getColorRolesFromUI(),
     cta: document.getElementById('brand-cta')?.value || '#ff5c35',
     avatarImg: _pendingAvatarImg !== undefined ? _pendingAvatarImg : (existing.avatarImg || null),
@@ -6761,8 +6856,80 @@ function setFooterColorMode(idx, mode) {
   refreshCard(idx); renderCardSidebar();
 }
 
+function _syncSepUI(b) {
+  const style = b.separatorStyle || 'none';
+  const size  = b.separatorSize  || 1;
+  const role  = b.separatorColorRole || 'accent';
+  _setSepStyle(style, true);
+  _setSepSize(size, true);
+  _setSepColorRole(role, true);
+}
+
+function _setSepStyle(style, silent) {
+  document.getElementById('brand-sep-style').value = style;
+  ['none','solid','dashed'].forEach(s => {
+    const btn = document.getElementById('brand-sep-btn-' + s);
+    if (!btn) return;
+    const active = s === style;
+    btn.style.borderColor  = active ? 'var(--accent)' : 'var(--border)';
+    btn.style.background   = active ? 'rgba(0,113,227,0.08)' : 'transparent';
+    btn.style.color        = active ? 'var(--accent)' : 'var(--muted)';
+  });
+  const opts = document.getElementById('brand-sep-options');
+  if (opts) opts.style.display = style === 'none' ? 'none' : 'flex';
+  if (!silent) _updateSepPreview();
+}
+
+function _setSepSize(size, silent) {
+  document.getElementById('brand-sep-size').value = size;
+  [1,2].forEach(s => {
+    const btn = document.getElementById('brand-sep-btn-s' + s);
+    if (!btn) return;
+    const active = s == size;
+    btn.style.borderColor  = active ? 'var(--accent)' : 'var(--border)';
+    btn.style.background   = active ? 'rgba(0,113,227,0.08)' : 'transparent';
+    btn.style.color        = active ? 'var(--accent)' : 'var(--muted)';
+  });
+  if (!silent) _updateSepPreview();
+}
+
+function _setSepColorRole(role, silent) {
+  document.getElementById('brand-sep-color-role').value = role;
+  ['ca','cs'].forEach(s => {
+    const btn = document.getElementById('brand-sep-btn-' + s);
+    if (!btn) return;
+    const active = (s === 'ca' && role === 'accent') || (s === 'cs' && role === 'subtle');
+    btn.style.borderColor  = active ? 'var(--accent)' : 'var(--border)';
+    btn.style.background   = active ? 'rgba(0,113,227,0.08)' : 'transparent';
+    btn.style.color        = active ? 'var(--accent)' : 'var(--muted)';
+  });
+  if (!silent) _updateSepPreview();
+}
+
+function _updateSepPreview() {
+  const preview = document.getElementById('brand-sep-preview');
+  if (!preview) return;
+  const b = getBrand();
+  const style  = document.getElementById('brand-sep-style')?.value || 'none';
+  const size   = document.getElementById('brand-sep-size')?.value  || 1;
+  const role   = document.getElementById('brand-sep-color-role')?.value || 'accent';
+  const custom = document.getElementById('brand-sep-color-custom')?.value;
+  if (style === 'none') { preview.style.opacity = '0'; return; }
+  preview.style.opacity  = '1';
+  preview.style.height   = size + 'px';
+  preview.style.background = role === 'accent' ? (b.accent || 'var(--accent)')
+    : role === 'subtle' ? 'rgba(128,128,128,0.25)'
+    : (custom || '#ffffff');
+  if (style === 'dashed') {
+    preview.style.background = 'none';
+    preview.style.borderTop  = `${size}px dashed ${role === 'accent' ? (b.accent || 'var(--accent)') : role === 'subtle' ? 'rgba(128,128,128,0.25)' : (custom || '#ffffff')}`;
+    preview.style.height = '0';
+  } else {
+    preview.style.borderTop = 'none';
+  }
+}
+
 function toggleHeaderFooterSwap() {
-  const allBrands = getAllBrands();
   const activeId = localStorage.getItem('storylab_active_brand_id');
   const bidx = allBrands.findIndex(b2 => b2.id === activeId);
   if (bidx >= 0) {
@@ -7775,10 +7942,17 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     const hMode = card.header.colorMode || 'auto';
     const hDark = hMode==='light' ? true : hMode==='dark' ? false
                 : (isColorDark(card.bg.color) || card.bg.type==='image' || card.bg.type==='video');
-    const hCol   = hDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
-    const subCol = hDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
-    const dimCol = hDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
-    const hFont  = `400 ${hFS}px ${b.fontBody || "'Roboto', sans-serif"}`;
+    // Brand-level color override
+    const hCustom  = b.headerColorCustom || null;
+    const hCol     = hCustom || (hDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)');
+    const subCol   = hCustom ? `${hCustom}99` : (hDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)');
+    const dimCol   = hCustom ? `${hCustom}66` : (hDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)');
+    // Font: brand role + weight
+    const hWeight  = b.headerWeight || 400;
+    const hFamily  = (b.headerFontRole === 'display')
+      ? (b.fontDisplay || "'Poppins', sans-serif")
+      : (b.fontBody    || "'Roboto', sans-serif");
+    const hFont    = `${hWeight} ${hFS}px ${hFamily}`;
     const tmpl   = card.header.template || 'signature';
     const swapped = !!b.headerFooterSwapped;
     // In swapped mode, header renders at the bottom
@@ -7834,9 +8008,31 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     }
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
-  }
 
-  // ── Layer 4: Footer (replaces pageNum) ──
+    // Draw separator line (global brand setting, below header)
+    const sepStyleC = b.separatorStyle || 'none';
+    if (sepStyleC !== 'none' && !b.headerFooterSwapped) {
+      const sepSizeC   = (b.separatorSize || 1) * SC;
+      const sepRoleC   = b.separatorColorRole || 'accent';
+      const sepCustomC = b.separatorColorCustom || null;
+      const sepColorC  = sepRoleC === 'accent' ? (b.accent || '#0071e3')
+        : sepRoleC === 'subtle' ? (hDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)')
+        : (sepCustomC || '#ffffff');
+      const sepY = Math.round(36 * SC);
+      ctx.save();
+      ctx.strokeStyle = sepColorC;
+      ctx.lineWidth   = sepSizeC;
+      if (sepStyleC === 'dashed') {
+        ctx.setLineDash([Math.round(4*SC), Math.round(4*SC)]);
+      }
+      ctx.beginPath();
+      ctx.moveTo(hPad, sepY);
+      ctx.lineTo(EXW - hPad, sepY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
   const _footerVisible = card.footer ? card.footer.visible : card.pageNum?.visible;
   const _footerTemplate = card.footer?.template || 'numeric';
   if (_footerVisible && _footerTemplate !== 'none') {
@@ -8434,12 +8630,26 @@ function brandHeaderHtml(isDark, num, total, card) {
   const template = card?.header?.template || 'signature';
   const freeText = card?.header?.freeText || '';
 
-  const hCol   = isDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
-  const subCol = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
-  const dimCol = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
+  // Color: custom brand override > card colorMode
+  const hColAuto   = isDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
+  const subColAuto = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
+  const dimColAuto = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
 
-  const baseStyle = `font-family:${b.fontBody || "'Roboto', sans-serif"};font-size:0.4rem;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;flex-shrink:0;`;
-  const wrapStyle = `font-family:${b.fontBody || "'Roboto', sans-serif"};font-size:0.4rem;letter-spacing:0.8px;text-transform:uppercase;flex:1;min-width:0;word-break:break-word;white-space:normal;`;
+  // Brand-level color override
+  const customColor = b.headerColorCustom || null;
+  const hCol   = customColor || hColAuto;
+  const subCol = customColor ? `${customColor}99` : subColAuto;
+  const dimCol = customColor ? `${customColor}66` : dimColAuto;
+
+  // Font weight from brand
+  const headerWeight = b.headerWeight || 400;
+  // Font family from brand role
+  const headerFF = (b.headerFontRole === 'display')
+    ? (b.fontDisplay || "'Poppins', sans-serif")
+    : (b.fontBody    || "'Roboto', sans-serif");
+
+  const baseStyle = `font-family:${headerFF};font-size:0.4rem;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;flex-shrink:0;font-weight:${headerWeight};`;
+  const wrapStyle = `font-family:${headerFF};font-size:0.4rem;letter-spacing:0.8px;text-transform:uppercase;flex:1;min-width:0;word-break:break-word;white-space:normal;font-weight:${headerWeight};`;
 
   function span(text, color, extra='') {
     const isWrap = extra.includes('flex:1');
@@ -8495,9 +8705,26 @@ function brandHeaderHtml(isDark, num, total, card) {
 
   if (!parts.length) return '';
 
-  return `<div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:baseline;flex-wrap:wrap;padding:10px 14px;gap:0;pointer-events:none;">
-    ${parts.join('')}
-  </div>`;
+  // Separator line (global brand setting)
+  let sepHtml = '';
+  const sepStyle = b.separatorStyle || 'none';
+  if (sepStyle !== 'none') {
+    const sepSize = b.separatorSize || 1;
+    const sepRole = b.separatorColorRole || 'accent';
+    const sepCustom = b.separatorColorCustom || null;
+    const sepColor = sepRole === 'accent' ? (b.accent || '#0071e3')
+      : sepRole === 'subtle' ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)')
+      : (sepCustom || '#ffffff');
+    const sepBorderStyle = sepStyle === 'dashed' ? 'dashed' : 'solid';
+    sepHtml = `<div style="position:absolute;top:36px;left:14px;right:14px;height:0;border-top:${sepSize}px ${sepBorderStyle} ${sepColor};z-index:5;pointer-events:none;"></div>`;
+  }
+
+  const swapped = !!b.headerFooterSwapped;
+  const containerStyle = swapped
+    ? `position:absolute;bottom:0;left:0;right:0;z-index:5;display:flex;align-items:baseline;flex-wrap:wrap;padding:8px 14px 10px;gap:0;pointer-events:none;`
+    : `position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:baseline;flex-wrap:wrap;padding:10px 14px;gap:0;pointer-events:none;`;
+
+  return `<div style="${containerStyle}">${parts.join('')}</div>${swapped ? '' : sepHtml}`;
 }
 
 // ── Footer template renderer ──
