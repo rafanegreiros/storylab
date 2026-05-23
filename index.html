@@ -7771,36 +7771,49 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     ctx.font = hFont;
     ctx.textBaseline = swapped ? 'bottom' : 'top';
 
-    // Build left/left2/right content per template (all left-aligned)
-    let leftText='', leftText2='', rightText='';
+    // Build sequential items left-to-right: all start from hPad, separated by " · "
+    const hItems = [];
+    const DOT_COL = subCol;
+
     if (tmpl === 'signature') {
-      leftText=b.handle||''; leftText2=b.tagline||''; rightText=b.year||'';
+      if (b.handle)  hItems.push({ text: b.handle.toUpperCase(),           color: hCol });
+      if (b.tagline) { if (hItems.length) hItems.push({ text: ' · ', color: DOT_COL }); hItems.push({ text: b.tagline.toUpperCase(), color: subCol }); }
+      if (b.year)    { if (hItems.length) hItems.push({ text: ' · ', color: DOT_COL }); hItems.push({ text: String(b.year).toUpperCase(), color: dimCol }); }
     } else if (tmpl === 'brand') {
-      leftText=b.name||''; rightText=b.handle||'';
+      if (b.name)   hItems.push({ text: b.name.toUpperCase(),   color: hCol });
+      if (b.handle) { if (hItems.length) hItems.push({ text: ' · ', color: DOT_COL }); hItems.push({ text: b.handle.toUpperCase(), color: subCol }); }
     } else if (tmpl === 'niche') {
-      leftText=b.handle||''; leftText2=b.nicho||''; rightText=b.year||'';
+      if (b.handle) hItems.push({ text: b.handle.toUpperCase(), color: hCol });
+      if (b.nicho)  { if (hItems.length) hItems.push({ text: ' · ', color: DOT_COL }); hItems.push({ text: b.nicho.toUpperCase(),  color: subCol }); }
+      if (b.year)   { if (hItems.length) hItems.push({ text: ' · ', color: DOT_COL }); hItems.push({ text: String(b.year).toUpperCase(), color: dimCol }); }
     } else if (tmpl === 'simple') {
-      leftText=b.handle||'';
+      if (b.handle) hItems.push({ text: b.handle.toUpperCase(), color: hCol });
     } else if (tmpl === 'authority') {
-      leftText=b.name||''; leftText2=b.handle||''; rightText=b.year||'';
+      if (b.name)   hItems.push({ text: b.name.toUpperCase(),   color: hCol });
+      if (b.handle) { if (hItems.length) hItems.push({ text: ' · ', color: DOT_COL }); hItems.push({ text: b.handle.toUpperCase(), color: subCol }); }
+      if (b.year)   { if (hItems.length) hItems.push({ text: ' · ', color: DOT_COL }); hItems.push({ text: String(b.year).toUpperCase(), color: dimCol }); }
     } else if (tmpl === 'free') {
-      leftText=(card.header.freeText||'');
+      const ft = card.header.freeText || '';
+      if (ft) hItems.push({ text: ft.toUpperCase(), color: hCol });
     }
 
-    // Draw: left / left2 (was center, now left-aligned after handle) / right
-    if (leftText) {
-      ctx.textAlign = 'left'; ctx.fillStyle = hCol;
-      ctx.fillText(leftText.toUpperCase(), hPad, hBaseY);
-    }
-    if (leftText2) {
-      // Measure leftText to position left2 after a gap
-      const lw = leftText ? ctx.measureText(leftText.toUpperCase()).width + Math.round(6*SC) : 0;
-      ctx.textAlign = 'left'; ctx.fillStyle = subCol;
-      ctx.fillText(leftText2.toUpperCase(), hPad + lw, hBaseY);
-    }
-    if (rightText) {
-      ctx.textAlign = 'right'; ctx.fillStyle = dimCol;
-      ctx.fillText(rightText.toUpperCase(), EXW - hPad, hBaseY);
+    // Draw each item sequentially from hPad, wrapping to next line if needed
+    ctx.textAlign = 'left';
+    let hx = hPad;
+    const maxHx = EXW - hPad;
+    for (const item of hItems) {
+      ctx.fillStyle = item.color;
+      const iw = ctx.measureText(item.text).width;
+      if (hx + iw > maxHx && hx > hPad) {
+        // Wrap to second line
+        hx = hPad;
+        const hLineY = swapped ? hBaseY - Math.round(hFS * 1.4) : hBaseY + Math.round(hFS * 1.4);
+        ctx.fillText(item.text, hx, hLineY);
+        hx += iw;
+      } else {
+        ctx.fillText(item.text, hx, hBaseY);
+        hx += iw;
+      }
     }
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
@@ -8404,52 +8417,65 @@ function brandHeaderHtml(isDark, num, total, card) {
   const template = card?.header?.template || 'signature';
   const freeText = card?.header?.freeText || '';
 
-  const hCol   = isDark ? 'rgba(255,255,255,0.50)' : 'rgba(20,18,16,0.40)';
-  const subCol = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(20,18,16,0.28)';
-  const dimCol = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,18,16,0.18)';
-
-  const ff = b.fontBody || "'Roboto', sans-serif";
-  const base = `font-family:${ff};font-size:0.4rem;letter-spacing:1px;text-transform:uppercase;`;
+  const baseStyle = `font-family:${b.fontBody || "'Roboto', sans-serif"};font-size:0.4rem;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;flex-shrink:0;`;
+  const wrapStyle = `font-family:${b.fontBody || "'Roboto', sans-serif"};font-size:0.4rem;letter-spacing:0.8px;text-transform:uppercase;flex:1;min-width:0;word-break:break-word;white-space:normal;`;
 
   function span(text, color, extra='') {
-    return `<span style="${base}color:${color};${extra}">${text}</span>`;
+    const isWrap = extra.includes('flex:1');
+    return `<span style="${isWrap ? wrapStyle : baseStyle}color:${color};${extra.replace('flex:1;','').replace('text-align:left;','').replace('text-align:center;','')}">${text}</span>`;
   }
   function dot(color) {
-    return `<span style="font-size:0.35rem;color:${subCol};margin:0 4px;">·</span>`;
+    return `<span style="font-size:0.35rem;color:${subCol};margin:0 4px;flex-shrink:0;">·</span>`;
   }
 
-  let left = '', center = '', right = '';
+  let parts = [];
 
   if (template === 'signature') {
-    // @handle · frase central · ano — tagline left-aligned
-    left   = span(b.handle || '', hCol);
-    center = span(b.tagline || '', subCol, 'flex:1;text-align:left;');
-    right  = span(b.year || '', dimCol);
+    if (b.handle) parts.push(`<span style="${baseStyle}color:${hCol};">${b.handle}</span>`);
+    if (b.tagline) {
+      if (parts.length) parts.push(`<span style="font-size:0.35rem;color:${subCol};margin:0 5px;flex-shrink:0;">·</span>`);
+      parts.push(`<span style="${wrapStyle}color:${subCol};">${b.tagline.toUpperCase()}</span>`);
+    }
+    if (b.year) {
+      if (parts.length) parts.push(`<span style="font-size:0.35rem;color:${subCol};margin:0 5px;flex-shrink:0;">·</span>`);
+      parts.push(`<span style="${baseStyle}color:${dimCol};">${b.year}</span>`);
+    }
   } else if (template === 'brand') {
-    // nome da empresa · @handle
-    left   = span(b.name || '', hCol);
-    right  = span(b.handle || '', subCol);
+    if (b.name)   parts.push(`<span style="${baseStyle}color:${hCol};">${b.name.toUpperCase()}</span>`);
+    if (b.handle) {
+      if (parts.length) parts.push(`<span style="font-size:0.35rem;color:${subCol};margin:0 5px;flex-shrink:0;">·</span>`);
+      parts.push(`<span style="${baseStyle}color:${subCol};">${b.handle}</span>`);
+    }
   } else if (template === 'niche') {
-    // @handle · nicho · ano
-    left   = span(b.handle || '', hCol);
-    center = span(b.nicho || '', subCol, 'flex:1;text-align:left;');
-    right  = span(b.year || '', dimCol);
+    if (b.handle) parts.push(`<span style="${baseStyle}color:${hCol};">${b.handle}</span>`);
+    if (b.nicho) {
+      if (parts.length) parts.push(`<span style="font-size:0.35rem;color:${subCol};margin:0 5px;flex-shrink:0;">·</span>`);
+      parts.push(`<span style="${wrapStyle}color:${subCol};">${b.nicho.toUpperCase()}</span>`);
+    }
+    if (b.year) {
+      if (parts.length) parts.push(`<span style="font-size:0.35rem;color:${subCol};margin:0 5px;flex-shrink:0;">·</span>`);
+      parts.push(`<span style="${baseStyle}color:${dimCol};">${b.year}</span>`);
+    }
   } else if (template === 'simple') {
-    // só @handle — left aligned
-    left   = span(b.handle || '', hCol);
+    if (b.handle) parts.push(`<span style="${baseStyle}color:${hCol};">${b.handle}</span>`);
   } else if (template === 'authority') {
-    // nome · @handle · ano
-    left   = span(b.name || '', hCol);
-    center = span(b.handle || '', subCol, 'flex:1;text-align:left;');
-    right  = span(b.year || '', dimCol);
+    if (b.name)   parts.push(`<span style="${baseStyle}color:${hCol};">${b.name.toUpperCase()}</span>`);
+    if (b.handle) {
+      if (parts.length) parts.push(`<span style="font-size:0.35rem;color:${subCol};margin:0 5px;flex-shrink:0;">·</span>`);
+      parts.push(`<span style="${wrapStyle}color:${subCol};">${b.handle}</span>`);
+    }
+    if (b.year) {
+      if (parts.length) parts.push(`<span style="font-size:0.35rem;color:${subCol};margin:0 5px;flex-shrink:0;">·</span>`);
+      parts.push(`<span style="${baseStyle}color:${dimCol};">${b.year}</span>`);
+    }
   } else if (template === 'free') {
-    left = span(freeText || '', hCol);
+    if (freeText) parts.push(`<span style="${wrapStyle}color:${hCol};">${freeText.toUpperCase()}</span>`);
   }
 
-  if (!left && !center && !right) return '';
+  if (!parts.length) return '';
 
-  return `<div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;pointer-events:none;">
-    ${left}${center}${right}
+  return `<div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:baseline;flex-wrap:wrap;padding:10px 14px;gap:0;pointer-events:none;">
+    ${parts.join('')}
   </div>`;
 }
 
