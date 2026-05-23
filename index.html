@@ -9156,8 +9156,13 @@ async function loadSession(id) {
     const res = await fetch(BACKEND_URL + '/api/history/' + id, {
       headers: { 'Authorization': 'Bearer ' + token }
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const snap = JSON.parse(data.session_data);
+    // session_data may be a string (JSON-encoded) or already parsed object
+    const snap = typeof data.session_data === 'string'
+      ? JSON.parse(data.session_data)
+      : data.session_data;
+    if (!snap) throw new Error('session_data vazio');
     _currentHistSnap = snap;
     _currentHistId = id;
 
@@ -9180,6 +9185,7 @@ async function loadSession(id) {
     }
 
   } catch(e) {
+    console.error('loadSession error:', e);
     alert('Erro ao carregar sessão.');
     if (item) item.style.opacity = '';
   }
