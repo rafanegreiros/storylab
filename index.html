@@ -2579,7 +2579,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
     <button class="icon-btn" onclick="openHistory()" title="Histórico" id="history-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
     <button class="icon-btn" onclick="openBrand()" title="Identidade Visual"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17a4 4 0 0 1-8 0V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2Z"/><path d="M16.7 13H19a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H7"/><path d="M 7 17h.01"/><path d="m11 8 2.3-2.3a2.4 2.4 0 0 1 3.404.004L18.6 7.6a2.4 2.4 0 0 1 .026 3.434L9.9 19.8"/></svg></button>
     <button class="icon-btn theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Alternar tema"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
-    <button class="icon-btn" onclick="supabaseClient.auth.signOut()" title="Sair" style="font-size:0.7rem;width:auto;padding:0 10px;font-family:'Roboto',sans-serif">Sair</button>
+    <button class="icon-btn" onclick="_clearSession();supabaseClient.auth.signOut()" title="Sair" style="font-size:0.7rem;width:auto;padding:0 10px;font-family:'Roboto',sans-serif">Sair</button>
 
     <button class="icon-btn" id="hamburger-btn" onclick="toggleMobileMenu()" title="Menu" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
     <div class="badge">v10</div>
@@ -2621,7 +2621,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
   <button class="mobile-menu-item" onclick="openBrand();toggleMobileMenu()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17a4 4 0 0 1-8 0V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2Z"/><path d="M16.7 13H19a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H7"/><path d="M 7 17h.01"/><path d="m11 8 2.3-2.3a2.4 2.4 0 0 1 3.404.004L18.6 7.6a2.4 2.4 0 0 1 .026 3.434L9.9 19.8"/></svg> Identidade Visual</button>
   <button class="mobile-menu-item" onclick="toggleTheme();toggleMobileMenu()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg> Alternar tema</button>
   <div class="mobile-menu-divider"></div>
-  <button class="mobile-menu-item" onclick="supabaseClient.auth.signOut()" style="color:#e53e3e"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> Sair</button>
+  <button class="mobile-menu-item" onclick="_clearSession();supabaseClient.auth.signOut()" style="color:#e53e3e"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> Sair</button>
 </div>
 
 
@@ -9117,6 +9117,54 @@ function initTheme() {
 
 // ── SUPABASE AUTH ──
 const BACKEND_URL = 'https://storylab-backend-production.up.railway.app';
+
+// ── Multi-layer session storage for maximum persistence ──
+const _SL_KEY = 'sb-fgwjpisxuttaafgxjuhr-auth-token'; // Supabase default key
+const _SL_BAK = 'storylab_rt_backup';
+
+function _saveSession(session) {
+  if (!session) return;
+  const payload = JSON.stringify({
+    access_token:  session.access_token,
+    refresh_token: session.refresh_token,
+    expires_at:    session.expires_at,
+    user:          session.user,
+    token_type:    session.token_type || 'bearer',
+  });
+  try { localStorage.setItem(_SL_KEY, payload); } catch(e) {}
+  try { localStorage.setItem(_SL_BAK, session.refresh_token); } catch(e) {}
+  try { sessionStorage.setItem(_SL_BAK, session.refresh_token); } catch(e) {}
+  // Cookie fallback — 60 days, SameSite=Lax works on same-origin GitHub Pages
+  try {
+    const exp = new Date(Date.now() + 60*24*3600*1000).toUTCString();
+    document.cookie = _SL_BAK + '=' + encodeURIComponent(session.refresh_token) + '; expires=' + exp + '; path=/; SameSite=Lax';
+  } catch(e) {}
+}
+
+function _readRefreshToken() {
+  // Try localStorage first, then sessionStorage, then cookie
+  try {
+    const ls = localStorage.getItem(_SL_BAK);
+    if (ls) return ls;
+  } catch(e) {}
+  try {
+    const ss = sessionStorage.getItem(_SL_BAK);
+    if (ss) return ss;
+  } catch(e) {}
+  try {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + _SL_BAK + '=([^;]*)'));
+    if (match) return decodeURIComponent(match[1]);
+  } catch(e) {}
+  return null;
+}
+
+function _clearSession() {
+  try { localStorage.removeItem(_SL_KEY); } catch(e) {}
+  try { localStorage.removeItem(_SL_BAK); } catch(e) {}
+  try { sessionStorage.removeItem(_SL_BAK); } catch(e) {}
+  try { document.cookie = _SL_BAK + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; } catch(e) {}
+}
+
 const supabaseClient = window.supabase.createClient(
   'https://fgwjpisxuttaafgxjuhr.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnd2pwaXN4dXR0YWFmZ3hqdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE3MzIsImV4cCI6MjA5MTIzNzczMn0.Hb6vfs2ciBGWyWobjKiXVI91nTuYDmfJ0E4ROTZ_pgU',
@@ -9125,8 +9173,12 @@ const supabaseClient = window.supabase.createClient(
       detectSessionInUrl: true,
       persistSession: true,
       autoRefreshToken: true,
-      storageKey: 'storylab-auth',
-      storage: window.localStorage,
+      storageKey: _SL_KEY,
+      storage: {
+        getItem:    (k) => { try { return localStorage.getItem(k); } catch(e) { return null; } },
+        setItem:    (k, v) => { try { localStorage.setItem(k, v); } catch(e) {} },
+        removeItem: (k) => { try { localStorage.removeItem(k); } catch(e) {} },
+      },
     }
   }
 );
@@ -9134,45 +9186,42 @@ const supabaseClient = window.supabase.createClient(
 let currentSession = null;
 
 async function initAuth() {
-  // Listen for auth state changes — persist backup on every change
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
+  supabaseClient.auth.onAuthStateChange((event, session) => {
     currentSession = session;
     if (session) {
-      try {
-        localStorage.setItem('storylab-session-backup', JSON.stringify({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-          expires_at: session.expires_at,
-        }));
-      } catch(e) {}
+      _saveSession(session);
       hideLoginScreen();
-    } else {
+    } else if (event === 'SIGNED_OUT') {
+      _clearSession();
       showLoginScreen();
     }
+    // Ignore TOKEN_REFRESHED — don't show login on token refresh events
   });
 
-  // Check for existing session (handles page refresh)
+  // 1. Check Supabase's own persisted session
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     currentSession = session;
+    _saveSession(session);
     hideLoginScreen();
     return;
   }
 
-  // Fallback: try to restore session from backup refresh token
-  try {
-    const backup = JSON.parse(localStorage.getItem('storylab-session-backup') || 'null');
-    if (backup?.refresh_token) {
-      const { data, error } = await supabaseClient.auth.refreshSession({ refresh_token: backup.refresh_token });
+  // 2. Fallback: manually restore from refresh token
+  const rt = _readRefreshToken();
+  if (rt) {
+    try {
+      const { data, error } = await supabaseClient.auth.refreshSession({ refresh_token: rt });
       if (!error && data?.session) {
         currentSession = data.session;
+        _saveSession(data.session);
         hideLoginScreen();
         return;
       }
-    }
-  } catch(e) {}
+    } catch(e) {}
+  }
 
-  // Only show login if there's no hash token being processed
+  // 3. Only show login if no hash token in URL (magic link in progress)
   const hasAuthHash = window.location.hash.includes('access_token') || window.location.hash.includes('error_code');
   if (!hasAuthHash) showLoginScreen();
 }
