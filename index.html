@@ -4900,16 +4900,21 @@ function defaultCardState(idx, titulo, corpo) {
     header: {
       visible: true,
       bgColor: 'transparent',
-      template: 'signature', // 'signature'|'brand'|'niche'|'simple'|'authority'|'free'
-      freeText: '',           // used when template === 'free'
+      template: 'tagline',   // 'tagline'|'signature'|'brand'|'niche'|'simple'|'authority'|'free'
+      freeText: '',
       colorMode: 'auto',
     },
     footer: {
       visible: true,
-      template: 'numeric',   // 'numeric'|'progress'|'dots'|'text'|'none'
-      freeText: '',           // used when template === 'text'
+      template: 'numeric',   // 'numeric'|'progress'|'dots'|'text'|'swipe'|'none'
+      freeText: '',
       colorMode: 'auto',
-      // toggle: swap header ↔ footer position globally handled by brand setting
+      swipeVariant: 'arrow', // 'arrow'|'circle'|'pill'
+      swipeArrowColor: null,
+      swipeRingColor: null,
+      swipePillBg: null,
+      swipePillText: null,
+      swipePillLabel: 'Arraste para o lado',
     },
     cta: {
       visible: idx === 0 || false,
@@ -5265,37 +5270,22 @@ function renderCardHtml(card, idx, total) {
     }
   }
 
-  // Layer: header (brand) — position depends on headerFooterSwapped
+  // Layer: header (brand) — position handled inside brandHeaderHtml (incl. swap)
   const _b = getBrand();
   const _swapped = !!_b.headerFooterSwapped;
 
   if (card.header.visible) {
     const _hMode = card.header.colorMode || 'auto';
     const _hDark = _hMode==='light' ? true : _hMode==='dark' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
-    const headerHtml = brandHeaderHtml(_hDark, num, total, card);
-    if (_swapped) {
-      // Render header at bottom — wrap in a bottom-positioned container
-      layers += headerHtml.replace('top:0;', 'top:auto;bottom:0;').replace('padding:10px 14px', 'padding:8px 14px 10px');
-    } else {
-      layers += headerHtml;
-    }
+    layers += brandHeaderHtml(_hDark, num, total, card);
   }
 
-  // Layer: footer (replaces pageNum)
+  // Layer: footer — position handled inside brandFooterHtml (incl. swap)
   if (card.footer ? card.footer.visible : card.pageNum?.visible) {
     const _fMode = card.footer?.colorMode || card.pageNum?.colorMode || 'auto';
     const _fDark = _fMode==='light' ? true : _fMode==='dark' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
-    const footerHtml = brandFooterHtml(_fDark, num, total, card);
-    if (_swapped && footerHtml) {
-      // Render footer at top
-      layers += footerHtml
-        .replace('bottom:10px;', 'bottom:auto;top:10px;')
-        .replace('bottom:0;', 'bottom:auto;top:0;');
-    } else {
-      layers += footerHtml;
-    }
+    layers += brandFooterHtml(_fDark, num, total, card);
   } else if (card.pageNum?.visible && !card.footer) {
-    // Legacy fallback
     const _pnMode = card.pageNum.colorMode || 'auto';
     const _pnDark = _pnMode==='light' ? true : _pnMode==='dark' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
     layers += brandCounterHtml(_pnDark, num, total, card);
@@ -6093,19 +6083,21 @@ function renderCardSidebar() {
   `);
 
   const HEADER_TEMPLATES = [
-    ['signature', 'Assinatura', '@handle · frase · ano'],
-    ['brand',     'Marca',      'Nome · @handle'],
-    ['niche',     'Nicho',      '@handle · nicho · ano'],
-    ['simple',    'Simples',    'Só @handle'],
-    ['authority', 'Autoridade', 'Nome · @handle · ano'],
-    ['free',      'Livre',      'Texto personalizado'],
+    ['tagline',   'Frase central', 'Só a frase da identidade visual'],
+    ['signature', 'Assinatura',    '@handle · frase · ano'],
+    ['brand',     'Marca',         'Nome · @handle'],
+    ['niche',     'Nicho',         '@handle · nicho · ano'],
+    ['simple',    'Simples',       'Só @handle'],
+    ['authority', 'Autoridade',    'Nome · @handle · ano'],
+    ['free',      'Livre',         'Texto personalizado'],
   ];
   const FOOTER_TEMPLATES = [
-    ['numeric',  'Numérico',  '01 / 12'],
-    ['progress', 'Progresso', 'Barra + nº'],
-    ['dots',     'Pontos',    '● ● ○ ○ ○'],
-    ['text',     'Texto',     'CTA / texto fixo'],
-    ['none',     'Oculto',    'Sem rodapé'],
+    ['numeric',  'Numérico',   '01 / 12'],
+    ['progress', 'Progresso',  'Barra + nº'],
+    ['dots',     'Pontos',     '● ● ○ ○ ○'],
+    ['text',     'Texto',      'CTA / texto fixo'],
+    ['swipe',    'Seta swipe', 'Indicador de arraste'],
+    ['none',     'Oculto',     'Sem rodapé'],
   ];
   const curHeaderTmpl = card.header?.template || 'signature';
   const curFooterTmpl = card.footer?.template || 'numeric';
@@ -6129,6 +6121,7 @@ function renderCardSidebar() {
             html += '<input type="text" value="' + (card.header.freeText||'').replace(/"/g,'&quot;') + '" oninput="S.cards[' + idx + '].header.freeText=this.value;refreshCard(' + idx + ')" placeholder="ex: Episódio 3 · Série Marketing" style="width:100%;padding:6px 10px;font-size:0.78rem;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);margin-top:2px;"/>';
             html += '<button onclick="applyHeaderFreeTextToAll(' + idx + ')" style="width:100%;margin-top:4px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);font-size:0.72rem;cursor:pointer;color:var(--muted);text-align:left;">↗ Aplicar este texto a todos os cards</button>';
           }
+          html += '<button onclick="applyHeaderTemplateToAll(' + idx + ')" style="width:100%;margin-top:6px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);font-size:0.72rem;cursor:pointer;color:var(--muted);text-align:left;">↗ Aplicar este template a todos os cards</button>';
           html += '<div style="display:flex;gap:4px;margin-top:2px;">';
           ['auto','light','dark'].forEach(m => {
             const a2 = (card.header.colorMode||'auto') === m;
@@ -6174,6 +6167,34 @@ function renderCardSidebar() {
           if (curFooterTmpl === 'text') {
             html += '<input type="text" value="' + (card.footer?.freeText||'').replace(/"/g,'&quot;') + '" oninput="if(!S.cards[' + idx + '].footer)S.cards[' + idx + '].footer={};S.cards[' + idx + '].footer.freeText=this.value;refreshCard(' + idx + ')" placeholder="ex: Salve para não perder →" style="width:100%;padding:6px 10px;font-size:0.78rem;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);margin-top:2px;"/>';
           }
+          if (curFooterTmpl === 'swipe') {
+            const sv = card.footer?.swipeVariant || 'arrow';
+            const CHKSVG2 = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3"><polyline points="20,6 9,17 4,12"/></svg>';
+            html += '<div style="margin-top:4px;"><div style="font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Variante</div><div style="display:flex;flex-direction:column;gap:3px;">';
+            [['arrow','Seta simples','→'],['circle','Círculo + seta','⊙ →'],['pill','Pílula + texto','Arraste →']].forEach(([val,label,desc]) => {
+              const a = sv === val;
+              html += '<button onclick="setFooterSwipeVariant(' + idx + ',&quot;' + val + '&quot;)" style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;border:1.5px solid ' + (a?'var(--accent)':'var(--border)') + ';background:' + (a?'rgba(0,113,227,0.08)':'transparent') + ';cursor:pointer;width:100%;text-align:left;"><div style="flex:1;"><div style="font-size:0.7rem;font-weight:600;color:' + (a?'var(--accent)':'var(--ink)') + ';">' + label + '</div><div style="font-size:0.58rem;color:var(--muted);">' + desc + '</div></div>' + (a?CHKSVG2:'') + '</button>';
+            });
+            html += '</div>';
+            // Color pickers for swipe variants
+            const arrowCol = card.footer?.swipeArrowColor || '';
+            html += '<div style="margin-top:6px;display:flex;flex-direction:column;gap:5px;">';
+            html += '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:0.68rem;color:var(--muted);min-width:60px;">Cor seta</span><input type="color" value="' + (arrowCol||'#ffffff') + '" oninput="S.cards[' + idx + '].footer.swipeArrowColor=this.value;refreshCard(' + idx + ')" style="width:28px;height:28px;border:none;border-radius:5px;cursor:pointer;background:none;"/><button onclick="S.cards[' + idx + '].footer.swipeArrowColor=null;refreshCard(' + idx + ');renderCardSidebar()" style="font-size:0.65rem;color:var(--muted);border:1.5px solid var(--border);border-radius:5px;padding:3px 7px;background:transparent;cursor:pointer;">Auto</button></div>';
+            if (sv === 'circle') {
+              const ringCol = card.footer?.swipeRingColor || '';
+              html += '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:0.68rem;color:var(--muted);min-width:60px;">Cor anel</span><input type="color" value="' + (ringCol||'#ffffff') + '" oninput="S.cards[' + idx + '].footer.swipeRingColor=this.value;refreshCard(' + idx + ')" style="width:28px;height:28px;border:none;border-radius:5px;cursor:pointer;background:none;"/><button onclick="S.cards[' + idx + '].footer.swipeRingColor=null;refreshCard(' + idx + ');renderCardSidebar()" style="font-size:0.65rem;color:var(--muted);border:1.5px solid var(--border);border-radius:5px;padding:3px 7px;background:transparent;cursor:pointer;">Auto</button></div>';
+            }
+            if (sv === 'pill') {
+              const pillBg   = card.footer?.swipePillBg   || '';
+              const pillText2= card.footer?.swipePillText || '';
+              const pillLbl  = card.footer?.swipePillLabel|| 'Arraste para o lado';
+              html += '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:0.68rem;color:var(--muted);min-width:60px;">Fundo pílula</span><input type="color" value="' + (pillBg||'#0071e3') + '" oninput="S.cards[' + idx + '].footer.swipePillBg=this.value;refreshCard(' + idx + ')" style="width:28px;height:28px;border:none;border-radius:5px;cursor:pointer;background:none;"/></div>';
+              html += '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:0.68rem;color:var(--muted);min-width:60px;">Cor texto</span><input type="color" value="' + (pillText2||'#ffffff') + '" oninput="S.cards[' + idx + '].footer.swipePillText=this.value;refreshCard(' + idx + ')" style="width:28px;height:28px;border:none;border-radius:5px;cursor:pointer;background:none;"/></div>';
+              html += '<input type="text" value="' + pillLbl.replace(/"/g,'&quot;') + '" oninput="S.cards[' + idx + '].footer.swipePillLabel=this.value;refreshCard(' + idx + ')" placeholder="ex: Arraste para o lado" style="width:100%;padding:5px 8px;font-size:0.72rem;border-radius:5px;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);"/>';
+            }
+            html += '</div></div>';
+          }
+          html += '<button onclick="applyFooterTemplateToAll(' + idx + ')" style="width:100%;margin-top:6px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);font-size:0.72rem;cursor:pointer;color:var(--muted);text-align:left;">↗ Aplicar este rodapé a todos os cards</button>';
           html += '<div style="display:flex;gap:4px;margin-top:2px;">';
           ['auto','light','dark'].forEach(m => {
             const a2 = (card.footer?.colorMode||'auto') === m;
@@ -6836,6 +6857,38 @@ function applyHeaderFreeTextToAll(idx) {
     card.header.freeText = text;
     if (i !== idx) refreshCard(i);
   });
+  refreshCard(idx);
+  renderCardSidebar();
+}
+
+function applyHeaderTemplateToAll(idx) {
+  const src = S.cards[idx].header;
+  S.cards.forEach((card, i) => {
+    if (!card.header) card.header = {};
+    card.header.template  = src.template;
+    card.header.freeText  = src.freeText || '';
+    card.header.colorMode = src.colorMode || 'auto';
+    if (i !== idx) refreshCard(i);
+  });
+  refreshCard(idx);
+  renderCardSidebar();
+}
+
+function applyFooterTemplateToAll(idx) {
+  const src = S.cards[idx].footer;
+  if (!src) return;
+  S.cards.forEach((card, i) => {
+    if (!card.footer) card.footer = {};
+    Object.assign(card.footer, src);
+    if (i !== idx) refreshCard(i);
+  });
+  refreshCard(idx);
+  renderCardSidebar();
+}
+
+function setFooterSwipeVariant(idx, variant) {
+  if (!S.cards[idx].footer) S.cards[idx].footer = {};
+  S.cards[idx].footer.swipeVariant = variant;
   refreshCard(idx);
   renderCardSidebar();
 }
@@ -7966,7 +8019,9 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     const hItems = [];
     const DOT_COL = subCol;
 
-    if (tmpl === 'signature') {
+    if (tmpl === 'tagline') {
+      if (b.tagline) hItems.push({ text: b.tagline.toUpperCase(), color: subCol });
+    } else if (tmpl === 'signature') {
       if (b.handle)  hItems.push({ text: b.handle.toUpperCase(),           color: hCol });
       if (b.tagline) { if (hItems.length) hItems.push({ text: ' · ', color: DOT_COL }); hItems.push({ text: b.tagline.toUpperCase(), color: subCol }); }
       if (b.year)    { if (hItems.length) hItems.push({ text: ' · ', color: DOT_COL }); hItems.push({ text: String(b.year).toUpperCase(), color: dimCol }); }
@@ -8099,6 +8154,78 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
         ctx.textBaseline = swapped ? 'top' : 'bottom';
         ctx.fillText(ftText.toUpperCase(), EXW/2, fBaseY);
       }
+    } else if (_footerTemplate === 'swipe') {
+      const sv         = card.footer?.swipeVariant || 'arrow';
+      const arrowColor = card.footer?.swipeArrowColor || (fDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)');
+      const ringColor  = card.footer?.swipeRingColor  || arrowColor;
+      const pillBg     = card.footer?.swipePillBg     || (b.accent || '#0071e3');
+      const pillTxt    = card.footer?.swipePillText   || '#ffffff';
+      const pillLabel  = card.footer?.swipePillLabel  || 'Arraste para o lado';
+      const aS = Math.round(10 * SC); // arrow size
+      const rX = EXW - fPad - aS;
+      const rY = swapped ? fPad : EXH - fPad - aS;
+
+      ctx.save();
+      if (sv === 'arrow') {
+        ctx.strokeStyle = arrowColor;
+        ctx.lineWidth = Math.max(1, Math.round(1.5*SC));
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(rX, rY + aS/2);
+        ctx.lineTo(rX + aS, rY + aS/2);
+        ctx.moveTo(rX + aS * 0.4, rY + aS * 0.1);
+        ctx.lineTo(rX + aS, rY + aS/2);
+        ctx.lineTo(rX + aS * 0.4, rY + aS * 0.9);
+        ctx.stroke();
+      } else if (sv === 'circle') {
+        const cr = Math.round(11 * SC);
+        const cx2 = EXW - fPad - cr;
+        const cy2 = swapped ? fPad + cr : EXH - fPad - cr;
+        ctx.strokeStyle = ringColor;
+        ctx.lineWidth = Math.max(1, Math.round(1.5*SC));
+        ctx.beginPath(); ctx.arc(cx2, cy2, cr, 0, Math.PI*2); ctx.stroke();
+        const as2 = Math.round(7*SC);
+        ctx.strokeStyle = arrowColor;
+        ctx.beginPath();
+        ctx.moveTo(cx2 - as2/2, cy2);
+        ctx.lineTo(cx2 + as2/2, cy2);
+        ctx.moveTo(cx2, cy2 - as2/2);
+        ctx.lineTo(cx2 + as2/2, cy2);
+        ctx.lineTo(cx2, cy2 + as2/2);
+        ctx.stroke();
+      } else if (sv === 'pill') {
+        const pFS    = Math.round(5.5 * SC);
+        ctx.font     = `400 ${pFS}px ${b.fontBody||"'Roboto',sans-serif"}`;
+        const txtW   = ctx.measureText(pillLabel.toUpperCase()).width;
+        const arrW   = Math.round(8*SC);
+        const padH   = Math.round(4*SC);
+        const padV   = Math.round(8*SC);
+        const pillW  = txtW + arrW + padV*3;
+        const pillH  = pFS + padH*2;
+        const pillR  = pillH/2;
+        const pillX  = EXW - fPad - pillW;
+        const pillY  = swapped ? fPad : EXH - fPad - pillH;
+        ctx.fillStyle = pillBg;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(pillX, pillY, pillW, pillH, pillR)
+          : ctx.rect(pillX, pillY, pillW, pillH);
+        ctx.fill();
+        ctx.fillStyle = pillTxt;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        ctx.fillText(pillLabel.toUpperCase(), pillX + padV, pillY + pillH/2);
+        ctx.strokeStyle = pillTxt;
+        ctx.lineWidth = Math.max(1, Math.round(SC));
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        const ax = pillX + padV + txtW + padV/2;
+        const ay = pillY + pillH/2;
+        const al = arrW * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay); ctx.lineTo(ax + al, ay);
+        ctx.moveTo(ax + al*0.3, ay - al*0.4); ctx.lineTo(ax + al, ay); ctx.lineTo(ax + al*0.3, ay + al*0.4);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
@@ -8661,7 +8788,10 @@ function brandHeaderHtml(isDark, num, total, card) {
 
   let parts = [];
 
-  if (template === 'signature') {
+  if (template === 'tagline') {
+    // Só a frase central — estado padrão inicial
+    if (b.tagline) parts.push(`<span style="${wrapStyle}color:${subCol};">${b.tagline.toUpperCase()}</span>`);
+  } else if (template === 'signature') {
     if (b.handle) parts.push(`<span style="${baseStyle}color:${hCol};">${b.handle}</span>`);
     if (b.tagline) {
       if (parts.length) parts.push(`<span style="font-size:0.35rem;color:${subCol};margin:0 5px;flex-shrink:0;">·</span>`);
@@ -8730,24 +8860,29 @@ function brandHeaderHtml(isDark, num, total, card) {
 // ── Footer template renderer ──
 function brandFooterHtml(isDark, num, total, card) {
   const b = getBrand();
+  const swapped = !!b.headerFooterSwapped;
   const template = card?.footer?.template || 'numeric';
   const freeText = card?.footer?.freeText || '';
   const color    = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.20)';
   const accent   = b.accent || '#0071e3';
   const ff       = b.fontBody || "'Roboto', sans-serif";
 
+  // Positional helpers — swap moves footer to top
+  const botPos  = swapped ? 'top:10px;bottom:auto;'  : 'bottom:10px;top:auto;';
+  const botPos0 = swapped ? 'top:0;bottom:auto;'     : 'bottom:0;top:auto;';
+
   if (template === 'none') return '';
 
   if (template === 'numeric') {
-    return `<div style="position:absolute;bottom:10px;right:14px;z-index:5;font-family:${ff};font-weight:300;font-size:0.58rem;letter-spacing:1px;color:${color};pointer-events:none;">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</div>`;
+    return `<div style="position:absolute;${botPos}right:14px;z-index:5;font-family:${ff};font-weight:300;font-size:0.58rem;letter-spacing:1px;color:${color};pointer-events:none;">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</div>`;
   }
 
   if (template === 'progress') {
     const pct = total > 1 ? Math.round((num / total) * 100) : 100;
     const trackCol = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(20,18,16,0.10)';
-    return `<div style="position:absolute;bottom:0;left:0;right:0;z-index:5;padding:0 14px 10px;display:flex;align-items:center;gap:6px;pointer-events:none;">
+    return `<div style="position:absolute;${botPos0}left:0;right:0;z-index:5;padding:0 14px 10px;display:flex;align-items:center;gap:6px;pointer-events:none;">
       <div style="flex:1;height:2px;border-radius:2px;background:${trackCol};overflow:hidden;">
-        <div style="width:${pct}%;height:100%;background:${accent};border-radius:2px;transition:width 0.3s;"></div>
+        <div style="width:${pct}%;height:100%;background:${accent};border-radius:2px;"></div>
       </div>
       <span style="font-family:${ff};font-size:0.38rem;letter-spacing:0.8px;color:${color};">${String(num).padStart(2,'0')}/${String(total).padStart(2,'0')}</span>
     </div>`;
@@ -8756,13 +8891,47 @@ function brandFooterHtml(isDark, num, total, card) {
   if (template === 'dots') {
     const dots = Array.from({length: total}, (_, i) => {
       const active = i < num;
-      return `<div style="width:${active ? 12 : 5}px;height:3px;border-radius:3px;background:${active ? accent : (isDark?'rgba(255,255,255,0.18)':'rgba(20,18,16,0.15)')};transition:width 0.3s;"></div>`;
+      return `<div style="width:${active ? 12 : 5}px;height:3px;border-radius:3px;background:${active ? accent : (isDark?'rgba(255,255,255,0.18)':'rgba(20,18,16,0.15)')};"></div>`;
     }).join('');
-    return `<div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:3px;pointer-events:none;">${dots}</div>`;
+    return `<div style="position:absolute;${botPos}left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:3px;pointer-events:none;">${dots}</div>`;
   }
 
   if (template === 'text') {
-    return `<div style="position:absolute;bottom:10px;left:14px;right:14px;z-index:5;text-align:center;font-family:${ff};font-size:0.4rem;letter-spacing:0.8px;text-transform:uppercase;color:${color};pointer-events:none;">${freeText}</div>`;
+    return `<div style="position:absolute;${botPos}left:14px;right:14px;z-index:5;text-align:center;font-family:${ff};font-size:0.4rem;letter-spacing:0.8px;text-transform:uppercase;color:${color};pointer-events:none;">${freeText}</div>`;
+  }
+
+  if (template === 'swipe') {
+    const variant    = card?.footer?.swipeVariant    || 'arrow';
+    const arrowColor = card?.footer?.swipeArrowColor || (isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)');
+    const ringColor  = card?.footer?.swipeRingColor  || arrowColor;
+    const pillBg     = card?.footer?.swipePillBg     || accent;
+    const pillText   = card?.footer?.swipePillText   || (isDark ? '#ffffff' : '#000000');
+    const pillLabel  = card?.footer?.swipePillLabel  || 'Arraste para o lado';
+
+    if (variant === 'arrow') {
+      return `<div style="position:absolute;${botPos}right:14px;z-index:5;pointer-events:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${arrowColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </div>`;
+    }
+
+    if (variant === 'circle') {
+      return `<div style="position:absolute;${botPos}right:14px;z-index:5;pointer-events:none;width:22px;height:22px;border-radius:50%;border:1.5px solid ${ringColor};display:flex;align-items:center;justify-content:center;">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${arrowColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </div>`;
+    }
+
+    if (variant === 'pill') {
+      return `<div style="position:absolute;${botPos}right:14px;z-index:5;pointer-events:none;display:flex;align-items:center;gap:5px;background:${pillBg};border-radius:20px;padding:4px 8px 4px 10px;">
+        <span style="font-family:${ff};font-size:0.38rem;letter-spacing:0.5px;color:${pillText};text-transform:uppercase;white-space:nowrap;">${pillLabel}</span>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="${pillText}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </div>`;
+    }
   }
 
   return '';
@@ -9543,21 +9712,22 @@ function migrateCard(card) {
   if (card.body.uppercase == null) card.body.uppercase = false;
   // Components
   card.header = card.header || { visible: true, bgColor: 'transparent' };
-  if (!card.header.template)   card.header.template  = 'signature';
+  if (!card.header.template)   card.header.template  = 'tagline';
   if (!card.header.freeText)   card.header.freeText  = '';
   if (!card.header.colorMode)  card.header.colorMode = 'auto';
-  // Migrate old pageNum into new footer structure
   if (!card.footer) {
     card.footer = {
       visible:   card.pageNum ? card.pageNum.visible !== false : true,
       template:  'numeric',
       freeText:  '',
       colorMode: card.pageNum?.colorMode || 'auto',
+      swipeVariant: 'arrow',
     };
   }
-  if (!card.footer.template)  card.footer.template  = 'numeric';
-  if (!card.footer.freeText)  card.footer.freeText  = '';
-  if (!card.footer.colorMode) card.footer.colorMode = 'auto';
+  if (!card.footer.template)      card.footer.template      = 'numeric';
+  if (!card.footer.freeText)      card.footer.freeText      = '';
+  if (!card.footer.colorMode)     card.footer.colorMode     = 'auto';
+  if (!card.footer.swipeVariant)  card.footer.swipeVariant  = 'arrow';
   card.cta    = card.cta    || { visible: false };
   card.avatar = card.avatar || { visible: false };
   return card;
