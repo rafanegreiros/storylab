@@ -8157,7 +8157,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       if (hx + iw > maxHx && hx > hPad) {
         // Wrap to second line
         hx = hPad;
-        const hLineY = swapped ? hBaseY - Math.round(hFS * 1.4) : hBaseY + Math.round(hFS * 1.4);
+        const hLineY = hBaseY + Math.round(hFS * 1.4);
         ctx.fillText(item.text, hx, hLineY);
         hx += iw;
       } else {
@@ -8211,11 +8211,11 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       ctx.font = fFont;
       ctx.fillStyle = fColor;
       ctx.textAlign = 'right';
-      ctx.textBaseline = swapped ? 'top' : 'bottom';
+      ctx.textBaseline = 'bottom';
       ctx.fillText(`${String(idx+1).padStart(2,'0')} / ${String(S.cards.length).padStart(2,'0')}`, EXW - fPad, fBaseY);
     } else if (_footerTemplate === 'progress') {
       const trackH = Math.round(2 * SC);
-      const trackY = swapped ? fPad : EXH - fPad - trackH;
+      const trackY = EXH - fPad - trackH;
       const trackW = EXW - fPad * 3 - Math.round(24 * SC);
       const trackX = fPad;
       const fillW  = Math.round(trackW * ((idx+1) / S.cards.length));
@@ -8230,14 +8230,14 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       ctx.font = `300 ${Math.round(5.5*SC)}px ${b.fontBody||"'Roboto',sans-serif"}`;
       ctx.fillStyle = fColor;
       ctx.textAlign = 'right';
-      ctx.textBaseline = swapped ? 'top' : 'bottom';
+      ctx.textBaseline = 'bottom';
       ctx.fillText(`${String(idx+1).padStart(2,'0')}/${String(S.cards.length).padStart(2,'0')}`, EXW - fPad, fBaseY);
     } else if (_footerTemplate === 'dots') {
       const dotH   = Math.round(3 * SC);
       const gapW   = Math.round(3 * SC);
       const activW = Math.round(12 * SC);
       const inactW = Math.round(5 * SC);
-      const dotY   = swapped ? fPad : EXH - fPad - dotH;
+      const dotY   = EXH - fPad - dotH;
       const totalW = S.cards.length * inactW + (idx) * (activW - inactW) + (S.cards.length - 1) * gapW;
       let dx = (EXW - totalW) / 2;
       for (let di = 0; di < S.cards.length; di++) {
@@ -8253,7 +8253,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
         ctx.font = `400 ${Math.round(6*SC)}px ${b.fontBody||"'Roboto',sans-serif"}`;
         ctx.fillStyle = fColor;
         ctx.textAlign = 'center';
-        ctx.textBaseline = swapped ? 'top' : 'bottom';
+        ctx.textBaseline = 'bottom';
         ctx.fillText(ftText.toUpperCase(), EXW/2, fBaseY);
       }
     } else if (_footerTemplate === 'swipe') {
@@ -8265,7 +8265,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       const pillLabel  = card.footer?.swipePillLabel  || 'Arraste para o lado';
       const aS = Math.round(10 * SC); // arrow size
       const rX = EXW - fPad - aS;
-      const rY = swapped ? fPad : EXH - fPad - aS;
+      const rY = EXH - fPad - aS;
 
       ctx.save();
       if (sv === 'arrow') {
@@ -8282,7 +8282,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       } else if (sv === 'circle') {
         const cr = Math.round(11 * SC);
         const cx2 = EXW - fPad - cr;
-        const cy2 = swapped ? fPad + cr : EXH - fPad - cr;
+        const cy2 = EXH - fPad - cr;
         ctx.strokeStyle = ringColor;
         ctx.lineWidth = Math.max(1, Math.round(1.5*SC));
         ctx.beginPath(); ctx.arc(cx2, cy2, cr, 0, Math.PI*2); ctx.stroke();
@@ -8306,7 +8306,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
         const pillH  = pFS + padH*2;
         const pillR  = pillH/2;
         const pillX  = EXW - fPad - pillW;
-        const pillY  = swapped ? fPad : EXH - fPad - pillH;
+        const pillY  = EXH - fPad - pillH;
         ctx.fillStyle = pillBg;
         ctx.beginPath();
         ctx.roundRect ? ctx.roundRect(pillX, pillY, pillW, pillH, pillR)
