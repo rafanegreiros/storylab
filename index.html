@@ -3038,7 +3038,6 @@ const BRAND_DEFAULTS = {
   fontDisplay: "'Poppins', sans-serif", fontBody: "'Roboto', sans-serif",
   handle: '@bystorylab', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
   nicho: '',
-  headerFooterSwapped: false,
   // Header style overrides (global, apply to all cards)
   headerWeight: 400,        // 300 | 400 | 700
   headerFontRole: 'body',   // 'display' | 'body'
@@ -5272,8 +5271,6 @@ function renderCardHtml(card, idx, total) {
 
   // Layer: header (brand) — position handled inside brandHeaderHtml (incl. swap)
   const _b = getBrand();
-  const _swapped = !!_b.headerFooterSwapped;
-
   if (card.header.visible) {
     const _hMode = card.header.colorMode || 'auto';
     const _hDark = _hMode==='light' ? true : _hMode==='dark' ? false : (isColorDark(card.bg.color)||card.bg.type==='image');
@@ -6201,8 +6198,7 @@ function renderCardSidebar() {
             html += '<button onclick="setFooterColorMode(' + idx + ',\'' + m + '\')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ' + (a2?'var(--accent)':'var(--border)') + ';background:transparent;font-size:0.58rem;cursor:pointer;color:' + (a2?'var(--accent)':'var(--muted)') + ';">' + (m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro') + '</button>';
           });
           html += '</div>';
-          const swapped = !!_bvSwap.headerFooterSwapped;
-          html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:7px;background:var(--surface2);border:1.5px solid var(--border);margin-top:4px;"><div><div style="font-size:0.72rem;font-weight:600;color:var(--ink);">↕ Inverter cabeçalho/rodapé</div><div style="font-size:0.6rem;color:var(--muted);">Troca as posições globalmente</div></div>' + toggle('', swapped, 'toggleHeaderFooterSwap()') + '</div>';
+
           return html;
         })()}
       </div>
@@ -6708,37 +6704,77 @@ function triggerBgImageUpload(idx) {
   inp.onchange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      // Compress image before storing to avoid localStorage size limits
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 900;
-        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-        const cvs = document.createElement('canvas');
-        cvs.width  = Math.round(img.width  * scale);
-        cvs.height = Math.round(img.height * scale);
-        cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
-        const compressed = cvs.toDataURL('image/jpeg', 0.82);
-        S.cards[idx].bg.imageSrc  = compressed;
-        S.cards[idx].bg.imageMime = 'image/jpeg';
-        S.cards[idx].bg.type = 'image';
-        // Store natural dimensions for consistent preview↔export scaling
-        S.cards[idx].bg.imgNaturalW = cvs.width;
-        S.cards[idx].bg.imgNaturalH = cvs.height;
-        // Reset position/scale on new image upload
-        S.cards[idx].bg.imageScale = 1;
-        S.cards[idx].bg.imageX = 0; S.cards[idx].bg.imageY = 0;
-        S.cards[idx].bg.boxImgX = 0; S.cards[idx].bg.boxImgY = 0;
-        refreshCard(idx); renderCardSidebar();
-        saveImagesToStorage(activeSessionId || 'current');
-        autoSave();
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
+    applyImageFileToCardBg(idx, file);
   };
   inp.click();
+}
+
+// ── Shared: apply any image File/Blob to a card's background ──
+function applyImageFileToCardBg(idx, file) {
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 900;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const cvs = document.createElement('canvas');
+      cvs.width  = Math.round(img.width  * scale);
+      cvs.height = Math.round(img.height * scale);
+      cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
+      const compressed = cvs.toDataURL('image/jpeg', 0.82);
+      S.cards[idx].bg.imageSrc   = compressed;
+      S.cards[idx].bg.imageMime  = 'image/jpeg';
+      S.cards[idx].bg.type       = 'image';
+      S.cards[idx].bg.imgNaturalW = cvs.width;
+      S.cards[idx].bg.imgNaturalH = cvs.height;
+      S.cards[idx].bg.imageScale = 1;
+      S.cards[idx].bg.imageX = 0; S.cards[idx].bg.imageY = 0;
+      S.cards[idx].bg.boxImgX = 0; S.cards[idx].bg.boxImgY = 0;
+      refreshCard(idx); renderCardSidebar();
+      saveImagesToStorage(activeSessionId || 'current');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Paste image (Ctrl+V / clique direito + colar) ──
+// Applies to the active card's background when the user is on step 4 (editor)
+document.addEventListener('paste', (e) => {
+  // Only when in carousel editor step and not typing in a text field
+  if (S.step !== 4) return;
+  const tag = document.activeElement?.tagName?.toLowerCase();
+  if (tag === 'textarea' || tag === 'input') return;
+
+  const items = e.clipboardData?.items;
+  if (!items) return;
+
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (!file) continue;
+      const idx = S.activeCardIdx ?? 0;
+      applyImageFileToCardBg(idx, file);
+      // Show a brief toast to confirm
+      _showPasteToast(idx);
+      break;
+    }
+  }
+});
+
+function _showPasteToast(idx) {
+  let toast = document.getElementById('paste-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'paste-toast';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(30,30,30,0.92);color:#fff;padding:8px 18px;border-radius:20px;font-size:0.78rem;z-index:9999;pointer-events:none;transition:opacity 0.3s;font-family:"Roboto",sans-serif;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = `✓ Imagem colada no card ${idx + 1}`;
+  toast.style.opacity = '1';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
 }
 
 function triggerBgVideoUpload(idx) {
@@ -6982,16 +7018,6 @@ function _updateSepPreview() {
   }
 }
 
-function toggleHeaderFooterSwap() {
-  const activeId = localStorage.getItem('storylab_active_brand_id');
-  const bidx = allBrands.findIndex(b2 => b2.id === activeId);
-  if (bidx >= 0) {
-    allBrands[bidx].headerFooterSwapped = !allBrands[bidx].headerFooterSwapped;
-    localStorage.setItem('storylab_brands', JSON.stringify(allBrands));
-  }
-  S.cards.forEach((_, i) => refreshCard(i));
-  renderCardSidebar();
-}
 function toggleCta(idx) { S.cards[idx].cta.visible = !S.cards[idx].cta.visible; refreshCard(idx); renderCardSidebar(); }
 function setCtaBg(idx, color) { S.cards[idx].cta.bgColor = color; refreshCard(idx); renderCardSidebar(); }
 function setCtaText(idx, color) { S.cards[idx].cta.textColor = color; refreshCard(idx); renderCardSidebar(); }
@@ -8007,13 +8033,11 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       : (b.fontBody    || "'Roboto', sans-serif");
     const hFont    = `${hWeight} ${hFS}px ${hFamily}`;
     const tmpl   = card.header.template || 'signature';
-    const swapped = !!b.headerFooterSwapped;
-    // In swapped mode, header renders at the bottom
-    const hBaseY = swapped ? EXH - hY - hFS : hY;
+    const hBaseY = hY;
 
     ctx.save();
     ctx.font = hFont;
-    ctx.textBaseline = swapped ? 'bottom' : 'top';
+    ctx.textBaseline = 'top';
 
     // Build sequential items left-to-right: all start from hPad, separated by " · "
     const hItems = [];
@@ -8066,7 +8090,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
     // Draw separator line (global brand setting, below header)
     const sepStyleC = b.separatorStyle || 'none';
-    if (sepStyleC !== 'none' && !b.headerFooterSwapped) {
+    if (sepStyleC !== 'none') {
       const sepSizeC   = (b.separatorSize || 1) * SC;
       const sepRoleC   = b.separatorColorRole || 'accent';
       const sepCustomC = b.separatorColorCustom || null;
@@ -8099,9 +8123,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     const fColor = fDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.20)';
     const fFS    = Math.round(6 * SC);
     const fPad   = Math.round(10 * SC);
-    const swapped = !!b.headerFooterSwapped;
-    // In swapped mode, footer renders at the top
-    const fBaseY = swapped ? fPad + fFS : EXH - fPad;
+    const fBaseY = EXH - fPad;
     const fFont  = `300 ${fFS}px ${b.fontBody || "'Roboto', sans-serif"}`;
 
     ctx.save();
@@ -8849,27 +8871,20 @@ function brandHeaderHtml(isDark, num, total, card) {
     sepHtml = `<div style="position:absolute;top:36px;left:14px;right:14px;height:0;border-top:${sepSize}px ${sepBorderStyle} ${sepColor};z-index:5;pointer-events:none;"></div>`;
   }
 
-  const swapped = !!b.headerFooterSwapped;
-  const containerStyle = swapped
-    ? `position:absolute;bottom:0;left:0;right:0;z-index:5;display:flex;align-items:baseline;flex-wrap:wrap;padding:8px 14px 10px;gap:0;pointer-events:none;`
-    : `position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:baseline;flex-wrap:wrap;padding:10px 14px;gap:0;pointer-events:none;`;
-
-  return `<div style="${containerStyle}">${parts.join('')}</div>${swapped ? '' : sepHtml}`;
+  return `<div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:baseline;flex-wrap:wrap;padding:10px 14px;gap:0;pointer-events:none;">${parts.join('')}</div>${sepHtml}`;
 }
 
 // ── Footer template renderer ──
 function brandFooterHtml(isDark, num, total, card) {
   const b = getBrand();
-  const swapped = !!b.headerFooterSwapped;
   const template = card?.footer?.template || 'numeric';
   const freeText = card?.footer?.freeText || '';
   const color    = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(20,18,16,0.20)';
   const accent   = b.accent || '#0071e3';
   const ff       = b.fontBody || "'Roboto', sans-serif";
 
-  // Positional helpers — swap moves footer to top
-  const botPos  = swapped ? 'top:10px;bottom:auto;'  : 'bottom:10px;top:auto;';
-  const botPos0 = swapped ? 'top:0;bottom:auto;'     : 'bottom:0;top:auto;';
+  const botPos  = 'bottom:10px;top:auto;';
+  const botPos0 = 'bottom:0;top:auto;';
 
   if (template === 'none') return '';
 
@@ -9105,35 +9120,61 @@ const BACKEND_URL = 'https://storylab-backend-production.up.railway.app';
 const supabaseClient = window.supabase.createClient(
   'https://fgwjpisxuttaafgxjuhr.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnd2pwaXN4dXR0YWFmZ3hqdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE3MzIsImV4cCI6MjA5MTIzNzczMn0.Hb6vfs2ciBGWyWobjKiXVI91nTuYDmfJ0E4ROTZ_pgU',
-  { auth: { detectSessionInUrl: true, persistSession: true } }
+  {
+    auth: {
+      detectSessionInUrl: true,
+      persistSession: true,
+      autoRefreshToken: true,
+      storageKey: 'storylab-auth',
+      storage: window.localStorage,
+    }
+  }
 );
 
 let currentSession = null;
 
 async function initAuth() {
-  // Listen for auth state changes FIRST — captures magic link token from URL hash
+  // Listen for auth state changes — persist backup on every change
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     currentSession = session;
     if (session) {
+      try {
+        localStorage.setItem('storylab-session-backup', JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_at: session.expires_at,
+        }));
+      } catch(e) {}
       hideLoginScreen();
     } else {
       showLoginScreen();
     }
   });
 
-  // Then check for existing session (handles page refresh)
+  // Check for existing session (handles page refresh)
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     currentSession = session;
     hideLoginScreen();
-  } else {
-    // Only show login if there's no hash token being processed
-    const hasAuthHash = window.location.hash.includes('access_token') || window.location.hash.includes('error_code');
-    if (!hasAuthHash) {
-      showLoginScreen();
-    }
-    // If there's a hash, onAuthStateChange will fire shortly and handle it
+    return;
   }
+
+  // Fallback: try to restore session from backup refresh token
+  try {
+    const backup = JSON.parse(localStorage.getItem('storylab-session-backup') || 'null');
+    if (backup?.refresh_token) {
+      const { data, error } = await supabaseClient.auth.refreshSession({ refresh_token: backup.refresh_token });
+      if (!error && data?.session) {
+        currentSession = data.session;
+        hideLoginScreen();
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Only show login if there's no hash token being processed
+  const hasAuthHash = window.location.hash.includes('access_token') || window.location.hash.includes('error_code');
+  if (!hasAuthHash) showLoginScreen();
 }
 
 function showLoginScreen() {
