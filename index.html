@@ -5052,9 +5052,9 @@ function renderFinal() {
         <button class="copy-btn" onclick="openTemplateManager()" style="background:rgba(0,113,227,0.08);border-color:rgba(0,113,227,0.3);color:var(--accent)">
           ☰ Templates
         </button>
-        <button class="export-btn" onclick="exportAllCards()" id="export-btn">
+        <button class="export-btn" onclick="_isMobile() ? exportAllCardsSingle() : exportAllCards()" id="export-btn">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          Exportar ZIP
+          ${_isMobile() ? 'Exportar imagens' : 'Exportar ZIP'}
         </button>
       </div>
     </div>
@@ -5797,6 +5797,7 @@ function renderCardSidebar() {
           ${slider('🔍 Zoom %', Math.round((card.bg.imageScale||1)*100), 50, 300, 5, '(v)=>setCardImgScale('+idx+',v/100)')}
         `}
         <div class="field-label" style="margin-top:8px;">Exportação MP4</div>
+        <button onclick="exportSingleCardPng(${idx})" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;color:var(--ink2);font-size:0.72rem;font-family:'Poppins',sans-serif;font-weight:600;">⬇ Baixar este card (.png)</button>
         <button onclick="exportCardAsVideo(${idx})" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid var(--accent);background:rgba(0,113,227,0.1);cursor:pointer;color:var(--accent);font-size:0.72rem;font-family:'Poppins',sans-serif;font-weight:600;">⬇ Exportar este card (.mp4)</button>
       ` : `
         <button onclick="triggerBgVideoUpload(${idx})" style="width:100%;padding:10px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;color:var(--muted);font-size:0.78rem;">▶ Adicionar vídeo</button>
@@ -6244,57 +6245,92 @@ function renderCardSidebar() {
 // ── COMPARADOR PREVIEW × EXPORT ──
 async function compareCardExport(idx) {
   const card = S.cards[idx];
+  const total = S.cards.length;
+  const num   = idx + 1;
 
-  // Get preview HTML dimensions
+  // Get preview card dimensions from DOM
   const previewEl = document.querySelectorAll('.c-card')[idx];
-  if (!previewEl) { alert('Card não encontrado'); return; }
+  if (!previewEl) { alert('Card não encontrado. Selecione um card primeiro.'); return; }
   const previewRect = previewEl.getBoundingClientRect();
   const previewW = Math.round(previewRect.width);
   const previewH = Math.round(previewRect.height);
 
-  // Export at full resolution then display at preview size
-  const origBlob = await exportCardToCanvas(card, idx);
-  const exportUrl = URL.createObjectURL(origBlob);
+  // Show loading state
+  const loadingEl = document.createElement('div');
+  loadingEl.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;color:#fff;font-family:Poppins,sans-serif;font-size:0.9rem;';
+  loadingEl.textContent = '⏳ Gerando comparação...';
+  document.body.appendChild(loadingEl);
 
-  // Capture preview as screenshot using html2canvas-like approach
-  // Instead, take a screenshot of the preview element using canvas
-  const previewSnapshot = previewEl.outerHTML;
+  try {
+    // 1. Export at full resolution (1080×1350)
+    const fullBlob = await exportCardToCanvas(card, idx);
+    const fullUrl  = URL.createObjectURL(fullBlob);
 
-  // Open comparison modal
-  const modal = document.createElement('div');
-  modal.style.cssText = `position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;`;
+    // 2. Export at preview resolution for faithful preview comparison
+    const prevBlob = await exportCardToCanvas(card, idx, previewW, previewH);
+    const prevUrl  = URL.createObjectURL(prevBlob);
 
-  modal.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;color:#fff;font-family:'Poppins',sans-serif;">
-      <span style="font-size:1rem;font-weight:600;">🔍 Comparador — Card ${idx+1}</span>
-      <button onclick="this.closest('div[style*=fixed]').remove()" style="margin-left:auto;background:rgba(255,255,255,0.15);border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;">✕ Fechar</button>
-    </div>
-    <div style="display:flex;gap:24px;align-items:flex-start;">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-        <span style="color:rgba(255,255,255,0.6);font-family:'Poppins',sans-serif;font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;">Preview</span>
-        <div id="comp-preview-wrap" style="width:${previewW}px;height:${previewH}px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.15);">
-          ${previewSnapshot}
+    loadingEl.remove();
+
+    // 3. Build comparison modal
+    const modal = document.createElement('div');
+    modal.id = 'compare-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:20px 16px 40px;gap:16px;';
+
+    modal.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;color:#fff;font-family:'Poppins',sans-serif;width:100%;max-width:1100px;">
+        <span style="font-size:1rem;font-weight:600;">🔍 Comparador — Card ${num}/${total}</span>
+        <button onclick="document.getElementById('compare-modal').remove()" style="margin-left:auto;background:rgba(255,255,255,0.15);border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;">✕ Fechar</button>
+      </div>
+      <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;justify-content:center;width:100%;max-width:1100px;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <span style="color:rgba(255,255,255,0.6);font-family:'Poppins',sans-serif;font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;">Preview (${previewW}×${previewH}px)</span>
+          <div style="border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.15);">
+            <img src="${prevUrl}" width="${previewW}" height="${previewH}" style="display:block;"/>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <span style="color:rgba(255,255,255,0.6);font-family:'Poppins',sans-serif;font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;">Exportação (1080×1350px → ${previewW}×${previewH}px)</span>
+          <div style="border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.15);">
+            <img src="${fullUrl}" width="${previewW}" height="${previewH}" style="display:block;object-fit:cover;"/>
+          </div>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-        <span style="color:rgba(255,255,255,0.6);font-family:'Poppins',sans-serif;font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;">Exportação</span>
-        <div style="width:${previewW}px;height:${previewH}px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.15);">
-          <img src="${exportUrl}" style="width:100%;height:100%;object-fit:cover;" />
-        </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;">
+        <label style="display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.7);font-family:'Poppins',sans-serif;font-size:0.72rem;cursor:pointer;">
+          <input type="range" id="comp-opacity" min="0" max="100" value="100" style="width:140px;"
+            oninput="document.getElementById('comp-prev-img').style.opacity=this.value/100;document.getElementById('comp-opacity-val').textContent=this.value+'%'">
+          <span id="comp-opacity-val">100%</span> Opacidade preview
+        </label>
+        <a href="${fullUrl}" download="card_${num}_export.png" style="padding:6px 14px;background:rgba(255,255,255,0.15);color:#fff;border-radius:6px;font-size:0.75rem;text-decoration:none;font-family:'Poppins',sans-serif;">⬇ Baixar export</a>
       </div>
-    </div>
-    <div style="display:flex;gap:12px;">
-      <label style="display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.7);font-family:'Poppins',sans-serif;font-size:0.72rem;cursor:pointer;">
-        <input type="range" id="comp-opacity" min="0" max="100" value="100" style="width:120px;" oninput="document.getElementById('comp-preview-wrap').style.opacity=this.value/100">
-        Opacidade Preview
-      </label>
-    </div>
-  `;
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <span style="color:rgba(255,255,255,0.5);font-family:'Poppins',sans-serif;font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;">Sobreposição</span>
+        <div style="position:relative;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.15);">
+          <img src="${fullUrl}" id="comp-base-img" width="${previewW}" height="${previewH}" style="display:block;object-fit:cover;"/>
+          <img src="${prevUrl}" id="comp-prev-img" width="${previewW}" height="${previewH}" style="display:block;position:absolute;inset:0;object-fit:cover;opacity:1;mix-blend-mode:difference;"/>
+        </div>
+        <span style="color:rgba(255,255,255,0.4);font-family:'Poppins',sans-serif;font-size:0.62rem;">Diferença visual (mix-blend-mode: difference — preto = idêntico)</span>
+      </div>
+    `;
 
-  // Remove trocar buttons and edit overlays from preview clone
-  modal.querySelectorAll('.img-upload-overlay, [onclick*=triggerBg]').forEach(el => el.remove());
+    document.body.appendChild(modal);
 
-  document.body.appendChild(modal);
+    // Cleanup object URLs when modal closes
+    const observer = new MutationObserver(() => {
+      if (!document.getElementById('compare-modal')) {
+        URL.revokeObjectURL(fullUrl);
+        URL.revokeObjectURL(prevUrl);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true });
+
+  } catch(err) {
+    loadingEl.remove();
+    console.error('compareCardExport error:', err);
+    alert('Erro ao gerar comparação: ' + err.message);
+  }
 }
 
 
@@ -6450,6 +6486,20 @@ function clearBgVideo(idx) {
   card.bg.videoBlobKey = null;
   card.bg.type = 'solid';
   refreshCard(idx); renderCardSidebar();
+}
+
+async function exportSingleCardPng(idx) {
+  try {
+    const blob = await exportCardToCanvas(S.cards[idx], idx);
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `card_${String(idx+1).padStart(2,'0')}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) {
+    alert('Erro ao exportar: ' + err.message);
+  }
 }
 
 async function exportCardAsVideo(idx) {
@@ -7621,6 +7671,36 @@ Responda em JSON sem markdown:
 // ── EXPORT: CANVAS 2D PURO ──
 const EXPORT_W = 1080;
 const EXPORT_H = 1350;
+
+// ── Mobile detection ──
+function _isMobile() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+}
+
+// ── Single-image export (mobile-friendly — no ZIP) ──
+// Triggers sequential download of each card as individual PNG
+async function exportAllCardsSingle() {
+  const btn = document.getElementById('export-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Exportando...'; }
+  try {
+    for (let i = 0; i < S.cards.length; i++) {
+      if (btn) btn.textContent = `Exportando ${i+1}/${S.cards.length}...`;
+      const blob = await exportCardToCanvas(S.cards[i], i);
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `card_${String(i+1).padStart(2,'0')}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      // Brief pause between downloads to avoid browser blocking
+      await new Promise(r => setTimeout(r, 400));
+    }
+  } catch(err) {
+    alert('Erro ao exportar: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = _isMobile() ? 'Exportar imagens' : 'Exportar ZIP'; }
+  }
+}
 
 async function exportAllCards() {
   if (!S.cards.length) return;
