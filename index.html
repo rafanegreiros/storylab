@@ -4810,6 +4810,45 @@ function renderEspinha() {
 
 const ADMIN_EMAIL = 'rafanegreiros@gmail.com';
 
+async function checkApiStatus() {
+  const token = getAuthToken();
+  const btn = event?.target;
+  if (btn) { btn.textContent = '⏳...'; btn.disabled = true; }
+  try {
+    // Quick probe call with minimal tokens to check if API is responding
+    const res = await fetchWithTimeout(BACKEND_URL + "/api/claude", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 10,
+        messages: [{ role: "user", content: "responda só: ok" }]
+      })
+    }, 15000);
+    const data = await res.json();
+    if (res.status === 429 || data.error === 'rate_limit') {
+      alert('⚠️ Rate limit ativo — aguarde alguns minutos antes de gerar novamente.');
+    } else if (res.status === 401) {
+      alert('🔑 Erro de autenticação no backend — verifique a API key da Anthropic no Railway.');
+    } else if (res.status === 529 || data.error === 'overloaded') {
+      alert('🔴 API da Anthropic sobrecarregada — tente em alguns minutos.');
+    } else if (!res.ok) {
+      alert(`❌ Backend retornou status ${res.status}: ${data.error || data.message || 'erro desconhecido'}`);
+    } else if (data.content) {
+      alert('✅ API funcionando normalmente.\n\nResposta: ' + (data.content[0]?.text || 'ok'));
+    } else {
+      alert('⚠️ Resposta inesperada: ' + JSON.stringify(data).slice(0, 200));
+    }
+  } catch(e) {
+    alert('❌ ' + (e.message === 'timeout' ? 'Timeout — backend não respondeu em 15s. Railway pode estar sleeping.' : e.message));
+  } finally {
+    if (btn) { btn.textContent = '⚡ Status API'; btn.disabled = false; }
+  }
+}
+
 function isAdmin() {
   return currentSession?.user?.email === ADMIN_EMAIL;
 }
@@ -5039,6 +5078,7 @@ function renderFinal() {
           <span class="meta-tag tag-b">${S.tom}</span>
           <span class="meta-tag tag-c">${a.objetivo || ''}</span>
           ${isAdmin() ? '<span class="meta-tag" style="background:rgba(255,170,0,0.15);color:#ffaa00;border-color:rgba(255,170,0,0.3)">★ Admin</span>' : ''}
+          ${isAdmin() ? `<button onclick="checkApiStatus()" style="background:rgba(255,170,0,0.1);border:1px solid rgba(255,170,0,0.3);color:#ffaa00;border-radius:6px;padding:3px 8px;font-size:0.65rem;cursor:pointer;">⚡ Status API</button>` : ''}
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -9054,22 +9094,47 @@ function extractJSON(text) {
   throw new Error('Resposta inválida da IA. Tente novamente.');
 }
 
+// ── Fetch with timeout helper ──
+async function fetchWithTimeout(url, options, timeoutMs = 60000) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(tid);
+    return res;
+  } catch(e) {
+    clearTimeout(tid);
+    if (e.name === 'AbortError') throw new Error('timeout');
+    throw e;
+  }
+}
+
 async function callClaude(prompt, maxTokens, retries = 4) {
   const token = getAuthToken();
   if (!token) { showLoginScreen(); throw new Error('Faça login para continuar.'); }
   for (let attempt = 1; attempt <= retries; attempt++) {
-    const res = await fetch(BACKEND_URL + "/api/claude", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: maxTokens || 1000,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
+    let res;
+    try {
+      res = await fetchWithTimeout(BACKEND_URL + "/api/claude", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: maxTokens || 1000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      }, 90000); // 90s timeout
+    } catch(e) {
+      if (e.message === 'timeout' && attempt < retries) {
+        showLoading(`Resposta demorou, tentando novamente (${attempt}/${retries})...`);
+        await new Promise(r => setTimeout(r, 3000));
+        continue;
+      }
+      throw new Error(e.message === 'timeout' ? 'A requisição excedeu o tempo limite. Tente novamente.' : e.message);
+    }
     const data = await res.json();
     if (res.status === 429 || data.error === 'rate_limit') {
       if (attempt < retries) {
@@ -9091,19 +9156,29 @@ async function callClaudeWithSearch(prompt, maxTokens, retries = 4) {
   const token = getAuthToken();
   if (!token) { showLoginScreen(); throw new Error('Faça login para continuar.'); }
   for (let attempt = 1; attempt <= retries; attempt++) {
-    const res = await fetch(BACKEND_URL + "/api/claude", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: maxTokens || 1500,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
+    let res;
+    try {
+      res = await fetchWithTimeout(BACKEND_URL + "/api/claude", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: maxTokens || 1500,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          messages: [{ role: "user", content: prompt }]
+        })
+      }, 120000); // 120s timeout — web search can be slow
+    } catch(e) {
+      if (e.message === 'timeout' && attempt < retries) {
+        showLoading(`Busca demorou, tentando novamente (${attempt}/${retries})...`);
+        await new Promise(r => setTimeout(r, 3000));
+        continue;
+      }
+      throw new Error(e.message === 'timeout' ? 'A busca excedeu o tempo limite. Tente novamente.' : e.message);
+    }
     const data = await res.json();
     if (res.status === 429 || data.error === 'rate_limit') {
       if (attempt < retries) {
