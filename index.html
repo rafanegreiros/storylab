@@ -6163,7 +6163,7 @@ function renderCardSidebar() {
           html += '<div style="display:flex;gap:4px;margin-top:2px;">';
           ['auto','light','dark'].forEach(m => {
             const a2 = (card.header.colorMode||'auto') === m;
-            html += '<button onclick="setHeaderColorMode(' + idx + ',\'' + m + '\')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ' + (a2?'var(--accent)':'var(--border)') + ';background:transparent;font-size:0.58rem;cursor:pointer;color:' + (a2?'var(--accent)':'var(--muted)') + ';">' + (m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro') + '</button>';
+            html += '<button onclick="setHeaderColorMode(' + idx + ',&quot;' + m + '&quot;)" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ' + (a2?'var(--accent)':'var(--border)') + ';background:transparent;font-size:0.58rem;cursor:pointer;color:' + (a2?'var(--accent)':'var(--muted)') + ';">' + (m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro') + '</button>';
           });
           html += '</div>';
           return html;
@@ -6236,7 +6236,7 @@ function renderCardSidebar() {
           html += '<div style="display:flex;gap:4px;margin-top:2px;">';
           ['auto','light','dark'].forEach(m => {
             const a2 = (card.footer?.colorMode||'auto') === m;
-            html += '<button onclick="setFooterColorMode(' + idx + ',\'' + m + '\')" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ' + (a2?'var(--accent)':'var(--border)') + ';background:transparent;font-size:0.58rem;cursor:pointer;color:' + (a2?'var(--accent)':'var(--muted)') + ';">' + (m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro') + '</button>';
+            html += '<button onclick="setFooterColorMode(' + idx + ',&quot;' + m + '&quot;)" style="flex:1;padding:4px;border-radius:4px;border:1.5px solid ' + (a2?'var(--accent)':'var(--border)') + ';background:transparent;font-size:0.58rem;cursor:pointer;color:' + (a2?'var(--accent)':'var(--muted)') + ';">' + (m==='auto'?'Auto':m==='light'?'☀ Claro':'☾ Escuro') + '</button>';
           });
           html += '</div>';
 
@@ -7969,57 +7969,39 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     return cx - x;
   }
 
-  // Wrap text that may have inline segments — returns array of { segs, rawText } per line
+  // Wrap text with inline markers — returns array of { segs } per line
+  // Handles \n (hard breaks) and word-wrap within maxWidth
   function wrapSegmentedText(ctx, rawText, blockStyle, maxWidth, fontSize) {
-    // Strip markers to get plain text for line-break calculation
-    const plain = rawText
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/__(.*?)__/g, '$1')
-      .replace(/_(.*?)_/g, '$1')
-      .replace(/~~(.*?)~~/g, '$1')
-      .replace(/\{bg#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
-      .replace(/\{#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
-      .replace(/\{w\d{3}\|(.*?)\}/g, '$1');
-
     ctx.font = `${blockStyle.italic ? 'italic ' : ''}${blockStyle.weight} ${fontSize}px ${blockStyle.family}`;
-    const lines = wrapText(ctx, plain, maxWidth, fontSize * 1.15);
 
+    // Strip markers for width measurement only
+    function stripMarkers(t) {
+      return t
+        .replace(/\*\*(.*?)\*\*/g, '$1').replace(/__(.*?)__/g, '$1')
+        .replace(/_(.*?)_/g, '$1').replace(/~~(.*?)~~/g, '$1')
+        .replace(/\{bg#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
+        .replace(/\{#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
+        .replace(/\{w\d{3}\|(.*?)\}/g, '$1');
+    }
+
+    // Split on hard line breaks first, then word-wrap each paragraph
+    const paragraphs = rawText.split('\n');
     const result = [];
-    let rawIdx = 0;
-    for (const line of lines) {
-      let plainCount = 0;
-      const lineLen = line.length;
-      const rawStart = rawIdx;
-      while (rawIdx < rawText.length && plainCount < lineLen) {
-        if (rawText.startsWith('**', rawIdx)) {
-          rawIdx += 2;
-          while (rawIdx < rawText.length && !rawText.startsWith('**', rawIdx)) { plainCount++; rawIdx++; }
-          rawIdx += 2;
-        } else if (rawText.startsWith('~~', rawIdx)) {
-          rawIdx += 2;
-          while (rawIdx < rawText.length && !rawText.startsWith('~~', rawIdx)) { plainCount++; rawIdx++; }
-          rawIdx += 2;
-        } else if (rawText.startsWith('__', rawIdx)) {
-          rawIdx += 2;
-          while (rawIdx < rawText.length && !rawText.startsWith('__', rawIdx)) { plainCount++; rawIdx++; }
-          rawIdx += 2;
-        } else if (rawText[rawIdx] === '_' && !rawText.startsWith('__', rawIdx)) {
-          rawIdx++;
-          while (rawIdx < rawText.length && rawText[rawIdx] !== '_') { plainCount++; rawIdx++; }
-          rawIdx++;
-        } else if (rawText[rawIdx] === '{') {
-          const closeB = rawText.indexOf('}', rawIdx);
-          const pipe = rawText.indexOf('|', rawIdx);
-          if (pipe > rawIdx && closeB > pipe) {
-            rawIdx = pipe + 1;
-            while (rawIdx < rawText.length && rawText[rawIdx] !== '}') { plainCount++; rawIdx++; }
-            rawIdx++;
-          } else { plainCount++; rawIdx++; }
-        } else { plainCount++; rawIdx++; }
+
+    for (const para of paragraphs) {
+      if (!para.trim()) { result.push({ segs: [] }); continue; }
+      const rawWords = para.split(' ');
+      let currentLine = '';
+      for (const word of rawWords) {
+        const test = currentLine ? currentLine + ' ' + word : word;
+        if (ctx.measureText(stripMarkers(test)).width > maxWidth && currentLine) {
+          result.push({ segs: parseSegments(currentLine, blockStyle) });
+          currentLine = word;
+        } else {
+          currentLine = test;
+        }
       }
-      while (rawIdx < rawText.length && rawText[rawIdx] === ' ') rawIdx++;
-      const rawSlice = rawText.slice(rawStart, rawIdx).trim();
-      result.push({ segs: parseSegments(rawSlice, blockStyle), rawLine: line });
+      if (currentLine) result.push({ segs: parseSegments(currentLine, blockStyle) });
     }
     return result;
   }
