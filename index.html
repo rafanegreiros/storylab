@@ -2889,9 +2889,11 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
           <div>
             <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Cor personalizada</div>
             <div style="display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" id="brand-header-color-enabled" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent);"
+                onchange="document.getElementById('brand-header-color-custom').style.opacity=this.checked?'1':'0.4'"/>
               <input type="color" id="brand-header-color-custom" value="#ffffff"
-                style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;padding:2px;background:none;"/>
-              <span style="font-size:0.72rem;color:var(--muted);">Opcional — sobrepõe auto/claro/escuro</span>
+                style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;padding:2px;background:none;opacity:0.4;"/>
+              <span style="font-size:0.68rem;color:var(--muted);">Sobrepõe auto/claro/escuro</span>
             </div>
           </div>
         </div>
@@ -3208,6 +3210,8 @@ function getBrand() {
         if (!active.colorRoles.ctaRole) active.colorRoles.ctaRole = 'cta';
       }
       if (!active.cta) active.cta = '#e3fe03';
+      // Clear accidental default white custom color (saved before checkbox was added)
+      if (active.headerColorCustom === '#ffffff') active.headerColorCustom = null;
       return active;
     }
     // Legacy single-brand fallback
@@ -3478,7 +3482,13 @@ function openBrand() {
   if (document.getElementById('brand-nicho')) document.getElementById('brand-nicho').value = b.nicho || '';
   if (document.getElementById('brand-header-weight'))       document.getElementById('brand-header-weight').value       = b.headerWeight || 400;
   if (document.getElementById('brand-header-font-role'))    document.getElementById('brand-header-font-role').value    = b.headerFontRole || 'body';
-  if (document.getElementById('brand-header-color-custom')) document.getElementById('brand-header-color-custom').value = b.headerColorCustom || '#ffffff';
+  if (document.getElementById('brand-header-color-custom')) {
+    const hasCustom = !!b.headerColorCustom;
+    document.getElementById('brand-header-color-custom').value = b.headerColorCustom || '#ffffff';
+    document.getElementById('brand-header-color-custom').style.opacity = hasCustom ? '1' : '0.4';
+    if (document.getElementById('brand-header-color-enabled'))
+      document.getElementById('brand-header-color-enabled').checked = hasCustom;
+  }
   if (document.getElementById('brand-sep-style'))           document.getElementById('brand-sep-style').value           = b.separatorStyle || 'none';
   if (document.getElementById('brand-sep-size'))            document.getElementById('brand-sep-size').value            = b.separatorSize || 1;
   if (document.getElementById('brand-sep-color-role'))      document.getElementById('brand-sep-color-role').value      = b.separatorColorRole || 'accent';
@@ -3768,7 +3778,9 @@ function saveBrand() {
     nicho:    document.getElementById('brand-nicho')?.value.trim() || '',
     headerWeight:       parseInt(document.getElementById('brand-header-weight')?.value || '400'),
     headerFontRole:     document.getElementById('brand-header-font-role')?.value || 'body',
-    headerColorCustom:  document.getElementById('brand-header-color-custom')?.value || null,
+    headerColorCustom:  (document.getElementById('brand-header-color-enabled')?.checked
+      ? document.getElementById('brand-header-color-custom')?.value
+      : null) || null,
     separatorStyle:     document.getElementById('brand-sep-style')?.value || 'none',
     separatorSize:      parseInt(document.getElementById('brand-sep-size')?.value || '1'),
     separatorColorRole: document.getElementById('brand-sep-color-role')?.value || 'accent',
@@ -5044,7 +5056,8 @@ Responda SOMENTE JSON:
       return state;
     });
 
-    // Keep renderCards for legacy compat
+    // Clear accidental white custom color (was saved as default before checkbox was added)
+    if (b.headerColorCustom === '#ffffff') b.headerColorCustom = null;
     S.renderCards = rawCards;
     S.renderAnalysis = { tema: data.tema, funil: data.funil, objetivo: data.objetivo, razao_viral: data.razao_viral };
     S.activeCardIdx = 0;
