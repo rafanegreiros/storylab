@@ -8168,49 +8168,69 @@ function applyTemplate(tplId) {
   const tpl = tpls.find(t => t.id === tplId);
   if (!tpl || !S.cards.length) return;
 
-  const n = S.cards.length;
-
-  // New format: cardStyles array (one per card, exact match by count)
-  if (tpl.cardStyles && tpl.cardStyles.length > 0) {
-    if (tpl.cardCount !== n) {
-      const msg = `Este template foi criado para ${tpl.cardCount} cards.
-Seu carrossel tem ${n} cards.
-
-Deseja aplicar mesmo assim? Os cards extras manterão o estilo atual.`;
-      if (!confirm(msg)) return;
-    }
-
-    const b = getBrand();
-    const imageData = S.cards.map(c => ({ imageSrc: c.bg.imageSrc||null, imageMime: c.bg.imageMime||null }));
-
-    S.cards = S.cards.map((card, i) => {
-      const style = tpl.cardStyles[i] || tpl.cardStyles[tpl.cardStyles.length - 1];
-      // Resolve color tokens to active brand colors
-      const resolved = _resolveCardTokens(JSON.parse(JSON.stringify(style)), b);
-      resolved.title.text = card.title.text;
-      resolved.body.text  = card.body.text;
-      resolved.cta.text   = card.cta.text;
-      if (resolved.bg.type === 'image') {
-        resolved.bg.imageSrc  = imageData[i].imageSrc  || TEMPLATE_PLACEHOLDER_SRC;
-        resolved.bg.imageMime = imageData[i].imageMime || TEMPLATE_PLACEHOLDER_MIME;
-      } else {
-        resolved.bg.imageSrc  = null;
-        resolved.bg.imageMime = null;
-      }
-      resolved.idx = i;
-      return resolved;
-    });
-
-  } else {
+  if (!tpl.cardStyles || tpl.cardStyles.length === 0) {
     alert('Template no formato antigo — por favor delete e crie um novo.');
     return;
   }
 
-  // ── Apply brand colors/fonts to all cards ──
-  // Reset _lastAppliedBrand so applyBrandToNewCards forces full update
-  _lastAppliedBrand = null;
-  applyBrandToNewCards();
+  // Push undo snapshot before applying
+  pushUndoSnapshot();
 
+  const n = S.cards.length;
+  const b = getBrand();
+
+  // Capture existing card content and images BEFORE applying
+  const existing = S.cards.map(c => ({
+    titleText: c.title.text || '',
+    bodyText:  c.body.text  || '',
+    ctaText:   c.cta?.text  || '',
+    imageSrc:  c.bg.imageSrc  || null,
+    imageMime: c.bg.imageMime || null,
+    videoSrc:  c.bg.videoSrc  || null,
+    hasImage:  !!(c.bg.imageSrc),
+    hasVideo:  !!(c.bg.videoSrc),
+  }));
+
+  S.cards = S.cards.map((card, i) => {
+    // Use matching template card, or repeat last card for extras
+    const styleIdx = Math.min(i, tpl.cardStyles.length - 1);
+    const style = tpl.cardStyles[styleIdx];
+    const resolved = _resolveCardTokens(JSON.parse(JSON.stringify(style)), b);
+
+    // Restore content (text always preserved)
+    resolved.title.text = existing[i].titleText;
+    resolved.body.text  = existing[i].bodyText;
+    if (resolved.cta) resolved.cta.text = existing[i].ctaText;
+
+    // Image handling:
+    // - If card had an image AND template card expects image → keep user's image
+    // - If card had an image AND template card has solid bg → keep image, switch to image type
+    // - If card had no image → keep template's solid bg (no placeholder)
+    if (existing[i].hasVideo) {
+      resolved.bg.type     = 'video';
+      resolved.bg.videoSrc = existing[i].videoSrc;
+      resolved.bg.imageSrc = null;
+    } else if (existing[i].hasImage) {
+      resolved.bg.type      = 'image';
+      resolved.bg.imageSrc  = existing[i].imageSrc;
+      resolved.bg.imageMime = existing[i].imageMime;
+    } else {
+      // No image — use template's bg type as-is
+      resolved.bg.imageSrc  = null;
+      resolved.bg.imageMime = null;
+    }
+
+    resolved.idx = i;
+    return resolved;
+  });
+
+  // Apply fonts from brand (only fonts, not colors — colors came from tokens)
+  S.cards.forEach(card => {
+    card.title.fontFamily = b.fontDisplay || card.title.fontFamily;
+    card.body.fontFamily  = b.fontBody    || card.body.fontFamily;
+  });
+
+  _lastAppliedBrand = { ...b };
   localStorage.setItem('storylab_active_template', tplId);
   document.getElementById('template-manager-modal')?.remove();
   S.step = 4;
