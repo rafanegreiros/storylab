@@ -4942,326 +4942,541 @@ function _deepMerge(target, source) {
 function seedBuiltInTemplates() {
   const existing = getTemplates();
   const SEED_PREFIX = 'builtin_';
-  // Remove old built-ins first (by id prefix) to allow re-seed/update
   const cleaned = existing.filter(t => !t.id.startsWith(SEED_PREFIX));
+
+  // ── Card style helpers ──
+  function cs(overrides) {
+    const base = {
+      bg: { type:'solid', color:'#1a1a1a', gradColors:['#1a1a1a','#000000'], gradAngle:180,
+        imageSrc:null, imageMime:null, imageScale:1, imageX:0, imageY:0, imageMode:'cover',
+        boxMode:false, boxY:10, boxH:42, boxW:100, boxImgX:0, boxImgY:0, boxTextLayout:'top' },
+      overlay: { visible:false, color:'#000000', opacity:40, gradDir:'bottom', gradReach:70 },
+      title: { text:'', size:28, color:'#ffffff', weight:900, align:'left',
+        fontFamily:"'Fraunces', serif", offsetX:0, offsetY:0,
+        italic:false, underline:false, uppercase:false },
+      body: { text:'', size:14, color:'rgba(255,255,255,0.85)', visible:true,
+        align:'left', fontFamily:"'Roboto', sans-serif",
+        offsetX:0, offsetY:0, italic:false, underline:false, uppercase:false },
+      header: { visible:true, template:'tagline', freeText:'', colorMode:'light' },
+      footer: { visible:true, template:'numeric', freeText:'', colorMode:'light', swipeVariant:'arrow' },
+      avatar: { visible:false, placement:'bottom', offsetX:0, offsetY:0, colorMode:'auto' },
+      cta: { visible:false, text:'Saiba mais', bgColor:'#ff5c35', textColor:'#ffffff', radius:20 },
+      pageNum: { visible:true, colorMode:'auto' },
+    };
+    function dm(t, s) {
+      const o = JSON.parse(JSON.stringify(t));
+      for (const k of Object.keys(s||{})) {
+        if (s[k] && typeof s[k]==='object' && !Array.isArray(s[k])) o[k]=dm(o[k]||{},s[k]);
+        else o[k]=s[k];
+      }
+      return o;
+    }
+    return dm(base, overrides);
+  }
+
+  // ── Reusable card patterns ──
+  const CAPA_DARK = (titleSize=32) => cs({
+    bg:{type:'image',color:'#0a0a0a',imageMode:'cover'},
+    overlay:{visible:true,color:'#000000',opacity:55,gradDir:'bottom',gradReach:80},
+    title:{size:titleSize,color:'#ffffff',weight:900,uppercase:true},
+    body:{visible:true,size:13,color:'rgba(255,255,255,0.75)'},
+    header:{visible:true,template:'tagline',colorMode:'light'},
+    footer:{visible:true,template:'dots',colorMode:'light'},
+    avatar:{visible:true,placement:'bottom',offsetY:-20},
+  });
+  const INTERNO_BRANCO = (titleSize=20) => cs({
+    bg:{type:'solid',color:'#f0ede6',boxMode:true,boxH:44,boxY:5},
+    title:{size:titleSize,color:'#1a1a1a',weight:600,fontFamily:"'Fraunces', serif"},
+    body:{visible:true,size:13,color:'#333333',fontFamily:"'Roboto', sans-serif"},
+    header:{visible:true,template:'tagline',colorMode:'dark'},
+    footer:{visible:true,template:'numeric',colorMode:'dark'},
+  });
+  const TEXTO_BRANCO = (titleSize=20) => cs({
+    bg:{type:'solid',color:'#f0ede6'},
+    title:{size:titleSize,color:'#1a1a1a',weight:700,fontFamily:"'Fraunces', serif"},
+    body:{visible:true,size:13,color:'#333333',fontFamily:"'Roboto', sans-serif"},
+    header:{visible:true,template:'tagline',colorMode:'dark'},
+    footer:{visible:true,template:'numeric',colorMode:'dark'},
+  });
+  const RUPTURA_LARANJA = (titleSize=26) => cs({
+    bg:{type:'solid',color:'#e8450a'},
+    title:{size:titleSize,color:'#ffffff',weight:900},
+    body:{visible:true,size:14,color:'rgba(255,255,255,0.92)'},
+    header:{visible:true,template:'tagline',colorMode:'light'},
+    footer:{visible:true,template:'numeric',colorMode:'light'},
+  });
+  const RUPTURA_AMARELO = (titleSize=24) => cs({
+    bg:{type:'solid',color:'#e8450a'},
+    title:{size:titleSize,color:'#ffeb00',weight:900,italic:true},
+    body:{visible:true,size:14,color:'#ffffff'},
+    header:{visible:true,template:'tagline',colorMode:'light'},
+    footer:{visible:true,template:'numeric',colorMode:'light'},
+  });
+  const PRETO_CREME = (titleSize=24,italic=false) => cs({
+    bg:{type:'solid',color:'#0f0f0f'},
+    title:{size:titleSize,color:'#f0ede6',weight:700,italic},
+    body:{visible:true,size:14,color:'rgba(240,237,230,0.72)'},
+    header:{visible:true,template:'tagline',colorMode:'light'},
+    footer:{visible:true,template:'numeric',colorMode:'light'},
+  });
+  const VERMELHO_AMARELO = (titleSize=22) => cs({
+    bg:{type:'solid',color:'#6B1010'},
+    title:{size:titleSize,color:'#ffeb00',weight:700},
+    body:{visible:true,size:13,color:'rgba(255,255,255,0.85)'},
+    header:{visible:true,template:'tagline',colorMode:'light'},
+    footer:{visible:true,template:'numeric',colorMode:'light'},
+  });
+  const FOTO_OVERLAY = (titleSize=22,overlayOp=50) => cs({
+    bg:{type:'image',color:'#111111',imageMode:'cover'},
+    overlay:{visible:true,color:'#000000',opacity:overlayOp,gradDir:'bottom',gradReach:60},
+    title:{size:titleSize,color:'#ffffff',weight:700},
+    body:{visible:true,size:13,color:'rgba(255,255,255,0.85)'},
+    header:{visible:true,template:'tagline',colorMode:'light'},
+    footer:{visible:true,template:'numeric',colorMode:'light'},
+  });
+  const AZUL_BOLD = (titleSize=24,titleColor='#ffffff') => cs({
+    bg:{type:'solid',color:'#1a35b5'},
+    title:{size:titleSize,color:titleColor,weight:900},
+    body:{visible:true,size:14,color:'rgba(255,255,255,0.85)'},
+    header:{visible:true,template:'tagline',colorMode:'light'},
+    footer:{visible:true,template:'numeric',colorMode:'light'},
+  });
+  const CLARO_LIFESTYLE = (titleSize=20,boxMode=true) => cs({
+    bg:{type:'solid',color:'#faf8f5',boxMode,boxH:48,boxY:4},
+    title:{size:titleSize,color:'#1a1a1a',weight:600},
+    body:{visible:true,size:13,color:'#555555',fontFamily:"'Roboto', sans-serif"},
+    header:{visible:true,template:'tagline',colorMode:'dark'},
+    footer:{visible:true,template:'numeric',colorMode:'dark'},
+  });
+  const CTA_FINAL = () => cs({
+    bg:{type:'solid',color:'#0d0d0d'},
+    title:{size:26,color:'#ffffff',weight:700},
+    body:{visible:true,size:13,color:'rgba(255,255,255,0.8)'},
+    header:{visible:false,template:'tagline',colorMode:'light'},
+    footer:{visible:true,template:'text',freeText:'Comente para receber',colorMode:'light'},
+    cta:{visible:true,text:'Quero acesso',bgColor:'#e8450a',textColor:'#ffffff',radius:20},
+  });
+  const CTA_FINAL_LARANJA = () => cs({
+    bg:{type:'solid',color:'#e8450a'},
+    title:{size:24,color:'#ffffff',weight:900},
+    body:{visible:true,size:13,color:'rgba(255,255,255,0.9)'},
+    header:{visible:false,template:'tagline',colorMode:'light'},
+    footer:{visible:true,template:'swipe',colorMode:'light',swipeVariant:'pill',swipePillLabel:'Continua →'},
+    cta:{visible:true,text:'Quero acesso',bgColor:'#ffffff',textColor:'#e8450a',radius:20},
+  });
 
   const templates = [
 
-    // 1. Editorial Escuro — capa com foto de fundo escura, headline provocativa
+    // ══════════════════════════════════════════════════════════════
+    // EDITORIAL ESCURO — 9 cards
+    // Progressão: capa impactante → análise em camadas → ruptura → resolução → CTA
+    // ══════════════════════════════════════════════════════════════
     {
-      id: SEED_PREFIX + 'editorial_escuro',
-      name: 'Editorial Escuro',
-      headline: 'Impacto máximo com fundo escuro e headline em duas cores',
-      description: 'Padrão de capa do @brandsdecoded. Foto editorial de fundo com overlay escuro, headline em branco + palavra-chave em cor de destaque. Alta retenção no primeiro card. Funciona melhor para temas polêmicos ou análises culturais.',
-      cardCount: 3,
+      id: SEED_PREFIX+'editorial_escuro_9',
+      name: 'Editorial Escuro — 9 cards',
+      headline: 'Capa impactante + análise em camadas + ruptura narrativa',
+      description: 'Padrão completo do @brandsdecoded. Foto editorial de capa com overlay escuro, cards internos alternando fundo claro e laranja de ruptura. Alta retenção em temas polêmicos, análises culturais e de mercado.',
+      cardCount: 9,
       cardStyles: [
-        // Capa: imagem de fundo + overlay escuro + headline bold
-        _makeCardStyle({
-          bg: { type: 'image', color: '#0a0a0a', imageMode: 'cover' },
-          overlay: { visible: true, color: '#000000', opacity: 55, gradDir: 'bottom', gradReach: 80 },
-          title: { size: 32, color: '#ffffff', weight: 900, uppercase: true, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: 'rgba(255,255,255,0.7)' },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'dots', colorMode: 'light' },
-          avatar: { visible: true, placement: 'bottom', offsetY: -20 },
-        }),
-        // Card interno: fundo branco + texto escuro + foto em box
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#f5f2eb', boxMode: true, boxH: 45, boxY: 5 },
-          overlay: { visible: false },
-          title: { size: 22, color: '#1a1a1a', weight: 700, uppercase: false, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: '#2a2a2a', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'dark' },
-          footer: { visible: true, template: 'numeric', colorMode: 'dark' },
-        }),
-        // Card laranja de ruptura
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#e8450a' },
-          overlay: { visible: false },
-          title: { size: 26, color: '#ffffff', weight: 900, uppercase: false, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: 'rgba(255,255,255,0.9)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
+        CAPA_DARK(32),                                           // 1. Capa — foto + headline impactante
+        INTERNO_BRANCO(22),                                      // 2. Contexto — texto + imagem box
+        TEXTO_BRANCO(20),                                        // 3. Desenvolvimento — só texto
+        INTERNO_BRANCO(20),                                      // 4. Argumento — texto + imagem box
+        RUPTURA_LARANJA(28),                                     // 5. Ruptura — laranja vibrante
+        INTERNO_BRANCO(20),                                      // 6. Aprofundamento — texto + imagem
+        TEXTO_BRANCO(20),                                        // 7. Tensão — só texto, ritmo denso
+        RUPTURA_AMARELO(24),                                     // 8. Clímax — laranja + texto amarelo
+        CTA_FINAL(),                                             // 9. CTA
       ],
     },
-
-    // 2. Análise Profunda — fundo branco, texto + imagem box, leitura fluida
     {
-      id: SEED_PREFIX + 'analise_profunda',
-      name: 'Análise Profunda',
+      id: SEED_PREFIX+'editorial_escuro_3',
+      name: 'Editorial Escuro — 3 cards',
+      headline: 'Versão compacta: capa + desenvolvimento + CTA',
+      description: 'Versão curta do Editorial Escuro para reels de conteúdo rápido ou testes de hipótese.',
+      cardCount: 3,
+      cardStyles: [CAPA_DARK(30), INTERNO_BRANCO(22), CTA_FINAL()],
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // ANÁLISE PROFUNDA — 9 cards
+    // Progressão: abertura clara → camadas de argumento → contraste laranja → resolução
+    // ══════════════════════════════════════════════════════════════
+    {
+      id: SEED_PREFIX+'analise_profunda_9',
+      name: 'Análise Profunda — 9 cards',
       headline: 'Cards de texto + imagem para análises densas e argumentativas',
-      description: 'Padrão dos cards internos do @brandsdecoded. Fundo claro, texto corrido com imagem em box na parte superior. Ideal para conteúdo analítico, educativo ou jornalístico. Mantém leitura fluida em múltiplos cards.',
-      cardCount: 3,
+      description: 'Padrão dos cards internos do @brandsdecoded para análise densa. Fundo claro com foto em box, alternando com card de ruptura laranja no meio. Ideal para conteúdo educativo, jornalístico ou de posicionamento.',
+      cardCount: 9,
       cardStyles: [
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#f0ede6' },
-          title: { size: 24, color: '#1a1a1a', weight: 700, uppercase: false, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: '#333333', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'dark' },
-          footer: { visible: true, template: 'numeric', colorMode: 'dark' },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#f0ede6', boxMode: true, boxH: 44, boxY: 5 },
-          title: { size: 20, color: '#1a1a1a', weight: 600, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: '#333333', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'dark' },
-          footer: { visible: true, template: 'numeric', colorMode: 'dark' },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#f0ede6', boxMode: true, boxH: 44, boxY: 5 },
-          title: { size: 20, color: '#1a1a1a', weight: 600, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: '#333333', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'dark' },
-          footer: { visible: true, template: 'numeric', colorMode: 'dark' },
-        }),
+        TEXTO_BRANCO(26),                                        // 1. Capa — fundo claro, headline bold
+        INTERNO_BRANCO(20),                                      // 2. Premissa — texto + imagem
+        INTERNO_BRANCO(20),                                      // 3. Desenvolvimento A
+        RUPTURA_LARANJA(26),                                     // 4. Ruptura — laranja + insight central
+        INTERNO_BRANCO(20),                                      // 5. Desenvolvimento B
+        TEXTO_BRANCO(20),                                        // 6. Aprofundamento
+        INTERNO_BRANCO(20),                                      // 7. Evidência
+        RUPTURA_AMARELO(22),                                     // 8. Tensão final
+        CTA_FINAL(),                                             // 9. CTA
       ],
     },
-
-    // 3. Ruptura Vibrante — card 100% cor de destaque, texto grande, sem imagem
     {
-      id: SEED_PREFIX + 'ruptura_vibrante',
-      name: 'Ruptura Vibrante',
-      headline: 'Card de cor sólida vibrante para mudar o ritmo visual do carrossel',
-      description: 'Padrão de ruptura do @brandsdecoded. Card sem imagem, fundo em cor de destaque (laranja, vermelho), texto grande e denso. Quebra o ritmo visual e sinaliza um ponto de tensão narrativa. Use entre o 3º e 5º card.',
+      id: SEED_PREFIX+'analise_profunda_3',
+      name: 'Análise Profunda — 3 cards',
+      headline: 'Versão compacta: premissa + argumento + conclusão',
+      description: 'Versão condensada para análises diretas: tese, desenvolvimento e fechamento.',
+      cardCount: 3,
+      cardStyles: [TEXTO_BRANCO(24), INTERNO_BRANCO(20), CTA_FINAL()],
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // RUPTURA VIBRANTE — 9 cards
+    // Progressão: abertura neutra → cor que explode → retorno ao neutro → nova ruptura
+    // ══════════════════════════════════════════════════════════════
+    {
+      id: SEED_PREFIX+'ruptura_vibrante_9',
+      name: 'Ruptura Vibrante — 9 cards',
+      headline: 'Alternância entre neutro e cor para criar ritmo e tensão visual',
+      description: 'Template que usa a cor como elemento narrativo. Cards claros criam expectativa, cards laranjas entregam o golpe. Funciona para análises com múltiplos pontos de tensão ou para criadores que querem personalidade visual forte.',
+      cardCount: 9,
+      cardStyles: [
+        CAPA_DARK(30),                                           // 1. Capa dark — foto
+        RUPTURA_LARANJA(28),                                     // 2. Primeiro impacto — laranja
+        INTERNO_BRANCO(20),                                      // 3. Respiro — branco + imagem
+        RUPTURA_AMARELO(24),                                     // 4. Escalada — laranja + amarelo
+        TEXTO_BRANCO(20),                                        // 5. Desenvolvimento — branco
+        RUPTURA_LARANJA(26),                                     // 6. Clímax — laranja puro
+        INTERNO_BRANCO(20),                                      // 7. Resolução — branco + imagem
+        RUPTURA_AMARELO(22),                                     // 8. Fechamento tenso
+        CTA_FINAL_LARANJA(),                                     // 9. CTA laranja
+      ],
+    },
+    {
+      id: SEED_PREFIX+'ruptura_vibrante_2',
+      name: 'Ruptura Vibrante — 2 cards',
+      headline: 'Antes e depois: neutro → laranja para máximo contraste',
+      description: 'Dois cards de contraste máximo. Ideal para carrosséis de mini-série ou como padrão de stories de alta retenção.',
       cardCount: 2,
-      cardStyles: [
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#e8450a' },
-          title: { size: 28, color: '#ffffff', weight: 900, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 15, color: 'rgba(255,255,255,0.92)', fontFamily: "'Roboto', sans-serif", weight: 400 },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#e8450a' },
-          title: { size: 26, color: '#ffeb00', weight: 900, italic: true, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: '#ffffff', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
-      ],
+      cardStyles: [TEXTO_BRANCO(26), RUPTURA_LARANJA(28)],
     },
 
-    // 4. Contraste Vermelho — vermelho + amarelo neon, alto impacto
+    // ══════════════════════════════════════════════════════════════
+    // CONTRASTE VERMELHO — 9 cards
+    // Progressão: vermelho escuro de capa → análise densa → amarelo de ruptura
+    // ══════════════════════════════════════════════════════════════
     {
-      id: SEED_PREFIX + 'contraste_vermelho',
-      name: 'Contraste Vermelho',
+      id: SEED_PREFIX+'contraste_vermelho_9',
+      name: 'Contraste Vermelho — 9 cards',
       headline: 'Vermelho + amarelo neon para conteúdo de alta tensão e urgência',
-      description: 'Variação intensa do padrão de ruptura. Fundo vermelho escuro com texto amarelo nas palavras-chave. Usado pelo @brandsdecoded em carrosséis de análise crítica (Senna, Nike). Transmite urgência e profundidade simultâneos.',
+      description: 'Padrão usado pelo @brandsdecoded nos carrosséis do Senna e Nike. Vermelho escuro como cor base, amarelo nas palavras-chave. Transmite urgência, profundidade histórica e análise crítica.',
+      cardCount: 9,
+      cardStyles: [
+        cs({bg:{type:'image',color:'#8B1A1A',imageMode:'cover'},
+          overlay:{visible:true,color:'#6B0000',opacity:60,gradDir:'bottom',gradReach:75},
+          title:{size:30,color:'#ffffff',weight:900,uppercase:true},
+          body:{visible:true,size:13,color:'rgba(255,255,255,0.8)'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'dots',colorMode:'light'},
+          avatar:{visible:true,placement:'bottom',offsetY:-20}}),   // 1. Capa vermelho foto
+        VERMELHO_AMARELO(22),                                        // 2. Contexto
+        cs({bg:{type:'solid',color:'#f0ede6',boxMode:true,boxH:44,boxY:5},
+          title:{size:20,color:'#8B1A1A',weight:700},
+          body:{visible:true,size:13,color:'#333333'}}),             // 3. Respiro — branco/texto vinho
+        VERMELHO_AMARELO(22),                                        // 4. Argumento
+        cs({bg:{type:'solid',color:'#8B1A1A'},
+          title:{size:26,color:'#ffeb00',weight:900,italic:true},
+          body:{visible:true,size:15,color:'rgba(255,255,255,0.92)'}}), // 5. Ruptura
+        VERMELHO_AMARELO(20),                                        // 6. Evidência
+        cs({bg:{type:'solid',color:'#f0ede6'},
+          title:{size:20,color:'#6B1010',weight:700},
+          body:{visible:true,size:13,color:'#333333'}}),             // 7. Respiro claro
+        cs({bg:{type:'solid',color:'#6B1010'},
+          title:{size:24,color:'#ffeb00',weight:900},
+          body:{visible:true,size:14,color:'#ffffff'}}),             // 8. Clímax
+        CTA_FINAL(),                                                 // 9. CTA
+      ],
+    },
+    {
+      id: SEED_PREFIX+'contraste_vermelho_3',
+      name: 'Contraste Vermelho — 3 cards',
+      headline: 'Capa + análise + ruptura amarela',
+      description: 'Versão condensada: capa vermelha impactante, card de análise e fechamento tenso.',
       cardCount: 3,
       cardStyles: [
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#8B1A1A' },
-          title: { size: 30, color: '#ffffff', weight: 900, uppercase: true, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: 'rgba(255,255,255,0.8)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'dots', colorMode: 'light' },
-          avatar: { visible: true, placement: 'bottom', offsetY: -20 },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#6B1010', boxMode: true, boxH: 45, boxY: 5 },
-          title: { size: 22, color: '#ffeb00', weight: 700, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: 'rgba(255,255,255,0.85)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#8B1A1A' },
-          title: { size: 24, color: '#ffeb00', weight: 900, italic: true, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: '#ffffff', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
+        cs({bg:{type:'solid',color:'#8B1A1A'},title:{size:28,color:'#ffffff',weight:900,uppercase:true},body:{visible:true,size:14,color:'rgba(255,255,255,0.8)'},header:{visible:true,template:'tagline',colorMode:'light'},footer:{visible:true,template:'dots',colorMode:'light'}}),
+        VERMELHO_AMARELO(22),
+        cs({bg:{type:'solid',color:'#6B1010'},title:{size:24,color:'#ffeb00',weight:900,italic:true},body:{visible:true,size:14,color:'#ffffff'},header:{visible:true,template:'tagline',colorMode:'light'},footer:{visible:true,template:'numeric',colorMode:'light'}}),
       ],
     },
 
-    // 5. Tese + Dado — fundo neutro, headline bold + dado em destaque
+    // ══════════════════════════════════════════════════════════════
+    // TESE + DADO — 9 cards
+    // Progressão: tese clara → dado que sustenta → aprofundamento → conclusão
+    // ══════════════════════════════════════════════════════════════
     {
-      id: SEED_PREFIX + 'tese_dado',
-      name: 'Tese + Dado',
-      headline: 'Headline assertiva + dado ou estatística em destaque para provar o argumento',
-      description: 'Estrutura recorrente no @brandsdecoded e Thiago Nigro. Fundo claro, headline que apresenta uma tese, corpo com o dado que a sustenta. A credibilidade vem da precisão do número. Funciona em nichos de finanças, marketing e negócios.',
+      id: SEED_PREFIX+'tese_dado_9',
+      name: 'Tese + Dado — 9 cards',
+      headline: 'Headline assertiva + dado que sustenta o argumento em cada card',
+      description: 'Estrutura recorrente no @brandsdecoded e Thiago Nigro. Fundo claro, headline que apresenta uma tese, corpo com o dado ou estatística. Credibilidade vem da precisão. Funciona para finanças, marketing, saúde e negócios.',
+      cardCount: 9,
+      cardStyles: [
+        cs({bg:{type:'solid',color:'#ffffff'},
+          title:{size:26,color:'#111111',weight:800},
+          body:{visible:true,size:14,color:'#444444'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'dots',colorMode:'dark'},
+          avatar:{visible:true,placement:'bottom',offsetY:-20}}),    // 1. Capa — branco, headline bold
+        cs({bg:{type:'solid',color:'#f7f7f7',boxMode:true,boxH:42,boxY:8},
+          title:{size:20,color:'#111111',weight:700},
+          body:{visible:true,size:13,color:'#444444'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'numeric',colorMode:'dark'}}), // 2. Dado A
+        cs({bg:{type:'solid',color:'#ffffff'},
+          title:{size:20,color:'#111111',weight:700},
+          body:{visible:true,size:13,color:'#444444'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'numeric',colorMode:'dark'}}), // 3. Contexto
+        RUPTURA_LARANJA(26),                                           // 4. Insight central
+        cs({bg:{type:'solid',color:'#f7f7f7',boxMode:true,boxH:42,boxY:8},
+          title:{size:20,color:'#111111',weight:700},
+          body:{visible:true,size:13,color:'#444444'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'numeric',colorMode:'dark'}}), // 5. Dado B
+        cs({bg:{type:'solid',color:'#ffffff'},
+          title:{size:20,color:'#111111',weight:700},
+          body:{visible:true,size:13,color:'#444444'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'numeric',colorMode:'dark'}}), // 6. Aprofundamento
+        cs({bg:{type:'solid',color:'#f7f7f7',boxMode:true,boxH:42,boxY:8},
+          title:{size:20,color:'#111111',weight:700},
+          body:{visible:true,size:13,color:'#444444'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'numeric',colorMode:'dark'}}), // 7. Dado C
+        RUPTURA_AMARELO(22),                                           // 8. Conclusão de impacto
+        CTA_FINAL(),                                                   // 9. CTA
+      ],
+    },
+    {
+      id: SEED_PREFIX+'tese_dado_3',
+      name: 'Tese + Dado — 3 cards',
+      headline: 'Tese → dado → conclusão de impacto',
+      description: 'Versão direta: uma tese, um dado e um fechamento. Ideal para posts educativos rápidos.',
       cardCount: 3,
       cardStyles: [
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#ffffff' },
-          title: { size: 26, color: '#111111', weight: 800, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: '#444444', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'dark' },
-          footer: { visible: true, template: 'dots', colorMode: 'dark' },
-          avatar: { visible: true, placement: 'bottom', offsetY: -20 },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#f7f7f7', boxMode: true, boxH: 42, boxY: 8 },
-          title: { size: 20, color: '#111111', weight: 700, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: '#444444', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'dark' },
-          footer: { visible: true, template: 'numeric', colorMode: 'dark' },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#e8450a' },
-          title: { size: 24, color: '#ffffff', weight: 900, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: 'rgba(255,255,255,0.9)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
+        cs({bg:{type:'solid',color:'#ffffff'},title:{size:24,color:'#111111',weight:800},body:{visible:true,size:14,color:'#444444'},header:{visible:true,template:'tagline',colorMode:'dark'},footer:{visible:true,template:'dots',colorMode:'dark'},avatar:{visible:true,placement:'bottom',offsetY:-20}}),
+        cs({bg:{type:'solid',color:'#f7f7f7',boxMode:true,boxH:42,boxY:8},title:{size:20,color:'#111111',weight:700},body:{visible:true,size:13,color:'#444444'},header:{visible:true,template:'tagline',colorMode:'dark'},footer:{visible:true,template:'numeric',colorMode:'dark'}}),
+        RUPTURA_LARANJA(24),
       ],
     },
 
-    // 6. Preto Editorial — minimalista, texto crème, alto nível estético
+    // ══════════════════════════════════════════════════════════════
+    // PRETO EDITORIAL — 9 cards
+    // Progressão: preto + crème sem imagem, tipografia como único elemento visual
+    // ══════════════════════════════════════════════════════════════
     {
-      id: SEED_PREFIX + 'preto_editorial',
-      name: 'Preto Editorial',
-      headline: 'Minimalismo radical: preto puro + tipografia crème para posicionamento premium',
-      description: 'Padrão de carrosséis de alta autoridade. Fundo preto puro, texto em off-white/crème, tipografia serifada grande. Sem imagem nos cards internos — a ideia ocupa todo o espaço. Funciona para ensaios, teses e análises de mercado.',
-      cardCount: 3,
+      id: SEED_PREFIX+'preto_editorial_9',
+      name: 'Preto Editorial — 9 cards',
+      headline: 'Minimalismo radical: preto puro + tipografia crème, sem imagem',
+      description: 'Padrão de alta autoridade. Sem fotos nos cards internos — a ideia ocupa todo o espaço. Tipografia serifada em off-white, variações de peso e italic criam hierarquia sem cor. Para ensaios, análises densas e posicionamento premium.',
+      cardCount: 9,
       cardStyles: [
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#0a0a0a' },
-          title: { size: 30, color: '#f0ede6', weight: 700, italic: true, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: 'rgba(240,237,230,0.75)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'dots', colorMode: 'light' },
-          avatar: { visible: true, placement: 'bottom', offsetY: -20 },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#0f0f0f' },
-          title: { size: 22, color: '#f0ede6', weight: 600, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: 'rgba(240,237,230,0.7)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#111111' },
-          title: { size: 24, color: '#f0ede6', weight: 700, italic: true, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: 'rgba(240,237,230,0.7)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
+        cs({bg:{type:'image',color:'#0a0a0a',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:70,gradDir:'bottom',gradReach:85},
+          title:{size:30,color:'#f0ede6',weight:900,italic:true},
+          body:{visible:true,size:13,color:'rgba(240,237,230,0.75)'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'dots',colorMode:'light'},
+          avatar:{visible:true,placement:'bottom',offsetY:-20}}),    // 1. Capa — foto + overlay pesado
+        PRETO_CREME(24,true),                                         // 2. Abertura italic
+        PRETO_CREME(22,false),                                        // 3. Desenvolvimento A
+        cs({bg:{type:'solid',color:'#f0ede6'},
+          title:{size:28,color:'#0a0a0a',weight:900,italic:true},
+          body:{visible:true,size:14,color:'#333333'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'numeric',colorMode:'dark'}}), // 4. Inversão — crème claro
+        PRETO_CREME(22,true),                                          // 5. Retorno ao preto
+        PRETO_CREME(20,false),                                         // 6. Desenvolvimento B
+        cs({bg:{type:'solid',color:'#161616'},
+          title:{size:26,color:'#f0ede6',weight:900},
+          body:{visible:true,size:14,color:'rgba(240,237,230,0.7)'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 7. Clímax tipográfico
+        PRETO_CREME(22,true),                                           // 8. Pensamento final
+        cs({bg:{type:'solid',color:'#0d0d0d'},
+          title:{size:24,color:'#f0ede6',weight:700},
+          body:{visible:true,size:13,color:'rgba(240,237,230,0.8)'},
+          header:{visible:false,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'text',freeText:'Comente para receber',colorMode:'light'},
+          cta:{visible:true,text:'Quero acesso',bgColor:'#f0ede6',textColor:'#0a0a0a',radius:20}}), // 9. CTA elegante
       ],
     },
-
-    // 7. Foto Dominante — imagem ocupa 60%+ do card, texto na parte inferior
     {
-      id: SEED_PREFIX + 'foto_dominante',
-      name: 'Foto Dominante',
+      id: SEED_PREFIX+'preto_editorial_2',
+      name: 'Preto Editorial — 2 cards',
+      headline: 'Abertura + pensamento central',
+      description: 'Dois cards minimalistas para declarações de posicionamento ou citações de autoridade.',
+      cardCount: 2,
+      cardStyles: [PRETO_CREME(28,true), PRETO_CREME(22,false)],
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // FOTO DOMINANTE — 9 cards
+    // Progressão: imagem forte em todos os cards, texto ancora o argumento
+    // ══════════════════════════════════════════════════════════════
+    {
+      id: SEED_PREFIX+'foto_dominante_9',
+      name: 'Foto Dominante — 9 cards',
       headline: 'A imagem faz o trabalho pesado — texto apenas ancora o argumento visual',
-      description: 'A foto ocupa a maior parte do card com overlay de gradiente na base. O texto fica na parte inferior, curto e direto. Funciona para conteúdo de lifestyle, esporte, moda e qualquer tema com imagens editoriais fortes.',
+      description: 'Foto editorial em todos os cards com overlay de gradiente na base. Texto curto e direto. Funciona para lifestyle, esporte, moda, travel e qualquer nicho com imagens fortes. O card de ruptura laranja mantém ritmo sem imagem.',
+      cardCount: 9,
+      cardStyles: [
+        cs({bg:{type:'image',color:'#111111',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:60,gradDir:'bottom',gradReach:60},
+          title:{size:28,color:'#ffffff',weight:800,uppercase:false},
+          body:{visible:false},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'dots',colorMode:'light'},
+          avatar:{visible:true,placement:'bottom',offsetY:-30}}),     // 1. Capa foto — sem corpo
+        FOTO_OVERLAY(22,50),                                           // 2. Foto + texto
+        FOTO_OVERLAY(22,45),                                           // 3. Foto + texto
+        RUPTURA_LARANJA(26),                                           // 4. Ruptura — sem foto
+        FOTO_OVERLAY(22,55),                                           // 5. Foto + texto
+        FOTO_OVERLAY(20,50),                                           // 6. Foto + texto
+        FOTO_OVERLAY(22,50),                                           // 7. Foto + texto
+        RUPTURA_AMARELO(22),                                           // 8. Clímax — sem foto
+        CTA_FINAL(),                                                   // 9. CTA
+      ],
+    },
+    {
+      id: SEED_PREFIX+'foto_dominante_3',
+      name: 'Foto Dominante — 3 cards',
+      headline: 'Capa + desenvolvimento visual + CTA',
+      description: 'Versão compacta para conteúdo visual rápido ou série de 3 frames.',
       cardCount: 3,
       cardStyles: [
-        _makeCardStyle({
-          bg: { type: 'image', color: '#111111', imageMode: 'cover' },
-          overlay: { visible: true, color: '#000000', opacity: 65, gradDir: 'bottom', gradReach: 60 },
-          title: { size: 26, color: '#ffffff', weight: 800, uppercase: false, fontFamily: "'Fraunces', serif", offsetY: 30 },
-          body: { visible: false },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'dots', colorMode: 'light' },
-          avatar: { visible: true, placement: 'bottom', offsetY: -30 },
-        }),
-        _makeCardStyle({
-          bg: { type: 'image', color: '#111111', imageMode: 'cover', boxMode: false },
-          overlay: { visible: true, color: '#000000', opacity: 50, gradDir: 'bottom', gradReach: 55 },
-          title: { size: 22, color: '#ffffff', weight: 700, fontFamily: "'Fraunces', serif", offsetY: 20 },
-          body: { visible: true, size: 13, color: 'rgba(255,255,255,0.85)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
-        _makeCardStyle({
-          bg: { type: 'image', color: '#111111', imageMode: 'cover' },
-          overlay: { visible: true, color: '#000000', opacity: 60, gradDir: 'bottom', gradReach: 65 },
-          title: { size: 22, color: '#ffffff', weight: 700, fontFamily: "'Fraunces', serif", offsetY: 20 },
-          body: { visible: true, size: 13, color: 'rgba(255,255,255,0.85)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
+        cs({bg:{type:'image',color:'#111111',imageMode:'cover'},overlay:{visible:true,color:'#000000',opacity:60,gradDir:'bottom',gradReach:60},title:{size:26,color:'#ffffff',weight:800},body:{visible:false},header:{visible:true,template:'tagline',colorMode:'light'},footer:{visible:true,template:'dots',colorMode:'light'},avatar:{visible:true,placement:'bottom',offsetY:-30}}),
+        FOTO_OVERLAY(22,50),
+        CTA_FINAL(),
       ],
     },
 
-    // 8. Lifestyle Claro — fundo off-white, foto, texto leve, padrão lifestyle
+    // ══════════════════════════════════════════════════════════════
+    // LIFESTYLE CLARO — 9 cards
+    // Progressão: abertura aspiracional → cards leves alternados → CTA
+    // ══════════════════════════════════════════════════════════════
     {
-      id: SEED_PREFIX + 'lifestyle_claro',
-      name: 'Lifestyle Claro',
-      headline: 'Tom leve e aspiracional para nichos de lifestyle, saúde e comportamento',
-      description: 'Padrão de carrosséis de lifestyle de alta performance. Fundo claro quase branco, foto editorial em box, headline em fonte serifada, corpo em sans-serif light. Contrasta com carrosséis densos e passa credibilidade em nichos de bem-estar e comportamento.',
-      cardCount: 3,
+      id: SEED_PREFIX+'lifestyle_claro_9',
+      name: 'Lifestyle Claro — 9 cards',
+      headline: 'Tom leve e aspiracional para lifestyle, saúde e comportamento',
+      description: 'Fundo off-white com foto em box, tipografia serifada suave. Cards alternando com e sem imagem para criar ritmo leve. Ideal para bem-estar, saúde, moda, alimentação e qualquer nicho onde legibilidade e leveza são prioridade.',
+      cardCount: 9,
       cardStyles: [
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#faf8f5' },
-          title: { size: 26, color: '#1a1a1a', weight: 700, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: '#555555', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'dark' },
-          footer: { visible: true, template: 'dots', colorMode: 'dark' },
-          avatar: { visible: true, placement: 'bottom', offsetY: -20 },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#faf8f5', boxMode: true, boxH: 48, boxY: 4 },
-          title: { size: 20, color: '#1a1a1a', weight: 600, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: '#555555', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'dark' },
-          footer: { visible: true, template: 'numeric', colorMode: 'dark' },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#faf8f5', boxMode: true, boxH: 48, boxY: 4 },
-          title: { size: 20, color: '#1a1a1a', weight: 600, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: '#555555', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'dark' },
-          footer: { visible: true, template: 'numeric', colorMode: 'dark' },
-        }),
+        cs({bg:{type:'solid',color:'#faf8f5'},
+          title:{size:26,color:'#1a1a1a',weight:700},
+          body:{visible:true,size:14,color:'#555555'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'dots',colorMode:'dark'},
+          avatar:{visible:true,placement:'bottom',offsetY:-20}}),    // 1. Capa — claro + avatar
+        CLARO_LIFESTYLE(20,true),                                     // 2. Imagem box
+        CLARO_LIFESTYLE(20,false),                                    // 3. Só texto
+        CLARO_LIFESTYLE(20,true),                                     // 4. Imagem box
+        cs({bg:{type:'solid',color:'#ede8e0'},
+          title:{size:22,color:'#1a1a1a',weight:700},
+          body:{visible:true,size:13,color:'#555555'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'numeric',colorMode:'dark'}}), // 5. Variação tom quente
+        CLARO_LIFESTYLE(20,true),                                      // 6. Imagem box
+        CLARO_LIFESTYLE(20,false),                                     // 7. Só texto
+        cs({bg:{type:'solid',color:'#faf8f5'},
+          title:{size:22,color:'#1a1a1a',weight:700,italic:true},
+          body:{visible:true,size:14,color:'#555555'},
+          header:{visible:true,template:'tagline',colorMode:'dark'},
+          footer:{visible:true,template:'numeric',colorMode:'dark'}}), // 8. Italic — pensamento final
+        cs({bg:{type:'solid',color:'#1a1a1a'},
+          title:{size:24,color:'#ffffff',weight:700},
+          body:{visible:true,size:13,color:'rgba(255,255,255,0.8)'},
+          header:{visible:false,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'swipe',colorMode:'light',swipeVariant:'pill',swipePillLabel:'Arraste →'},
+          cta:{visible:true,text:'Quero acesso',bgColor:'#e8450a',textColor:'#ffffff',radius:20}}), // 9. CTA dark contrast
       ],
     },
 
-    // 9. CTA Conversão — card final de alta conversão com lista de bullets e chamada
+    // ══════════════════════════════════════════════════════════════
+    // AZUL AUTORIDADE — 9 cards
+    // Progressão: azul cobalto → box modo → ruptura amarela → CTA
+    // ══════════════════════════════════════════════════════════════
     {
-      id: SEED_PREFIX + 'cta_conversao',
-      name: 'CTA Conversão',
-      headline: 'Último card projetado para converter: fundo escuro + lista + chamada para ação',
-      description: 'Padrão do último card do @brandsdecoded. Fundo escuro ou laranja, logo/produto à esquerda, lista de benefícios com bullets coloridos, CTA direto. Fecha o carrossel transformando atenção em ação. Customize o CTA com a oferta da sua identidade visual.',
+      id: SEED_PREFIX+'azul_autoridade_9',
+      name: 'Azul Autoridade — 9 cards',
+      headline: 'Azul profundo para posicionamento de autoridade em negócios e educação',
+      description: 'Padrão de criadores de conteúdo B2B e educacional. Azul cobalto como base, texto branco, destaque em amarelo. Transmite credibilidade institucional com impacto visual. Funciona para tech, finanças, liderança e marketing.',
+      cardCount: 9,
+      cardStyles: [
+        cs({bg:{type:'image',color:'#1a35b5',imageMode:'cover'},
+          overlay:{visible:true,color:'#0f2590',opacity:65,gradDir:'bottom',gradReach:80},
+          title:{size:30,color:'#ffffff',weight:900,uppercase:false},
+          body:{visible:true,size:13,color:'rgba(255,255,255,0.8)'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'dots',colorMode:'light'},
+          avatar:{visible:true,placement:'bottom',offsetY:-20}}),      // 1. Capa — foto azul
+        cs({bg:{type:'solid',color:'#0f2590',boxMode:true,boxH:44,boxY:6},
+          title:{size:22,color:'#ffffff',weight:700},
+          body:{visible:true,size:13,color:'rgba(255,255,255,0.85)'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 2. Box modo
+        AZUL_BOLD(22,'#ffffff'),                                        // 3. Argumento
+        cs({bg:{type:'solid',color:'#1a35b5'},
+          title:{size:24,color:'#ffeb00',weight:900,italic:true},
+          body:{visible:true,size:14,color:'#ffffff'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 4. Ruptura amarela
+        cs({bg:{type:'solid',color:'#0f2590',boxMode:true,boxH:44,boxY:6},
+          title:{size:22,color:'#ffffff',weight:700},
+          body:{visible:true,size:13,color:'rgba(255,255,255,0.85)'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 5. Box modo
+        AZUL_BOLD(22,'#ffffff'),                                        // 6. Desenvolvimento
+        cs({bg:{type:'solid',color:'#1a35b5'},
+          title:{size:24,color:'#ffeb00',weight:900},
+          body:{visible:true,size:14,color:'#ffffff'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 7. Destaque amarelo
+        cs({bg:{type:'solid',color:'#0f2590',boxMode:true,boxH:44,boxY:6},
+          title:{size:22,color:'#ffffff',weight:700},
+          body:{visible:true,size:13,color:'rgba(255,255,255,0.85)'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 8. Conclusão
+        cs({bg:{type:'solid',color:'#0a0a0a'},
+          title:{size:24,color:'#ffffff',weight:700},
+          body:{visible:true,size:13,color:'rgba(255,255,255,0.8)'},
+          header:{visible:false,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'text',freeText:'Comente para receber',colorMode:'light'},
+          cta:{visible:true,text:'Quero acesso',bgColor:'#1a35b5',textColor:'#ffffff',radius:20}}), // 9. CTA
+      ],
+    },
+    {
+      id: SEED_PREFIX+'azul_autoridade_3',
+      name: 'Azul Autoridade — 3 cards',
+      headline: 'Credibilidade rápida: capa azul + argumento + destaque amarelo',
+      description: 'Versão condensada para reels de posicionamento ou demonstrações de autoridade.',
+      cardCount: 3,
+      cardStyles: [
+        AZUL_BOLD(28,'#ffffff'),
+        cs({bg:{type:'solid',color:'#0f2590',boxMode:true,boxH:44,boxY:6},title:{size:22,color:'#ffffff',weight:700},body:{visible:true,size:13,color:'rgba(255,255,255,0.85)'},header:{visible:true,template:'tagline',colorMode:'light'},footer:{visible:true,template:'numeric',colorMode:'light'}}),
+        cs({bg:{type:'solid',color:'#1a35b5'},title:{size:24,color:'#ffeb00',weight:900,italic:true},body:{visible:true,size:14,color:'#ffffff'},header:{visible:true,template:'tagline',colorMode:'light'},footer:{visible:true,template:'numeric',colorMode:'light'}}),
+      ],
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // CTA CONVERSÃO — 1 card (bloco final universal)
+    // ══════════════════════════════════════════════════════════════
+    {
+      id: SEED_PREFIX+'cta_conversao',
+      name: 'CTA Conversão — 1 card',
+      headline: 'Último card projetado para converter — use como fechamento de qualquer template',
+      description: 'Bloco final universal. Fundo escuro, título bold, CTA visível. Compatível com qualquer identidade visual — as cores do CTA são aplicadas automaticamente da sua marca.',
       cardCount: 1,
-      cardStyles: [
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#0d0d0d' },
-          title: { size: 28, color: '#ffffff', weight: 700, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: 'rgba(255,255,255,0.8)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: false, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'text', freeText: 'Comente para receber', colorMode: 'light' },
-          cta: { visible: true, text: 'Quero acesso', bgColor: '#e8450a', textColor: '#ffffff', radius: 20 },
-          avatar: { visible: false },
-        }),
-      ],
-    },
-
-    // 10. Azul Autoridade — azul forte, tipografia bold, padrão de educação e negócios
-    {
-      id: SEED_PREFIX + 'azul_autoridade',
-      name: 'Azul Autoridade',
-      headline: 'Azul profundo para posicionamento de autoridade em educação, negócios e tecnologia',
-      description: 'Padrão usado por criadores de conteúdo de negócios e tech. Fundo azul cobalto ou royal blue, texto branco, destaque em amarelo ou ciano. Transmite credibilidade institucional sem perder o impacto visual. Funciona para conteúdo B2B e educacional.',
-      cardCount: 3,
-      cardStyles: [
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#1a35b5' },
-          title: { size: 28, color: '#ffffff', weight: 900, uppercase: false, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: 'rgba(255,255,255,0.85)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'dots', colorMode: 'light' },
-          avatar: { visible: true, placement: 'bottom', offsetY: -20 },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#0f2590', boxMode: true, boxH: 44, boxY: 6 },
-          title: { size: 22, color: '#ffffff', weight: 700, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 13, color: 'rgba(255,255,255,0.85)', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
-        _makeCardStyle({
-          bg: { type: 'solid', color: '#1a35b5' },
-          title: { size: 24, color: '#ffeb00', weight: 900, italic: true, fontFamily: "'Fraunces', serif" },
-          body: { visible: true, size: 14, color: '#ffffff', fontFamily: "'Roboto', sans-serif" },
-          header: { visible: true, template: 'tagline', colorMode: 'light' },
-          footer: { visible: true, template: 'numeric', colorMode: 'light' },
-        }),
-      ],
+      cardStyles: [CTA_FINAL()],
     },
 
   ];
