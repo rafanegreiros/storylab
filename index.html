@@ -4849,8 +4849,13 @@ function renderEspinha() {
 const ADMIN_EMAIL = 'rafanegreiros@gmail.com';
 
 function _adminSeedTemplates() {
-  const n = seedBuiltInTemplates();
-  alert(`✅ ${n} templates validados instalados com sucesso!\n\nAcesse Templates para visualizá-los.`);
+  try {
+    const n = seedBuiltInTemplates();
+    alert(`✅ ${n} templates instalados com sucesso!\n\nAcesse Templates para visualizá-los.`);
+  } catch(e) {
+    console.error('seedBuiltInTemplates error:', e);
+    alert('❌ Erro ao instalar templates: ' + e.message + '\n\nVeja o console para detalhes.');
+  }
 }
 
 async function checkApiStatus() {
@@ -4944,23 +4949,26 @@ function seedBuiltInTemplates() {
   const SEED_PREFIX = 'builtin_';
   const cleaned = existing.filter(t => !t.id.startsWith(SEED_PREFIX));
 
-  // ── Card style helpers ──
+  // ── Color tokens — resolved to brand colors on applyTemplate ──
+  // $primary, $accent, $dark, $light, $cta, $dark80, $light80
+  // This way templates look right with ANY brand palette
+
   function cs(overrides) {
     const base = {
-      bg: { type:'solid', color:'#1a1a1a', gradColors:['#1a1a1a','#000000'], gradAngle:180,
+      bg: { type:'solid', color:'$dark', gradColors:['$dark','#000000'], gradAngle:180,
         imageSrc:null, imageMime:null, imageScale:1, imageX:0, imageY:0, imageMode:'cover',
         boxMode:false, boxY:10, boxH:42, boxW:100, boxImgX:0, boxImgY:0, boxTextLayout:'top' },
       overlay: { visible:false, color:'#000000', opacity:40, gradDir:'bottom', gradReach:70 },
-      title: { text:'', size:28, color:'#ffffff', weight:900, align:'left',
-        fontFamily:"'Fraunces', serif", offsetX:0, offsetY:0,
+      title: { text:'', size:28, color:'$light', weight:900, align:'left',
+        fontFamily:"$fontDisplay", offsetX:0, offsetY:0,
         italic:false, underline:false, uppercase:false },
-      body: { text:'', size:14, color:'rgba(255,255,255,0.85)', visible:true,
-        align:'left', fontFamily:"'Roboto', sans-serif",
+      body: { text:'', size:14, color:'$light80', visible:true,
+        align:'left', fontFamily:"$fontBody",
         offsetX:0, offsetY:0, italic:false, underline:false, uppercase:false },
       header: { visible:true, template:'tagline', freeText:'', colorMode:'light' },
       footer: { visible:true, template:'numeric', freeText:'', colorMode:'light', swipeVariant:'arrow' },
       avatar: { visible:false, placement:'bottom', offsetX:0, offsetY:0, colorMode:'auto' },
-      cta: { visible:false, text:'Saiba mais', bgColor:'#ff5c35', textColor:'#ffffff', radius:20 },
+      cta: { visible:false, text:'Saiba mais', bgColor:'$accent', textColor:'$dark', radius:20 },
       pageNum: { visible:true, colorMode:'auto' },
     };
     function dm(t, s) {
@@ -4976,75 +4984,75 @@ function seedBuiltInTemplates() {
 
   // ── Reusable card patterns ──
   const CAPA_DARK = (titleSize=32) => cs({
-    bg:{type:'image',color:'#0a0a0a',imageMode:'cover'},
+    bg:{type:'image',color:'$dark',imageMode:'cover'},
     overlay:{visible:true,color:'#000000',opacity:55,gradDir:'bottom',gradReach:80},
-    title:{size:titleSize,color:'#ffffff',weight:900,uppercase:true},
-    body:{visible:true,size:13,color:'rgba(255,255,255,0.75)'},
+    title:{size:titleSize,color:'$light',weight:900,uppercase:true},
+    body:{visible:true,size:13,color:'$light80'},
     header:{visible:true,template:'tagline',colorMode:'light'},
     footer:{visible:true,template:'dots',colorMode:'light'},
     avatar:{visible:true,placement:'bottom',offsetY:-20},
   });
   const INTERNO_BRANCO = (titleSize=20) => cs({
-    bg:{type:'solid',color:'#f0ede6',boxMode:true,boxH:44,boxY:5},
-    title:{size:titleSize,color:'#1a1a1a',weight:600,fontFamily:"'Fraunces', serif"},
-    body:{visible:true,size:13,color:'#333333',fontFamily:"'Roboto', sans-serif"},
+    bg:{type:'solid',color:'$light',boxMode:true,boxH:44,boxY:5},
+    title:{size:titleSize,color:'$dark',weight:600,fontFamily:'$fontDisplay'},
+    body:{visible:true,size:13,color:'$dark80',fontFamily:'$fontBody'},
     header:{visible:true,template:'tagline',colorMode:'dark'},
     footer:{visible:true,template:'numeric',colorMode:'dark'},
   });
   const TEXTO_BRANCO = (titleSize=20) => cs({
-    bg:{type:'solid',color:'#f0ede6'},
-    title:{size:titleSize,color:'#1a1a1a',weight:700,fontFamily:"'Fraunces', serif"},
-    body:{visible:true,size:13,color:'#333333',fontFamily:"'Roboto', sans-serif"},
+    bg:{type:'solid',color:'$light'},
+    title:{size:titleSize,color:'$dark',weight:700,fontFamily:'$fontDisplay'},
+    body:{visible:true,size:13,color:'$dark80',fontFamily:'$fontBody'},
     header:{visible:true,template:'tagline',colorMode:'dark'},
     footer:{visible:true,template:'numeric',colorMode:'dark'},
   });
   const RUPTURA_LARANJA = (titleSize=26) => cs({
-    bg:{type:'solid',color:'#e8450a'},
-    title:{size:titleSize,color:'#ffffff',weight:900},
-    body:{visible:true,size:14,color:'rgba(255,255,255,0.92)'},
+    bg:{type:'solid',color:'$accent'},
+    title:{size:titleSize,color:'$light',weight:900},
+    body:{visible:true,size:14,color:'$light80'},
     header:{visible:true,template:'tagline',colorMode:'light'},
     footer:{visible:true,template:'numeric',colorMode:'light'},
   });
   const RUPTURA_AMARELO = (titleSize=24) => cs({
-    bg:{type:'solid',color:'#e8450a'},
-    title:{size:titleSize,color:'#ffeb00',weight:900,italic:true},
-    body:{visible:true,size:14,color:'#ffffff'},
+    bg:{type:'solid',color:'$accent'},
+    title:{size:titleSize,color:'$primary',weight:900,italic:true},
+    body:{visible:true,size:14,color:'$light'},
     header:{visible:true,template:'tagline',colorMode:'light'},
     footer:{visible:true,template:'numeric',colorMode:'light'},
   });
   const PRETO_CREME = (titleSize=24,italic=false) => cs({
-    bg:{type:'solid',color:'#0f0f0f'},
-    title:{size:titleSize,color:'#f0ede6',weight:700,italic},
-    body:{visible:true,size:14,color:'rgba(240,237,230,0.72)'},
+    bg:{type:'solid',color:'$dark'},
+    title:{size:titleSize,color:'$light',weight:700,italic},
+    body:{visible:true,size:14,color:'$light80'},
     header:{visible:true,template:'tagline',colorMode:'light'},
     footer:{visible:true,template:'numeric',colorMode:'light'},
   });
   const VERMELHO_AMARELO = (titleSize=22) => cs({
-    bg:{type:'solid',color:'#6B1010'},
-    title:{size:titleSize,color:'#ffeb00',weight:700},
-    body:{visible:true,size:13,color:'rgba(255,255,255,0.85)'},
+    bg:{type:'solid',color:'$primary'},
+    title:{size:titleSize,color:'$accent',weight:700},
+    body:{visible:true,size:13,color:'$light80'},
     header:{visible:true,template:'tagline',colorMode:'light'},
     footer:{visible:true,template:'numeric',colorMode:'light'},
   });
   const FOTO_OVERLAY = (titleSize=22,overlayOp=50) => cs({
-    bg:{type:'image',color:'#111111',imageMode:'cover'},
+    bg:{type:'image',color:'$dark',imageMode:'cover'},
     overlay:{visible:true,color:'#000000',opacity:overlayOp,gradDir:'bottom',gradReach:60},
-    title:{size:titleSize,color:'#ffffff',weight:700},
-    body:{visible:true,size:13,color:'rgba(255,255,255,0.85)'},
+    title:{size:titleSize,color:'$light',weight:700},
+    body:{visible:true,size:13,color:'$light80'},
     header:{visible:true,template:'tagline',colorMode:'light'},
     footer:{visible:true,template:'numeric',colorMode:'light'},
   });
   const AZUL_BOLD = (titleSize=24,titleColor='#ffffff') => cs({
-    bg:{type:'solid',color:'#1a35b5'},
+    bg:{type:'solid',color:'$primary'},
     title:{size:titleSize,color:titleColor,weight:900},
-    body:{visible:true,size:14,color:'rgba(255,255,255,0.85)'},
+    body:{visible:true,size:14,color:'$light80'},
     header:{visible:true,template:'tagline',colorMode:'light'},
     footer:{visible:true,template:'numeric',colorMode:'light'},
   });
   const CLARO_LIFESTYLE = (titleSize=20,boxMode=true) => cs({
-    bg:{type:'solid',color:'#faf8f5',boxMode,boxH:48,boxY:4},
-    title:{size:titleSize,color:'#1a1a1a',weight:600},
-    body:{visible:true,size:13,color:'#555555',fontFamily:"'Roboto', sans-serif"},
+    bg:{type:'solid',color:'$light',boxMode,boxH:48,boxY:4},
+    title:{size:titleSize,color:'$dark',weight:600},
+    body:{visible:true,size:13,color:'$dark80',fontFamily:'$fontBody'},
     header:{visible:true,template:'tagline',colorMode:'dark'},
     footer:{visible:true,template:'numeric',colorMode:'dark'},
   });
@@ -8086,6 +8094,47 @@ function confirmSaveTemplate(editId) {
   alert(`Template "${name}" salvo para ${n} cards!`);
 }
 
+// ── Resolve color tokens in a card style using the active brand ──
+// Tokens: $primary, $accent, $dark, $light, $cta,
+//         $dark80 (80% opacity dark), $light80, $fontDisplay, $fontBody
+function _resolveCardTokens(card, b) {
+  const c = JSON.parse(JSON.stringify(card));
+  const map = {
+    '$primary':    b.primary    || '#0071e3',
+    '$accent':     b.accent     || '#2de300',
+    '$dark':       b.dark       || '#2f2d2d',
+    '$light':      b.light      || '#eaeaec',
+    '$cta':        b.cta        || '#e3fe03',
+    '$dark80':     _hexToRgba(b.dark  || '#2f2d2d', 0.80),
+    '$light80':    _hexToRgba(b.light || '#eaeaec', 0.80),
+    '$fontDisplay': b.fontDisplay || "'Fraunces', serif",
+    '$fontBody':    b.fontBody    || "'Syne', sans-serif",
+  };
+  function walk(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    for (const k of Object.keys(obj)) {
+      if (typeof obj[k] === 'string') {
+        // Replace any token found in the value
+        for (const [token, val] of Object.entries(map)) {
+          if (obj[k] === token) { obj[k] = val; break; }
+        }
+      } else if (typeof obj[k] === 'object') {
+        walk(obj[k]);
+      }
+    }
+    return obj;
+  }
+  return walk(c);
+}
+
+function _hexToRgba(hex, alpha) {
+  if (!hex || !hex.startsWith('#')) return `rgba(0,0,0,${alpha})`;
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function applyTemplate(tplId) {
   const tpls = getTemplates();
   const tpl = tpls.find(t => t.id === tplId);
@@ -8103,24 +8152,25 @@ Deseja aplicar mesmo assim? Os cards extras manterão o estilo atual.`;
       if (!confirm(msg)) return;
     }
 
+    const b = getBrand();
     const imageData = S.cards.map(c => ({ imageSrc: c.bg.imageSrc||null, imageMime: c.bg.imageMime||null }));
 
     S.cards = S.cards.map((card, i) => {
-      // Use exact card style if available, otherwise use last style in template
       const style = tpl.cardStyles[i] || tpl.cardStyles[tpl.cardStyles.length - 1];
-      const restored = JSON.parse(JSON.stringify(style));
-      restored.title.text = card.title.text;
-      restored.body.text  = card.body.text;
-      restored.cta.text   = card.cta.text;
-      if (restored.bg.type === 'image') {
-        restored.bg.imageSrc  = imageData[i].imageSrc  || TEMPLATE_PLACEHOLDER_SRC;
-        restored.bg.imageMime = imageData[i].imageMime || TEMPLATE_PLACEHOLDER_MIME;
+      // Resolve color tokens to active brand colors
+      const resolved = _resolveCardTokens(JSON.parse(JSON.stringify(style)), b);
+      resolved.title.text = card.title.text;
+      resolved.body.text  = card.body.text;
+      resolved.cta.text   = card.cta.text;
+      if (resolved.bg.type === 'image') {
+        resolved.bg.imageSrc  = imageData[i].imageSrc  || TEMPLATE_PLACEHOLDER_SRC;
+        resolved.bg.imageMime = imageData[i].imageMime || TEMPLATE_PLACEHOLDER_MIME;
       } else {
-        restored.bg.imageSrc  = null;
-        restored.bg.imageMime = null;
+        resolved.bg.imageSrc  = null;
+        resolved.bg.imageMime = null;
       }
-      restored.idx = i;
-      return restored;
+      resolved.idx = i;
+      return resolved;
     });
 
   } else {
