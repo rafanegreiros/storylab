@@ -4850,11 +4850,13 @@ const ADMIN_EMAIL = 'rafanegreiros@gmail.com';
 
 function _adminSeedTemplates() {
   try {
-    const n = seedBuiltInTemplates();
-    alert(`✅ ${n} templates instalados com sucesso!\n\nAcesse Templates para visualizá-los.`);
+    // Reset cache so built-ins are reloaded fresh
+    _builtInTemplatesCache = null;
+    const templates = getBuiltInTemplates();
+    alert(`✅ ${templates.length} templates instalados!\n\nOs templates validados estão disponíveis em Templates. Eles ficam em memória — não ocupam espaço de armazenamento.`);
   } catch(e) {
     console.error('seedBuiltInTemplates error:', e);
-    alert('❌ Erro ao instalar templates: ' + e.message + '\n\nVeja o console para detalhes.');
+    alert('❌ Erro ao instalar templates: ' + e.message);
   }
 }
 
@@ -5489,21 +5491,47 @@ function seedBuiltInTemplates() {
 
   ];
 
-  const merged = [...templates, ...cleaned];
-  saveTemplates(merged);
-  return templates.length;
+  // Return templates array — built-ins live in memory only, never in localStorage
+  return templates;
 }
 
 function isAdmin() {
   return currentSession?.user?.email === ADMIN_EMAIL;
 }
 
+// ── Built-in templates cache (in memory only — never stored in localStorage) ──
+let _builtInTemplatesCache = null;
+function getBuiltInTemplates() {
+  if (!_builtInTemplatesCache) {
+    try { _builtInTemplatesCache = seedBuiltInTemplates(); } catch(e) {
+      console.error('getBuiltInTemplates error:', e);
+      _builtInTemplatesCache = [];
+    }
+  }
+  return _builtInTemplatesCache || [];
+}
+
 function getTemplates() {
+  // User templates from localStorage + built-ins from memory
+  try {
+    const user = JSON.parse(localStorage.getItem('storylab_templates') || '[]');
+    return [...user, ...getBuiltInTemplates()];
+  } catch(e) { return getBuiltInTemplates(); }
+}
+
+function getUserTemplates() {
   try { return JSON.parse(localStorage.getItem('storylab_templates') || '[]'); } catch(e) { return []; }
 }
 
 function saveTemplates(tpls) {
-  localStorage.setItem('storylab_templates', JSON.stringify(tpls));
+  // Only save user templates (not built-ins) to localStorage
+  const userOnly = tpls.filter(t => !t.id.startsWith('builtin_'));
+  try {
+    localStorage.setItem('storylab_templates', JSON.stringify(userOnly));
+  } catch(e) {
+    console.error('saveTemplates quota error:', e);
+    alert('⚠️ Espaço de armazenamento esgotado. Apague alguns templates antigos.');
+  }
 }
 
 function getActiveTemplate() {
@@ -8226,31 +8254,53 @@ function editTemplate(tplId) {
 
 function openTemplateManager() {
   document.getElementById('template-manager-modal')?.remove();
-  const tpls = getTemplates();
+  const allTpls = getTemplates();
+  const userTpls = allTpls.filter(t => !t.id.startsWith('builtin_'));
+  const builtTpls = allTpls.filter(t => t.id.startsWith('builtin_'));
 
-  const listHtml = tpls.length === 0
-    ? `<div style="text-align:center;color:var(--muted);font-family:'Poppins',sans-serif;font-size:0.8rem;padding:24px 0;">Nenhum template salvo ainda.</div>`
-    : tpls.map(t => `
-      <div style="border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-          <div>
+  function tplCard(t, isBuiltIn) {
+    const date = t.createdAt ? new Date(t.createdAt).toLocaleDateString('pt-BR') : '';
+    const validDate = date && date !== 'Invalid Date' ? date : '';
+    const editDelete = isBuiltIn ? '' : `
+      <button onclick="editTemplate('${t.id}')" style="padding:5px 10px;border-radius:6px;border:1.5px solid var(--border);background:transparent;font-size:0.65rem;cursor:pointer;color:var(--ink2);font-family:'Poppins',sans-serif;">✏ Editar</button>
+      <button onclick="deleteTemplate('${t.id}')" style="padding:5px 10px;border-radius:6px;border:1.5px solid rgba(220,60,60,0.3);background:transparent;font-size:0.65rem;cursor:pointer;color:#dc3c3c;font-family:'Poppins',sans-serif;">✕</button>`;
+    const badge = isBuiltIn
+      ? `<span style="font-size:0.55rem;padding:1px 6px;border-radius:10px;background:rgba(255,170,0,0.12);color:#ffaa00;border:1px solid rgba(255,170,0,0.3);font-family:'Poppins',sans-serif;">validado</span>`
+      : '';
+    return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.82rem;color:var(--ink);">${t.name}</div>
-            ${t.headline ? `<div style="font-family:'Poppins',sans-serif;font-size:0.7rem;color:var(--muted);margin-top:2px;">${t.headline}</div>` : ''}
+            ${badge}
           </div>
-          <div style="display:flex;gap:6px;flex-shrink:0;">
-            <button onclick="editTemplate('${t.id}')" style="padding:5px 10px;border-radius:6px;border:1.5px solid var(--border);background:transparent;font-size:0.65rem;cursor:pointer;color:var(--ink2);font-family:'Poppins',sans-serif;">✏ Editar</button>
-            <button onclick="deleteTemplate('${t.id}')" style="padding:5px 10px;border-radius:6px;border:1.5px solid rgba(220,60,60,0.3);background:transparent;font-size:0.65rem;cursor:pointer;color:#dc3c3c;font-family:'Poppins',sans-serif;">✕</button>
-          </div>
+          ${t.headline ? `<div style="font-family:'Poppins',sans-serif;font-size:0.7rem;color:var(--muted);margin-top:2px;">${t.headline}</div>` : ''}
         </div>
-        ${t.description ? `<div style="font-family:'Poppins',sans-serif;font-size:0.68rem;color:var(--muted);">${t.description}</div>` : ''}
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-family:'Poppins',sans-serif;font-size:0.6rem;color:var(--muted);">${new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
-            ${t.cardCount ? `<span style="font-family:'Poppins',sans-serif;font-size:0.6rem;padding:2px 7px;border-radius:20px;background:rgba(0,113,227,0.1);color:var(--accent);border:1px solid rgba(0,113,227,0.2);">${t.cardCount} cards</span>` : ''}
-          </div>
-          <button onclick="applyTemplate('${t.id}')" style="padding:6px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:0.7rem;cursor:pointer;font-family:'Poppins',sans-serif;font-weight:600;">▶ Aplicar</button>
+        <div style="display:flex;gap:6px;flex-shrink:0;">${editDelete}</div>
+      </div>
+      ${t.description ? `<div style="font-family:'Poppins',sans-serif;font-size:0.68rem;color:var(--muted);">${t.description}</div>` : ''}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${validDate ? `<span style="font-family:'Poppins',sans-serif;font-size:0.6rem;color:var(--muted);">${validDate}</span>` : ''}
+          ${t.cardCount ? `<span style="font-family:'Poppins',sans-serif;font-size:0.6rem;padding:2px 7px;border-radius:20px;background:rgba(0,113,227,0.1);color:var(--accent);border:1px solid rgba(0,113,227,0.2);">${t.cardCount} cards</span>` : ''}
         </div>
-      </div>`).join('');
+        <button onclick="applyTemplate('${t.id}')" style="padding:6px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:0.7rem;cursor:pointer;font-family:'Poppins',sans-serif;font-weight:600;">▶ Aplicar</button>
+      </div>
+    </div>`;
+  }
+
+  const userSection = userTpls.length > 0
+    ? `<div style="font-family:'Poppins',sans-serif;font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:4px 0 2px;">Meus templates</div>
+       ${userTpls.map(t => tplCard(t, false)).join('')}`
+    : '';
+
+  const builtSection = builtTpls.length > 0
+    ? `<div style="font-family:'Poppins',sans-serif;font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:4px 0 2px;${userTpls.length?'margin-top:8px;':''}">Templates validados</div>
+       ${builtTpls.map(t => tplCard(t, true)).join('')}`
+    : '';
+
+  const listHtml = userSection + builtSection
+    || `<div style="text-align:center;color:var(--muted);font-family:'Poppins',sans-serif;font-size:0.8rem;padding:24px 0;">Nenhum template disponível.</div>`;
 
   const modal = document.createElement('div');
   modal.id = 'template-manager-modal';
@@ -8258,7 +8308,7 @@ function openTemplateManager() {
   modal.innerHTML = `
     <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:24px;width:440px;max-width:100%;max-height:80vh;display:flex;flex-direction:column;gap:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink);">Meus Templates</div>
+        <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink);">Templates</div>
         <button onclick="document.getElementById('template-manager-modal').remove()" style="background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:1.2rem;">✕</button>
       </div>
       <div style="overflow-y:auto;display:flex;flex-direction:column;gap:10px;flex:1;">
