@@ -3917,12 +3917,18 @@ const STEPS = [
   { title: 'Carrossel', desc: 'Render final pronto para postar.' },
 ];
 
+// Safe STEPS lookup — handles step 3.5 (template selection)
+function getStepMeta(step) {
+  if (step === 3.5) return { title: 'Template', desc: 'Escolha o estilo visual do carrossel.' };
+  return STEPS[Math.floor(step)] || STEPS[0];
+}
+
 // ── INIT SIDEBAR ──
 function initSidebar() {
   const btn = document.getElementById('primary-btn');
   const sec = document.getElementById('secondary-btn');
-  document.getElementById('sidebar-title').textContent = STEPS[S.step].title;
-  document.getElementById('sidebar-desc').textContent = STEPS[S.step].desc;
+  document.getElementById('sidebar-title').textContent = getStepMeta(S.step).title;
+  document.getElementById('sidebar-desc').textContent = getStepMeta(S.step).desc;
   sec.style.display = S.step > 0 ? 'block' : 'none';
   btn.disabled = false;
 
@@ -4163,13 +4169,14 @@ function setTom(val, el) {
 
 function updateDots() {
   updateBreadcrumb();
+  const stepInt = Math.floor(S.step); // 3.5 → 3, 4 → 4
   for (let i = 0; i <= 4; i++) {
     ['dot-'+i, 'dot-m-'+i].forEach(id => {
       const d = document.getElementById(id);
       if (!d) return;
       d.classList.remove('active','done');
-      if (i < S.step) d.classList.add('done');
-      else if (i === S.step) d.classList.add('active');
+      if (i < stepInt) d.classList.add('done');
+      else if (i === stepInt) d.classList.add('active');
     });
   }
 }
@@ -11333,14 +11340,20 @@ function bindHistoryEvents() {
 const BC_LABELS = ['Insumo','Triagem','Headlines','Espinha Dorsal','Template','Carrossel'];
 
 function updateBreadcrumb() {
-  const cur = S.step;
-  // Map S.step (0-5) to breadcrumb index (0=insumo,1=triagem,2=headlines,3=espinha,4=template,5=carrossel)
+  const cur = Math.floor(S.step); // 3.5 → 3 (template step shows espinha dorsal as active)
+  const curReal = S.step; // for step 3.5 highlight the template breadcrumb (index 4)
   for (let i = 0; i <= 5; i++) {
     const btn = document.getElementById('bc-' + i);
     if (!btn) continue;
     btn.classList.remove('active', 'done');
-    if (i === cur) btn.classList.add('active');
-    else if (i < cur) btn.classList.add('done');
+    if (S.step === 3.5) {
+      // Espinha (3) = done, Template (4) = active
+      if (i < 4) btn.classList.add('done');
+      else if (i === 4) btn.classList.add('active');
+    } else {
+      if (i === cur) btn.classList.add('active');
+      else if (i < cur) btn.classList.add('done');
+    }
   }
 }
 
