@@ -7482,16 +7482,29 @@ function _showBatchOrderModal(files) {
   };
 
   window._batchApply = async () => {
+    // Remove modal immediately — never leave overlay stuck
     modal.remove();
+
     const toUse = orderedFiles.slice(0, imgCardIndices.length || S.cards.length);
     const targets = imgCardIndices.length > 0 ? imgCardIndices : S.cards.map((_,i) => i);
     let applied = 0;
+
     for (let fi = 0; fi < toUse.length && fi < targets.length; fi++) {
-      await applyImageFileToCardBg(targets[fi], toUse[fi]);
-      applied++;
+      try {
+        // Timeout safety: if Promise hangs, skip after 10s
+        await Promise.race([
+          applyImageFileToCardBg(targets[fi], toUse[fi]),
+          new Promise(r => setTimeout(r, 10000))
+        ]);
+        applied++;
+      } catch(e) {
+        console.warn('Error applying image to card', targets[fi], e);
+      }
     }
-    _showPasteToast(-1, `${applied} imagem${applied!==1?'s':''} aplicada${applied!==1?'s':''} ao carrossel`);
+
     renderCardSidebar();
+    renderFinal();
+    _showPasteToast(-1, `${applied} imagem${applied!==1?'s':''} aplicada${applied!==1?'s':''} ao carrossel`);
   };
 
   document.body.appendChild(modal);
@@ -8034,35 +8047,54 @@ function triggerBgImageUpload(idx) {
 function applyImageFileToCardBg(idx, file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
-  reader.onload = (ev) => {
-    const img = new Image();
-    img.onload = () => {
-      const MAX = 900;
-      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-      const cvs = document.createElement('canvas');
-      cvs.width  = Math.round(img.width  * scale);
-      cvs.height = Math.round(img.height * scale);
-      cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
-      const compressed = cvs.toDataURL('image/jpeg', 0.82);
-      S.cards[idx].bg.imageSrc   = compressed;
-      S.cards[idx].bg.imageMime  = 'image/jpeg';
-      S.cards[idx].bg.type       = 'image';
-      S.cards[idx].bg.imgNaturalW = cvs.width;
-      S.cards[idx].bg.imgNaturalH = cvs.height;
-      S.cards[idx].bg.imageScale = 1;
-      S.cards[idx].bg.imageX = 0; S.cards[idx].bg.imageY = 0;
-      S.cards[idx].bg.boxImgX = 0; S.cards[idx].bg.boxImgY = 0;
-      refreshCard(idx);
-      saveImagesToStorage(activeSessionId || 'current');
-      resolve();
+    reader.onerror = () => { console.warn('FileReader error for card', idx); resolve(); };
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onerror = () => { console.warn('Image load error for card', idx); resolve(); };
+      img.onload = () => {
+        try {
+          const MAX = 900;
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          const cvs = document.createElement('canvas');
+          cvs.width  = Math.round(img.width  * scale);
+          cvs.height = Math.round(img.height * scale);
+          cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
+          const compressed = cvs.toDataURL('image/jpeg', 0.82);
+          S.cards[idx].bg.imageSrc    = compressed;
+          S.cards[idx].bg.imageMime   = 'image/jpeg';
+          S.cards[idx].bg.type        = 'image';
+          S.cards[idx].bg.imgNaturalW = cvs.width;
+          S.cards[idx].bg.imgNaturalH = cvs.height;
+          S.cards[idx].bg.imageScale  = 1;
+          S.cards[idx].bg.imageX      = 0;
+          S.cards[idx].bg.imageY      = 0;
+          S.cards[idx].bg.boxImgX     = 0;
+          S.cards[idx].bg.boxImgY     = 0;
+          refreshCard(idx);
+          saveImagesToStorage(activeSessionId || 'current');
+        } catch(e) {
+          console.warn('Canvas error for card', idx, e);
+        }
+        resolve();
+      };
+      img.src = ev.target.result;
     };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
   });
 }
 
-// ── Paste image (Ctrl+V / clique direito + colar) ──
+// ── ESC key closes any open modal ──
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const modals = ['batch-upload-modal','template-manager-modal','compare-modal','save-template-modal','brand-choose-modal'];
+  modals.forEach(id => document.getElementById(id)?.remove());
+  // Also remove any stuck full-screen overlays
+  document.querySelectorAll('[style*="position:fixed"][style*="inset:0"]').forEach(el => {
+    if (el.id && modals.includes(el.id)) return; // already handled
+    if (el.id === 'paste-toast') return;
+    if (!el.id) el.remove(); // anonymous overlays
+  });
+});
 // Applies to the active card's background when the user is on step 4 (editor)
 document.addEventListener('paste', (e) => {
   // Only when in carousel editor step and not typing in a text field
