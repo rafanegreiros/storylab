@@ -4340,16 +4340,10 @@ async function handlePrimary() {
     await sleep(1500);
     await runEspinha();
   } else if (S.step === 3) {
-    if (!S.selectedTemplate) {
-      // Go to template selection step
-      await sleep(500);
-      S.step = 3.5;
-      initSidebar();
-      renderTemplateSelector();
-    } else {
-      await sleep(1500);
-      await runRender();
-    }
+    // Always go to template selection first
+    S.step = 3.5;
+    initSidebar();
+    renderTemplateSelector();
   } else if (S.step === 3.5) {
     if (!S.selectedTemplate) { alert('Escolha um template para continuar.'); return; }
     await sleep(1500);
@@ -4359,6 +4353,7 @@ async function handlePrimary() {
 
 function handleSecondary() {
   if (S.step === 2) { runHeadlines(); return; }
+  if (S.step === 3.5) { S.step = 3; initSidebar(); renderEspinha(); return; }
   if (S.step > 0) { S.step--; initSidebar(); renderStepCanvas(); }
 }
 
