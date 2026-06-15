@@ -7421,8 +7421,9 @@ function _showBatchOrderModal(files) {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
 
   function renderModal() {
+    const imgCount = imgCardIndices.length || S.cards.length;
     const statusMsg = orderedFiles.length > expectedCount
-      ? `<div style="color:#ffaa00;font-size:0.72rem;">⚠ ${orderedFiles.length} fotos selecionadas, mas apenas ${expectedCount} serão usadas (${S.cards.length} cards${imgCards.length < S.cards.length ? ', '+imgCards.length+' com imagem' : ''}).</div>`
+      ? `<div style="color:#ffaa00;font-size:0.72rem;">⚠ ${orderedFiles.length} fotos selecionadas, mas apenas ${expectedCount} serão usadas (${imgCount} cards com imagem no template).</div>`
       : orderedFiles.length < expectedCount
       ? `<div style="color:var(--muted);font-size:0.72rem;">${orderedFiles.length} foto${orderedFiles.length!==1?'s':''} inserida${orderedFiles.length!==1?'s':''} de ${expectedCount} esperada${expectedCount!==1?'s':''}. Cards sem foto ficam com a cor da marca.</div>`
       : `<div style="color:#2de300;font-size:0.72rem;">✓ ${orderedFiles.length} foto${orderedFiles.length!==1?'s':''} — encaixe perfeito com o template.</div>`;
