@@ -5792,6 +5792,73 @@ function seedBuiltInTemplates() {
       ],
     },
 
+    // ══════════════════════════════════════════════════════════════
+    // TEMPLATES DE 10, 11 e 12 CARDS
+    // ══════════════════════════════════════════════════════════════
+    {
+      id: SEED_PREFIX+'editorial_escuro_10',
+      name: 'Editorial Escuro — 10 cards',
+      headline: 'Versão expandida com segundo ciclo narrativo',
+      description: 'Versão de 10 cards do Editorial Escuro. Adiciona um segundo ciclo com mais evidências antes do CTA.',
+      cardCount: 10,
+      cardStyles: [
+        CAPA_DARK(32), INTERNO_BRANCO(22), TEXTO_BRANCO(20), INTERNO_BRANCO(20),
+        RUPTURA_LARANJA(28),
+        INTERNO_BRANCO(20), TEXTO_BRANCO(20), INTERNO_BRANCO(20),
+        RUPTURA_AMARELO(24),
+        CTA_FINAL(),
+      ],
+    },
+    {
+      id: SEED_PREFIX+'analise_profunda_11',
+      name: 'Análise Profunda — 11 cards',
+      headline: 'Três ciclos de argumento com duas rupturas',
+      description: 'Para análises complexas. Três ciclos de texto+imagem com duas rupturas laranjas criam ritmo e profundidade.',
+      cardCount: 11,
+      cardStyles: [
+        TEXTO_BRANCO(26),
+        INTERNO_BRANCO(20), TEXTO_BRANCO(20), INTERNO_BRANCO(20),
+        RUPTURA_LARANJA(26),
+        INTERNO_BRANCO(20), TEXTO_BRANCO(20), INTERNO_BRANCO(20),
+        RUPTURA_AMARELO(22),
+        INTERNO_BRANCO(20),
+        CTA_FINAL(),
+      ],
+    },
+    {
+      id: SEED_PREFIX+'foto_todos_12',
+      name: 'Foto em Todos — 12 cards',
+      headline: 'Doze fotos com variação de overlay para máximo impacto visual',
+      description: 'O template mais longo para ensaios fotográficos, séries de produto ou conteúdo de viagem.',
+      cardCount: 12,
+      cardStyles: [
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},overlay:{visible:true,color:'#000000',opacity:60,gradDir:'bottom',gradReach:65},title:{size:30,color:'$light',weight:900,uppercase:true},body:{visible:false},header:{visible:true,template:'tagline',colorMode:'light'},footer:{visible:true,template:'dots',colorMode:'light'},avatar:{visible:true,placement:'bottom',offsetY:-25}}),
+        FOTO_OVERLAY(22,45), FOTO_OVERLAY(22,50),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},overlay:{visible:true,color:'$accent',opacity:35,gradDir:'bottom',gradReach:70},title:{size:24,color:'$light',weight:900},body:{visible:true,size:13,color:'$light80'},header:{visible:true,template:'tagline',colorMode:'light'},footer:{visible:true,template:'numeric',colorMode:'light'}}),
+        FOTO_OVERLAY(22,50), FOTO_OVERLAY(20,45),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},overlay:{visible:true,color:'$primary',opacity:40,gradDir:'bottom',gradReach:70},title:{size:24,color:'$light',weight:900},body:{visible:true,size:13,color:'$light80'},header:{visible:true,template:'tagline',colorMode:'light'},footer:{visible:true,template:'numeric',colorMode:'light'}}),
+        FOTO_OVERLAY(22,50), FOTO_OVERLAY(20,45),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},overlay:{visible:true,color:'$accent',opacity:40,gradDir:'bottom',gradReach:70},title:{size:22,color:'$light',weight:700,italic:true},body:{visible:true,size:13,color:'$light80'},header:{visible:true,template:'tagline',colorMode:'light'},footer:{visible:true,template:'numeric',colorMode:'light'}}),
+        FOTO_OVERLAY(22,55),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},overlay:{visible:true,color:'#000000',opacity:72,gradDir:'bottom',gradReach:80},title:{size:22,color:'$light',weight:700},body:{visible:true,size:13,color:'$light80'},header:{visible:false,template:'tagline',colorMode:'light'},footer:{visible:true,template:'swipe',colorMode:'light',swipeVariant:'pill',swipePillLabel:'Arraste para ver'},cta:{visible:true,text:'Quero acesso',bgColor:'$accent',textColor:'$light',radius:20}}),
+      ],
+    },
+    {
+      id: SEED_PREFIX+'ruptura_vibrante_12',
+      name: 'Ruptura Vibrante — 12 cards',
+      headline: 'Doze cards com três ciclos de ruptura',
+      description: 'Para criadores que usam cor como elemento narrativo central. Cada ruptura marca um novo estágio do argumento.',
+      cardCount: 12,
+      cardStyles: [
+        CAPA_DARK(30),
+        RUPTURA_LARANJA(28), INTERNO_BRANCO(20), TEXTO_BRANCO(20),
+        RUPTURA_AMARELO(24), INTERNO_BRANCO(20), TEXTO_BRANCO(20),
+        RUPTURA_LARANJA(26), INTERNO_BRANCO(20), TEXTO_BRANCO(20),
+        RUPTURA_AMARELO(22),
+        CTA_FINAL_LARANJA(),
+      ],
+    },
+
   ];
 
   return templates;
@@ -6087,6 +6154,11 @@ function renderFinal() {
           <span class="meta-tag tag-a">${a.funil || ''}</span>
           <span class="meta-tag tag-b">${S.tom}</span>
           <span class="meta-tag tag-c">${a.objetivo || ''}</span>
+          ${(() => {
+            const tplId = S.selectedTemplate || localStorage.getItem('storylab_active_template');
+            const tpl = tplId ? getTemplates().find(t => t.id === tplId) : null;
+            return tpl ? `<span class="meta-tag" style="background:rgba(0,113,227,0.08);color:var(--accent);border-color:rgba(0,113,227,0.2);cursor:pointer;" onclick="openTemplateManager()" title="Trocar template">🎨 ${tpl.name}</span>` : '';
+          })()}
           ${isAdmin() ? '<span class="meta-tag" style="background:rgba(255,170,0,0.15);color:#ffaa00;border-color:rgba(255,170,0,0.3)">★ Admin</span>' : ''}
           ${isAdmin() ? `<button onclick="checkApiStatus()" style="background:rgba(255,170,0,0.1);border:1px solid rgba(255,170,0,0.3);color:#ffaa00;border-radius:6px;padding:3px 8px;font-size:0.65rem;cursor:pointer;">⚡ Status API</button>` : ''}
           ${isAdmin() ? `<button onclick="_adminSeedTemplates()" style="background:rgba(255,170,0,0.1);border:1px solid rgba(255,170,0,0.3);color:#ffaa00;border-radius:6px;padding:3px 8px;font-size:0.65rem;cursor:pointer;">🎨 Instalar Templates</button>` : ''}
@@ -7325,16 +7397,21 @@ function openBatchImageUpload() {
 function _showBatchOrderModal(files) {
   document.getElementById('batch-upload-modal')?.remove();
 
-  // Count how many cards in the current template expect images
-  const imgCards = S.cards.filter((c, i) => {
-    const tplId = S.selectedTemplate || localStorage.getItem('storylab_active_template');
-    if (tplId) {
-      const tpl = getTemplates().find(t => t.id === tplId);
-      if (tpl?.cardStyles?.[i]) return tpl.cardStyles[Math.min(i, tpl.cardStyles.length-1)].bg?.type === 'image';
+  // Count cards that expect images — check live card state first (most reliable after template apply)
+  // A card expects image if: bg.type==='image', OR template cardStyle for that position is 'image'
+  const tplId = S.selectedTemplate || localStorage.getItem('storylab_active_template');
+  const tpl = tplId ? getTemplates().find(t => t.id === tplId) : null;
+  const imgCardIndices = S.cards.map((c, i) => {
+    // Check live card state first
+    if (c.bg.type === 'image') return i;
+    // Check template definition
+    if (tpl?.cardStyles) {
+      const cs = tpl.cardStyles[Math.min(i, tpl.cardStyles.length-1)];
+      if (cs?.bg?.type === 'image') return i;
     }
-    return true; // no template = all cards can have images
-  });
-  const expectedCount = imgCards.length || S.cards.length;
+    return -1;
+  }).filter(i => i >= 0);
+  const expectedCount = imgCardIndices.length || S.cards.length;
 
   let orderedFiles = [...files];
   let dragSrc = null;
@@ -7406,26 +7483,14 @@ function _showBatchOrderModal(files) {
 
   window._batchApply = async () => {
     modal.remove();
-    const toUse = orderedFiles.slice(0, expectedCount);
-    let fileIdx = 0;
-
-    for (let i = 0; i < S.cards.length; i++) {
-      // Determine if this card expects an image
-      const tplId = S.selectedTemplate || localStorage.getItem('storylab_active_template');
-      let cardExpectsImg = true;
-      if (tplId) {
-        const tpl = getTemplates().find(t => t.id === tplId);
-        if (tpl?.cardStyles) {
-          const cs = tpl.cardStyles[Math.min(i, tpl.cardStyles.length-1)];
-          cardExpectsImg = cs?.bg?.type === 'image';
-        }
-      }
-      if (cardExpectsImg && fileIdx < toUse.length) {
-        await applyImageFileToCardBg(i, toUse[fileIdx]);
-        fileIdx++;
-      }
+    const toUse = orderedFiles.slice(0, imgCardIndices.length || S.cards.length);
+    const targets = imgCardIndices.length > 0 ? imgCardIndices : S.cards.map((_,i) => i);
+    let applied = 0;
+    for (let fi = 0; fi < toUse.length && fi < targets.length; fi++) {
+      await applyImageFileToCardBg(targets[fi], toUse[fi]);
+      applied++;
     }
-    _showPasteToast(-1, `${fileIdx} imagem${fileIdx!==1?'s':''} aplicada${fileIdx!==1?'s':''} ao carrossel`);
+    _showPasteToast(-1, `${applied} imagem${applied!==1?'s':''} aplicada${applied!==1?'s':''} ao carrossel`);
     renderCardSidebar();
   };
 
@@ -8758,70 +8823,120 @@ function editTemplate(tplId) {
 
 function openTemplateManager() {
   document.getElementById('template-manager-modal')?.remove();
-  const allTpls = getTemplates();
-  const userTpls = allTpls.filter(t => !t.id.startsWith('builtin_'));
-  const builtTpls = allTpls.filter(t => t.id.startsWith('builtin_'));
 
-  function tplCard(t, isBuiltIn) {
-    const date = t.createdAt ? new Date(t.createdAt).toLocaleDateString('pt-BR') : '';
-    const validDate = date && date !== 'Invalid Date' ? date : '';
-    const editDelete = isBuiltIn ? '' : `
-      <button onclick="editTemplate('${t.id}')" style="padding:5px 10px;border-radius:6px;border:1.5px solid var(--border);background:transparent;font-size:0.65rem;cursor:pointer;color:var(--ink2);font-family:'Poppins',sans-serif;">✏ Editar</button>
-      <button onclick="deleteTemplate('${t.id}')" style="padding:5px 10px;border-radius:6px;border:1.5px solid rgba(220,60,60,0.3);background:transparent;font-size:0.65rem;cursor:pointer;color:#dc3c3c;font-family:'Poppins',sans-serif;">✕</button>`;
-    const badge = isBuiltIn
-      ? `<span style="font-size:0.55rem;padding:1px 6px;border-radius:10px;background:rgba(255,170,0,0.12);color:#ffaa00;border:1px solid rgba(255,170,0,0.3);font-family:'Poppins',sans-serif;">validado</span>`
-      : '';
-    return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.82rem;color:var(--ink);">${t.name}</div>
-            ${badge}
-          </div>
-          ${t.headline ? `<div style="font-family:'Poppins',sans-serif;font-size:0.7rem;color:var(--muted);margin-top:2px;">${t.headline}</div>` : ''}
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;">${editDelete}</div>
-      </div>
-      ${t.description ? `<div style="font-family:'Poppins',sans-serif;font-size:0.68rem;color:var(--muted);">${t.description}</div>` : ''}
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          ${validDate ? `<span style="font-family:'Poppins',sans-serif;font-size:0.6rem;color:var(--muted);">${validDate}</span>` : ''}
-          ${t.cardCount ? `<span style="font-family:'Poppins',sans-serif;font-size:0.6rem;padding:2px 7px;border-radius:20px;background:rgba(0,113,227,0.1);color:var(--accent);border:1px solid rgba(0,113,227,0.2);">${t.cardCount} cards</span>` : ''}
-        </div>
-        <button onclick="applyTemplate('${t.id}')" style="padding:6px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:0.7rem;cursor:pointer;font-family:'Poppins',sans-serif;font-weight:600;">▶ Aplicar</button>
+  const allTpls = getTemplates();
+  const currentTplId = S.selectedTemplate || localStorage.getItem('storylab_active_template');
+  const currentTpl = currentTpls = allTpls.find(t => t.id === currentTplId);
+  const currentCount = S.cards.length;
+
+  // Same card count templates first, others below
+  const sameCount = allTpls.filter(t => t.cardCount === currentCount);
+  const otherCount = allTpls.filter(t => t.cardCount !== currentCount);
+
+  const b = getBrand();
+
+  function isLight(hex) {
+    if (!hex||!hex.startsWith('#')) return false;
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),bv=parseInt(hex.slice(5,7),16);
+    return (0.299*r+0.587*g+0.114*bv)/255>0.55;
+  }
+  function lighten(hex, pct) {
+    if (!hex||!hex.startsWith('#')) return hex;
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),bv=parseInt(hex.slice(5,7),16);
+    return '#'+[r,g,bv].map(c=>Math.min(255,Math.round(c+(255-c)*pct/100)).toString(16).padStart(2,'0')).join('');
+  }
+  function getBgColor(code) {
+    const map = { D:b.dark||'#1a1a1a', L:b.light||'#f0ede6', A:b.accent||'#e8450a', P:b.primary||'#0071e3' };
+    return map[code] || b.dark || '#1a1a1a';
+  }
+  function miniCardHtml(card) {
+    const bgCode = card.bg?.type==='image' ? 'D' : (card.bg?.color||'').replace('$dark','D').replace('$light','L').replace('$accent','A').replace('$primary','P');
+    const bg = card.bg?.type==='image' ? lighten(b.dark||'#1a1a1a', 10) : getBgColor(bgCode.startsWith('#') ? 'D' : bgCode);
+    const light = isLight(bg);
+    const titleCol = light ? (b.dark||'#1a1a1a') : (b.light||'#f0ede6');
+    const bodyCol  = light ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)';
+    const hasImg   = card.bg?.type==='image' || card.bg?.boxMode;
+    const imgIcon  = hasImg
+      ? `<div style="width:100%;height:38%;background:${light?'rgba(0,0,0,0.06)':'rgba(255,255,255,0.06)'};border-radius:2px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;flex-shrink:0;"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="${bodyCol}" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`
+      : `<div style="height:38%;margin-bottom:3px;flex-shrink:0;"></div>`;
+    return `<div style="background:${bg};border-radius:3px;padding:4px 3px 3px;flex:1;min-width:0;display:flex;flex-direction:column;aspect-ratio:4/5;overflow:hidden;">${imgIcon}<div style="width:80%;height:2px;background:${titleCol};border-radius:1px;margin-bottom:2px;opacity:0.9;"></div><div style="width:65%;height:1.5px;background:${bodyCol};border-radius:1px;margin-bottom:1.5px;"></div><div style="width:85%;height:1.5px;background:${bodyCol};border-radius:1px;"></div></div>`;
+  }
+
+  function tplCardHtml(tpl, dim) {
+    const isSelected = currentTplId === tpl.id;
+    const imgCount = tpl.cardStyles.filter(c => c.bg?.type==='image' || c.bg?.boxMode).length;
+    const isBuiltIn = tpl.id.startsWith('builtin_');
+    const dimStyle = dim ? 'opacity:0.5;' : '';
+    return `<div onclick="${dim ? '' : `applyTemplateFromManager('${tpl.id}')`}"
+      style="background:var(--surface);border:${isSelected?'2px solid var(--accent)':'1.5px solid var(--border)'};border-radius:10px;padding:10px;cursor:${dim?'default':'pointer'};position:relative;${dimStyle}">
+      ${isSelected ? `<div style="position:absolute;top:6px;right:6px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;font-family:'Poppins',sans-serif;">atual</div>` : ''}
+      ${isBuiltIn && !isSelected ? `<div style="position:absolute;top:6px;right:6px;background:rgba(255,170,0,0.12);color:#ffaa00;font-size:9px;padding:1px 6px;border-radius:8px;font-family:'Poppins',sans-serif;">validado</div>` : ''}
+      <div style="display:flex;gap:2px;margin-bottom:8px;height:60px;">${tpl.cardStyles.map(miniCardHtml).join('')}</div>
+      <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.7rem;color:var(--ink);margin-bottom:4px;">${tpl.name}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,113,227,0.08);color:var(--accent);font-family:'Poppins',sans-serif;">${tpl.cardCount} cards</span>
+        ${imgCount>0?`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--muted);font-family:'Poppins',sans-serif;">${imgCount} fotos</span>`:''}
       </div>
     </div>`;
   }
 
-  const userSection = userTpls.length > 0
-    ? `<div style="font-family:'Poppins',sans-serif;font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:4px 0 2px;">Meus templates</div>
-       ${userTpls.map(t => tplCard(t, false)).join('')}`
+  const sameHtml = sameCount.length > 0
+    ? `<div style="font-family:'Poppins',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Mesma quantidade — ${currentCount} cards</div>
+       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px;">${sameCount.map(t => tplCardHtml(t, false)).join('')}</div>`
     : '';
 
-  const builtSection = builtTpls.length > 0
-    ? `<div style="font-family:'Poppins',sans-serif;font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:4px 0 2px;${userTpls.length?'margin-top:8px;':''}">Templates validados</div>
-       ${builtTpls.map(t => tplCard(t, true)).join('')}`
+  const otherHtml = otherCount.length > 0
+    ? `<div style="font-family:'Poppins',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:8px;">Outras quantidades — atenção: o número de cards vai mudar</div>
+       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;">${otherCount.map(t => tplCardHtml(t, false)).join('')}</div>`
     : '';
 
-  const listHtml = userSection + builtSection
-    || `<div style="text-align:center;color:var(--muted);font-family:'Poppins',sans-serif;font-size:0.8rem;padding:24px 0;">Nenhum template disponível.</div>`;
+  // User templates (non-builtin) with edit/delete
+  const userTpls = allTpls.filter(t => !t.id.startsWith('builtin_'));
+  const userHtml = userTpls.length > 0
+    ? `<div style="font-family:'Poppins',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:16px 0 8px;">Meus templates</div>
+       <div style="display:flex;flex-direction:column;gap:8px;">
+         ${userTpls.map(t => `<div style="border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+           <div style="flex:1;min-width:0;">
+             <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.75rem;color:var(--ink);">${t.name}</div>
+             ${t.headline?`<div style="font-size:0.65rem;color:var(--muted);">${t.headline}</div>`:''}
+           </div>
+           <div style="display:flex;gap:6px;flex-shrink:0;">
+             <button onclick="applyTemplateFromManager('${t.id}')" style="padding:4px 10px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:0.65rem;cursor:pointer;font-family:'Poppins',sans-serif;">Aplicar</button>
+             <button onclick="deleteTemplate('${t.id}')" style="padding:4px 8px;border-radius:6px;border:1.5px solid rgba(220,60,60,0.3);background:transparent;font-size:0.65rem;cursor:pointer;color:#dc3c3c;">✕</button>
+           </div>
+         </div>`).join('')}
+       </div>`
+    : '';
 
   const modal = document.createElement('div');
   modal.id = 'template-manager-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   modal.innerHTML = `
-    <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:24px;width:440px;max-width:100%;max-height:80vh;display:flex;flex-direction:column;gap:16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink);">Templates</div>
+    <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:20px;width:640px;max-width:100%;max-height:85vh;display:flex;flex-direction:column;gap:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.9rem;color:var(--ink);">Trocar template</div>
+          <div style="font-family:'Poppins',sans-serif;font-size:0.7rem;color:var(--muted);margin-top:2px;">Carrossel atual: ${currentCount} cards</div>
+        </div>
         <button onclick="document.getElementById('template-manager-modal').remove()" style="background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:1.2rem;">✕</button>
       </div>
-      <div style="overflow-y:auto;display:flex;flex-direction:column;gap:10px;flex:1;">
-        ${listHtml}
+      <div style="overflow-y:auto;flex:1;">
+        ${sameHtml}${otherHtml}${userHtml}
       </div>
-      <button onclick="document.getElementById('template-manager-modal').remove();openSaveTemplateModal();" style="width:100%;padding:10px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;font-size:0.78rem;color:var(--muted);font-family:'Poppins',sans-serif;">+ Criar novo template do carrossel atual</button>
+      ${isAdmin() ? `<div style="border-top:1.5px solid var(--border);padding-top:12px;margin-top:12px;">
+        <button onclick="document.getElementById('template-manager-modal').remove();openSaveTemplateModal();" style="width:100%;padding:8px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;font-size:0.72rem;color:var(--muted);font-family:'Poppins',sans-serif;">+ Salvar carrossel atual como template</button>
+      </div>` : ''}
     </div>`;
   document.body.appendChild(modal);
 }
+
+function applyTemplateFromManager(tplId) {
+  document.getElementById('template-manager-modal')?.remove();
+  applyTemplate(tplId);
+  renderFinal();
+}
+
+let currentTpls; // temp var used inside openTemplateManager
 
 // ── COPY CARDS TEXT ──
 function copyCardsText() {
