@@ -4048,7 +4048,10 @@ function initSidebar() {
         </div>
       </div>`;
   } else if (S.step === 3) {
+    btn.textContent = 'Escolher template →';
+  } else if (S.step === 3.5) {
     btn.textContent = 'Gerar carrossel →';
+    btn.disabled = !S.selectedTemplate;
   } else if (S.step === 4) {
     btn.textContent = '↺ Novo carrossel';
     sec.style.display = 'none';
@@ -4337,6 +4340,18 @@ async function handlePrimary() {
     await sleep(1500);
     await runEspinha();
   } else if (S.step === 3) {
+    if (!S.selectedTemplate) {
+      // Go to template selection step
+      await sleep(500);
+      S.step = 3.5;
+      initSidebar();
+      renderTemplateSelector();
+    } else {
+      await sleep(1500);
+      await runRender();
+    }
+  } else if (S.step === 3.5) {
+    if (!S.selectedTemplate) { alert('Escolha um template para continuar.'); return; }
     await sleep(1500);
     await runRender();
   } else if (S.step === 4) { resetAll(); }
@@ -4351,6 +4366,7 @@ function renderStepCanvas() {
   if (S.step === 1 && S.triagem) renderTriagem();
   else if (S.step === 2 && S.headlines.length) renderHeadlines();
   else if (S.step === 3 && S.espinha) renderEspinha();
+  else if (S.step === 3.5) renderTemplateSelector();
   else if (S.step === 4 && S.cards.length) renderFinal();
 }
 
@@ -4839,8 +4855,153 @@ function renderEspinha() {
 }
 
 
-// ── ETAPA 4 — GERAR CARROSSEL ──
-// (etapa de escolha de template removida — geração direta com Template Zero)
+// ── ETAPA 3.5 — SELETOR VISUAL DE TEMPLATES ──
+function renderTemplateSelector() {
+  const templates = getBuiltInTemplates();
+  const btn = document.getElementById('primary-btn');
+
+  function getBgColor(code, b) {
+    const map = { D: b.dark||'#1a1a1a', L: b.light||'#f0ede6', A: b.accent||'#e8450a', P: b.primary||'#0071e3' };
+    return map[code] || b.dark || '#1a1a1a';
+  }
+  function lighten(hex, pct) {
+    if (!hex||!hex.startsWith('#')) return hex;
+    const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), bv=parseInt(hex.slice(5,7),16);
+    return '#'+[r,g,bv].map(c=>Math.min(255,Math.round(c+(255-c)*pct/100)).toString(16).padStart(2,'0')).join('');
+  }
+  function isLight(hex) {
+    if (!hex||!hex.startsWith('#')) return false;
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),bv=parseInt(hex.slice(5,7),16);
+    return (0.299*r+0.587*g+0.114*bv)/255>0.55;
+  }
+
+  const b = getBrand();
+
+  function miniCardHtml(card, tplId) {
+    const bgCode = card.bg?.type === 'image' ? 'D' : (card.bg?.color||'').replace('$dark','D').replace('$light','L').replace('$accent','A').replace('$primary','P');
+    const bg = card.bg?.type === 'image' ? lighten(b.dark||'#1a1a1a', 10)
+      : getBgColor(bgCode.startsWith('#') ? 'D' : bgCode, b);
+    const light = isLight(bg);
+    const titleCol = light ? (b.dark||'#1a1a1a') : (b.light||'#f0ede6');
+    const bodyCol  = light ? `rgba(0,0,0,0.3)` : `rgba(255,255,255,0.3)`;
+    const hasImg   = card.bg?.type === 'image' || card.bg?.boxMode;
+    const imgIcon  = hasImg ? `<div style="width:100%;height:38%;background:${light?'rgba(0,0,0,0.06)':'rgba(255,255,255,0.06)'};border-radius:2px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;flex-shrink:0;"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="${bodyCol}" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>` : `<div style="height:38%;margin-bottom:3px;flex-shrink:0;"></div>`;
+    return `<div style="background:${bg};border-radius:3px;padding:4px 3px 3px;flex:1;min-width:0;display:flex;flex-direction:column;aspect-ratio:4/5;overflow:hidden;">
+      ${imgIcon}
+      <div style="width:80%;height:2px;background:${titleCol};border-radius:1px;margin-bottom:2px;opacity:0.9;"></div>
+      <div style="width:65%;height:1.5px;background:${bodyCol};border-radius:1px;margin-bottom:1.5px;"></div>
+      <div style="width:85%;height:1.5px;background:${bodyCol};border-radius:1px;"></div>
+    </div>`;
+  }
+
+  function tplCardHtml(tpl) {
+    const isSelected = S.selectedTemplate === tpl.id;
+    const imgCount = tpl.cardStyles.filter(c => c.bg?.type==='image' || c.bg?.boxMode).length;
+    const miniCards = tpl.cardStyles.map(c => miniCardHtml(c, tpl.id)).join('');
+    return `<div onclick="selectTemplateStep('${tpl.id}')"
+      style="background:var(--surface);border:${isSelected?'2px solid var(--accent)':'1.5px solid var(--border)'};border-radius:10px;padding:10px;cursor:pointer;transition:border-color 0.15s;position:relative;">
+      ${isSelected ? `<div style="position:absolute;top:6px;right:6px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;font-family:'Poppins',sans-serif;">✓</div>` : ''}
+      <div style="display:flex;gap:2px;margin-bottom:8px;height:64px;">${miniCards}</div>
+      <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.72rem;color:var(--ink);margin-bottom:1px;">${tpl.name}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+        <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,113,227,0.08);color:var(--accent);font-family:'Poppins',sans-serif;">${tpl.cardCount} cards</span>
+        ${imgCount>0?`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--muted);font-family:'Poppins',sans-serif;">${imgCount} fotos</span>`:''}
+      </div>
+    </div>`;
+  }
+
+  // Group by card count
+  const counts = [...new Set(templates.map(t=>t.cardCount))].sort((a,b)=>a-b);
+
+  let filtersHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+    <button onclick="filterTemplateSelector('all')" id="tsf-all" style="padding:4px 10px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-size:0.68rem;font-family:'Poppins',sans-serif;cursor:pointer;">Todos</button>
+    ${counts.map(c=>`<button onclick="filterTemplateSelector(${c})" id="tsf-${c}" style="padding:4px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:0.68rem;font-family:'Poppins',sans-serif;cursor:pointer;">${c} cards</button>`).join('')}
+  </div>`;
+
+  const gridHtml = `<div id="tpl-selector-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
+    ${templates.map(tplCardHtml).join('')}
+  </div>`;
+
+  document.getElementById('canvas').innerHTML = `
+    <div style="padding:20px;max-width:900px;margin:0 auto;">
+      <div style="margin-bottom:16px;">
+        <div style="font-family:'Poppins',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Etapa 3.5</div>
+        <div style="font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700;color:var(--ink);">Escolha o template</div>
+        <div style="font-family:'Poppins',sans-serif;font-size:0.78rem;color:var(--muted);margin-top:4px;">A IA vai gerar exatamente o número de cards do template. As cores e fontes seguem a sua identidade visual.</div>
+      </div>
+      ${filtersHtml}
+      ${gridHtml}
+      ${S.selectedTemplate ? `<div style="margin-top:14px;padding:10px 14px;background:rgba(0,113,227,0.06);border:1.5px solid rgba(0,113,227,0.2);border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.75rem;color:var(--accent);">
+        ✓ Template selecionado — clique em "Gerar carrossel →" para continuar
+      </div>` : ''}
+    </div>`;
+}
+
+function selectTemplateStep(tplId) {
+  S.selectedTemplate = tplId;
+  const btn = document.getElementById('primary-btn');
+  if (btn) { btn.disabled = false; }
+  renderTemplateSelector();
+  autoSave();
+}
+
+function filterTemplateSelector(filter) {
+  const templates = getBuiltInTemplates();
+  const filtered = filter === 'all' ? templates : templates.filter(t => t.cardCount === filter);
+  const b = getBrand();
+
+  function isLight(hex) {
+    if (!hex||!hex.startsWith('#')) return false;
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),bv=parseInt(hex.slice(5,7),16);
+    return (0.299*r+0.587*g+0.114*bv)/255>0.55;
+  }
+  function lighten(hex, pct) {
+    if (!hex||!hex.startsWith('#')) return hex;
+    const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), bv=parseInt(hex.slice(5,7),16);
+    return '#'+[r,g,bv].map(c=>Math.min(255,Math.round(c+(255-c)*pct/100)).toString(16).padStart(2,'0')).join('');
+  }
+
+  // Update filter buttons
+  document.querySelectorAll('[id^="tsf-"]').forEach(b2 => {
+    b2.style.background = 'transparent'; b2.style.color = 'var(--muted)'; b2.style.borderColor = 'var(--border)';
+  });
+  const activeBtn = document.getElementById('tsf-' + filter);
+  if (activeBtn) { activeBtn.style.background = 'var(--accent)'; activeBtn.style.color = '#fff'; activeBtn.style.borderColor = 'var(--accent)'; }
+
+  // Rebuild grid
+  function getBgColor(code, br) {
+    const map = { D: br.dark||'#1a1a1a', L: br.light||'#f0ede6', A: br.accent||'#e8450a', P: br.primary||'#0071e3' };
+    return map[code] || br.dark || '#1a1a1a';
+  }
+  function miniCardHtml(card) {
+    const bgCode = card.bg?.type === 'image' ? 'D' : (card.bg?.color||'').replace('$dark','D').replace('$light','L').replace('$accent','A').replace('$primary','P');
+    const bg = card.bg?.type === 'image' ? lighten(b.dark||'#1a1a1a', 10) : getBgColor(bgCode.startsWith('#') ? 'D' : bgCode, b);
+    const light = isLight(bg);
+    const titleCol = light ? (b.dark||'#1a1a1a') : (b.light||'#f0ede6');
+    const bodyCol  = light ? `rgba(0,0,0,0.3)` : `rgba(255,255,255,0.3)`;
+    const hasImg   = card.bg?.type === 'image' || card.bg?.boxMode;
+    const imgIcon  = hasImg ? `<div style="width:100%;height:38%;background:${light?'rgba(0,0,0,0.06)':'rgba(255,255,255,0.06)'};border-radius:2px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;flex-shrink:0;"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="${bodyCol}" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>` : `<div style="height:38%;margin-bottom:3px;flex-shrink:0;"></div>`;
+    return `<div style="background:${bg};border-radius:3px;padding:4px 3px 3px;flex:1;min-width:0;display:flex;flex-direction:column;aspect-ratio:4/5;overflow:hidden;">${imgIcon}<div style="width:80%;height:2px;background:${titleCol};border-radius:1px;margin-bottom:2px;opacity:0.9;"></div><div style="width:65%;height:1.5px;background:${bodyCol};border-radius:1px;margin-bottom:1.5px;"></div><div style="width:85%;height:1.5px;background:${bodyCol};border-radius:1px;"></div></div>`;
+  }
+  function tplCardHtml(tpl) {
+    const isSelected = S.selectedTemplate === tpl.id;
+    const imgCount = tpl.cardStyles.filter(c => c.bg?.type==='image' || c.bg?.boxMode).length;
+    return `<div onclick="selectTemplateStep('${tpl.id}')" style="background:var(--surface);border:${isSelected?'2px solid var(--accent)':'1.5px solid var(--border)'};border-radius:10px;padding:10px;cursor:pointer;position:relative;">
+      ${isSelected ? `<div style="position:absolute;top:6px;right:6px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;font-family:'Poppins',sans-serif;">✓</div>` : ''}
+      <div style="display:flex;gap:2px;margin-bottom:8px;height:64px;">${tpl.cardStyles.map(miniCardHtml).join('')}</div>
+      <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.72rem;color:var(--ink);margin-bottom:1px;">${tpl.name}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+        <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,113,227,0.08);color:var(--accent);font-family:'Poppins',sans-serif;">${tpl.cardCount} cards</span>
+        ${imgCount>0?`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--muted);font-family:'Poppins',sans-serif;">${imgCount} fotos</span>`:''}
+      </div>
+    </div>`;
+  }
+
+  const grid = document.getElementById('tpl-selector-grid');
+  if (grid) grid.innerHTML = filtered.map(tplCardHtml).join('');
+}
+
+
 
 // ── TEMPLATE SYSTEM ──
 // Templates são snapshots do estado S.cards[] + metadados
@@ -5489,9 +5650,148 @@ function seedBuiltInTemplates() {
       cardStyles: [CTA_FINAL()],
     },
 
+    // ══════════════════════════════════════════════════════════════
+    // FOTO EM TODOS — 9, 5 e 3 cards
+    // Todos os cards com imagem — lifestyle, moda, gastronomia, esporte
+    // ══════════════════════════════════════════════════════════════
+    {
+      id: SEED_PREFIX+'foto_todos_9',
+      name: 'Foto em Todos — 9 cards',
+      headline: 'Imagem em todos os cards — para nichos visuais de alto impacto',
+      description: 'Todo card tem foto. Overlay varia em intensidade para criar ritmo visual sem perder a força da imagem. Ideal para lifestyle, gastronomia, moda, esporte e travel. Texto curto e direto — a imagem faz o trabalho.',
+      cardCount: 9,
+      cardStyles: [
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:60,gradDir:'bottom',gradReach:65},
+          title:{size:30,color:'$light',weight:900,uppercase:true},
+          body:{visible:false},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'dots',colorMode:'light'},
+          avatar:{visible:true,placement:'bottom',offsetY:-25}}),   // 1. Capa — headline grande, sem corpo
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:45,gradDir:'bottom',gradReach:55},
+          title:{size:22,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 2. Overlay leve
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:55,gradDir:'bottom',gradReach:60},
+          title:{size:22,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 3.
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'$accent',opacity:35,gradDir:'bottom',gradReach:70},
+          title:{size:24,color:'$light',weight:900},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 4. Overlay accent — variação de cor
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:45,gradDir:'bottom',gradReach:55},
+          title:{size:22,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 5.
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:50,gradDir:'bottom',gradReach:60},
+          title:{size:22,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 6.
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'$primary',opacity:40,gradDir:'bottom',gradReach:70},
+          title:{size:24,color:'$light',weight:900},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 7. Overlay primary — segunda variação
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:55,gradDir:'bottom',gradReach:65},
+          title:{size:22,color:'$light',weight:700,italic:true},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}), // 8. Italic — pensamento final
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:70,gradDir:'bottom',gradReach:80},
+          title:{size:24,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:false,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'swipe',colorMode:'light',swipeVariant:'pill',swipePillLabel:'Arraste para ver'},
+          cta:{visible:true,text:'Quero acesso',bgColor:'$accent',textColor:'$light',radius:20}}), // 9. CTA — overlay mais pesado
+      ],
+    },
+    {
+      id: SEED_PREFIX+'foto_todos_5',
+      name: 'Foto em Todos — 5 cards',
+      headline: 'Versão intermediária: 5 fotos, ritmo visual equilibrado',
+      description: 'Para carrosséis de profundidade média. Cinco fotos com variação de overlay criam ritmo sem sobrecarregar. Ideal para antes/depois, passo a passo visual ou mini-ensaios.',
+      cardCount: 5,
+      cardStyles: [
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:60,gradDir:'bottom',gradReach:65},
+          title:{size:28,color:'$light',weight:900,uppercase:true},
+          body:{visible:false},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'dots',colorMode:'light'},
+          avatar:{visible:true,placement:'bottom',offsetY:-25}}),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:45,gradDir:'bottom',gradReach:55},
+          title:{size:22,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'$accent',opacity:35,gradDir:'bottom',gradReach:70},
+          title:{size:24,color:'$light',weight:900},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:50,gradDir:'bottom',gradReach:60},
+          title:{size:22,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:70,gradDir:'bottom',gradReach:80},
+          title:{size:24,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:false,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'swipe',colorMode:'light',swipeVariant:'pill',swipePillLabel:'Arraste para ver'},
+          cta:{visible:true,text:'Quero acesso',bgColor:'$accent',textColor:'$light',radius:20}}),
+      ],
+    },
+    {
+      id: SEED_PREFIX+'foto_todos_3',
+      name: 'Foto em Todos — 3 cards',
+      headline: 'Três fotos: capa + desenvolvimento + CTA visual',
+      description: 'Versão compacta para conteúdo visual direto. Três imagens com intenção clara: apresenta, desenvolve e converte.',
+      cardCount: 3,
+      cardStyles: [
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:60,gradDir:'bottom',gradReach:65},
+          title:{size:28,color:'$light',weight:900,uppercase:true},
+          body:{visible:false},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'dots',colorMode:'light'},
+          avatar:{visible:true,placement:'bottom',offsetY:-25}}),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'$accent',opacity:35,gradDir:'bottom',gradReach:70},
+          title:{size:22,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:true,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'numeric',colorMode:'light'}}),
+        cs({bg:{type:'image',color:'$dark',imageMode:'cover'},
+          overlay:{visible:true,color:'#000000',opacity:70,gradDir:'bottom',gradReach:80},
+          title:{size:24,color:'$light',weight:700},
+          body:{visible:true,size:13,color:'$light80'},
+          header:{visible:false,template:'tagline',colorMode:'light'},
+          footer:{visible:true,template:'swipe',colorMode:'light',swipeVariant:'pill',swipePillLabel:'Arraste para ver'},
+          cta:{visible:true,text:'Quero acesso',bgColor:'$accent',textColor:'$light',radius:20}}),
+      ],
+    },
+
   ];
 
-  // Return templates array — built-ins live in memory only, never in localStorage
   return templates;
 }
 
@@ -5656,7 +5956,15 @@ async function runRender() {
   const t = S.triagem; const h = S.selectedHeadline; const e = S.espinha;
   const provasStr = (e.provasFontes||e.prova||[]).map(p => typeof p==='object'?p.dado:p).slice(0,3).join(' | ');
 
-  const prompt = `Carrossel Instagram. EXATAMENTE entre 7 e 12 cards — a quantidade ideal para narrar esta história.
+  // If a template was selected, tell the AI exactly how many cards to generate
+  const tplCardCount = S.selectedTemplate
+    ? (getBuiltInTemplates().find(tp => tp.id === S.selectedTemplate)?.cardCount || null)
+    : null;
+  const cardCountInstruction = tplCardCount
+    ? `EXATAMENTE ${tplCardCount} cards — nem mais, nem menos.`
+    : `EXATAMENTE entre 7 e 12 cards — a quantidade ideal para narrar esta história.`;
+
+  const prompt = `Carrossel Instagram. ${cardCountInstruction}
 
 Tema: ${t.tema_central}
 Headline: "${h.l1} / ${h.l2}"
@@ -5676,7 +5984,7 @@ REGRAS:
 - layout sugerido: "cover" para card 1, "cta" para último, "text" para texto puro, "image" quando imagem seria ideal, "split" para comparações.
 
 Responda SOMENTE JSON:
-{"tema":"","funil":"","objetivo":"","razao_viral":"","num_cards":8,"cards":[{"num":1,"tipo":"capa","titulo":"","corpo":"","dica_imagem":"","layout":"cover"}]}`;
+{"tema":"","funil":"","objetivo":"","razao_viral":"","num_cards":${tplCardCount||8},"cards":[{"num":1,"tipo":"capa","titulo":"","corpo":"","dica_imagem":"","layout":"cover"}]}`;
 
   try {
     const data = extractJSON(await callClaude(prompt, 3000));
@@ -5723,9 +6031,35 @@ Responda SOMENTE JSON:
     S.renderAnalysis = { tema: data.tema, funil: data.funil, objetivo: data.objetivo, razao_viral: data.razao_viral };
     S.activeCardIdx = 0;
     S.step = 4;
-    _lastAppliedBrand = { ...getBrand() }; // record brand at generation time
-    _undoStack.length = 0; // clear history on new generation
-    pushUndoSnapshot();    // seed undo stack with initial state
+    _lastAppliedBrand = { ...getBrand() };
+    _undoStack.length = 0;
+    pushUndoSnapshot();
+
+    // Apply selected template immediately after generation
+    if (S.selectedTemplate) {
+      const tpls = getTemplates();
+      const tpl = tpls.find(tp => tp.id === S.selectedTemplate);
+      if (tpl && tpl.cardStyles) {
+        const br = getBrand();
+        S.cards = S.cards.map((card, i) => {
+          const styleIdx = Math.min(i, tpl.cardStyles.length - 1);
+          const resolved = _resolveCardTokens(JSON.parse(JSON.stringify(tpl.cardStyles[styleIdx])), br);
+          resolved.title.text = card.title.text;
+          resolved.body.text  = card.body.text;
+          if (resolved.cta) resolved.cta.text = card.cta?.text || '';
+          resolved.bg.imageSrc = null; resolved.bg.imageMime = null;
+          resolved.idx = i;
+          return resolved;
+        });
+        // Apply fonts from brand
+        S.cards.forEach(card => {
+          card.title.fontFamily = br.fontDisplay || card.title.fontFamily;
+          card.body.fontFamily  = br.fontBody    || card.body.fontFamily;
+        });
+        localStorage.setItem('storylab_active_template', S.selectedTemplate);
+      }
+    }
+
     initSidebar();
     renderFinal();
     autoSave();
@@ -6478,6 +6812,12 @@ function renderCardSidebar() {
     </div>`;
   }
 
+  const batchUploadBtn = `<button onclick="openBatchImageUpload()"
+    style="width:100%;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--border);background:var(--surface2);cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:10px;font-family:'Poppins',sans-serif;font-size:0.75rem;color:var(--ink2);">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/><line x1="12" y1="3" x2="12" y2="1"/></svg>
+    <span><strong>Subir todas as imagens</strong> <span style="color:var(--muted);font-weight:400;">— selecione e ordene as fotos</span></span>
+  </button>`;
+
   const bgSection = section('bg', '', 'Background', `
     <div style="display:flex;gap:6px;margin-bottom:10px;">
       ${['solid','gradient','image','video'].map(t => `<button onclick="setCardBgType(${idx},'${t}')"
@@ -6957,6 +7297,7 @@ function renderCardSidebar() {
   </div>`;
 
   sidebarBody.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding-bottom:8px;">
+    ${batchUploadBtn}
     ${bgSection}
     ${overlaySection}
     ${titleSection}
@@ -6967,7 +7308,145 @@ function renderCardSidebar() {
 }
 
 
-// ── COMPARADOR PREVIEW × EXPORT ──
+// ── Upload em lote com drag and drop ──
+function openBatchImageUpload() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    _showBatchOrderModal(files);
+  };
+  inp.click();
+}
+
+function _showBatchOrderModal(files) {
+  document.getElementById('batch-upload-modal')?.remove();
+
+  // Count how many cards in the current template expect images
+  const imgCards = S.cards.filter((c, i) => {
+    const tplId = S.selectedTemplate || localStorage.getItem('storylab_active_template');
+    if (tplId) {
+      const tpl = getTemplates().find(t => t.id === tplId);
+      if (tpl?.cardStyles?.[i]) return tpl.cardStyles[Math.min(i, tpl.cardStyles.length-1)].bg?.type === 'image';
+    }
+    return true; // no template = all cards can have images
+  });
+  const expectedCount = imgCards.length || S.cards.length;
+
+  let orderedFiles = [...files];
+  let dragSrc = null;
+
+  const modal = document.createElement('div');
+  modal.id = 'batch-upload-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+  function renderModal() {
+    const statusMsg = orderedFiles.length > expectedCount
+      ? `<div style="color:#ffaa00;font-size:0.72rem;">⚠ ${orderedFiles.length} fotos selecionadas, mas apenas ${expectedCount} serão usadas (${S.cards.length} cards${imgCards.length < S.cards.length ? ', '+imgCards.length+' com imagem' : ''}).</div>`
+      : orderedFiles.length < expectedCount
+      ? `<div style="color:var(--muted);font-size:0.72rem;">${orderedFiles.length} foto${orderedFiles.length!==1?'s':''} inserida${orderedFiles.length!==1?'s':''} de ${expectedCount} esperada${expectedCount!==1?'s':''}. Cards sem foto ficam com a cor da marca.</div>`
+      : `<div style="color:#2de300;font-size:0.72rem;">✓ ${orderedFiles.length} foto${orderedFiles.length!==1?'s':''} — encaixe perfeito com o template.</div>`;
+
+    const thumbs = orderedFiles.map((f, i) => {
+      const url = URL.createObjectURL(f);
+      return `<div draggable="true"
+        ondragstart="window._batchDragSrc=${i}"
+        ondragover="event.preventDefault()"
+        ondrop="window._batchDrop(${i})"
+        style="position:relative;width:80px;height:100px;border-radius:8px;overflow:hidden;cursor:grab;border:2px solid var(--border);flex-shrink:0;background:#111;">
+        <img src="${url}" style="width:100%;height:75%;object-fit:cover;display:block;"/>
+        <div style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.7);color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;font-family:'Poppins',sans-serif;">${i+1}</div>
+        <div style="padding:2px 4px;font-size:9px;color:var(--muted);font-family:'Poppins',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name.substring(0,14)}</div>
+        <button onclick="window._batchRemove(${i})" style="position:absolute;top:2px;right:2px;background:rgba(220,60,60,0.85);border:none;color:#fff;width:16px;height:16px;border-radius:50%;cursor:pointer;font-size:10px;padding:0;line-height:1;">×</button>
+      </div>`;
+    }).join('');
+
+    modal.innerHTML = `<div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:20px;width:520px;max-width:100%;display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.9rem;color:var(--ink);">Ordenar imagens</div>
+        <button onclick="document.getElementById('batch-upload-modal').remove()" style="background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;">✕</button>
+      </div>
+      <div style="font-size:0.72rem;color:var(--muted);font-family:'Poppins',sans-serif;">Arraste para reordenar. A imagem 1 vai para o card 1, a 2 para o card 2, e assim por diante.</div>
+      <div id="batch-thumbs" style="display:flex;gap:8px;flex-wrap:wrap;min-height:80px;padding:8px;background:var(--surface2);border-radius:8px;border:1.5px dashed var(--border);">
+        ${thumbs}
+      </div>
+      ${statusMsg}
+      <div style="display:flex;gap:8px;">
+        <button onclick="window._batchAddMore()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:transparent;font-size:0.72rem;cursor:pointer;color:var(--muted);font-family:'Poppins',sans-serif;">+ Adicionar mais fotos</button>
+        <button onclick="window._batchApply()" style="flex:2;padding:8px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;">✓ Aplicar imagens ao carrossel</button>
+      </div>
+    </div>`;
+  }
+
+  window._batchDrop = (targetIdx) => {
+    const src = window._batchDragSrc;
+    if (src === undefined || src === targetIdx) return;
+    const moved = orderedFiles.splice(src, 1)[0];
+    orderedFiles.splice(targetIdx, 0, moved);
+    renderModal();
+  };
+
+  window._batchRemove = (idx) => {
+    orderedFiles.splice(idx, 1);
+    renderModal();
+  };
+
+  window._batchAddMore = () => {
+    const inp2 = document.createElement('input');
+    inp2.type='file'; inp2.accept='image/*'; inp2.multiple=true;
+    inp2.onchange = (e) => {
+      orderedFiles = [...orderedFiles, ...Array.from(e.target.files)];
+      renderModal();
+    };
+    inp2.click();
+  };
+
+  window._batchApply = async () => {
+    modal.remove();
+    const toUse = orderedFiles.slice(0, expectedCount);
+    let fileIdx = 0;
+
+    for (let i = 0; i < S.cards.length; i++) {
+      // Determine if this card expects an image
+      const tplId = S.selectedTemplate || localStorage.getItem('storylab_active_template');
+      let cardExpectsImg = true;
+      if (tplId) {
+        const tpl = getTemplates().find(t => t.id === tplId);
+        if (tpl?.cardStyles) {
+          const cs = tpl.cardStyles[Math.min(i, tpl.cardStyles.length-1)];
+          cardExpectsImg = cs?.bg?.type === 'image';
+        }
+      }
+      if (cardExpectsImg && fileIdx < toUse.length) {
+        await applyImageFileToCardBg(i, toUse[fileIdx]);
+        fileIdx++;
+      }
+    }
+    _showPasteToast(-1, `${fileIdx} imagem${fileIdx!==1?'s':''} aplicada${fileIdx!==1?'s':''} ao carrossel`);
+    renderCardSidebar();
+  };
+
+  document.body.appendChild(modal);
+  renderModal();
+}
+
+// Override _showPasteToast to support custom messages
+function _showPasteToast(idx, customMsg) {
+  let toast = document.getElementById('paste-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'paste-toast';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(30,30,30,0.92);color:#fff;padding:8px 18px;border-radius:20px;font-size:0.78rem;z-index:9999;pointer-events:none;transition:opacity 0.3s;font-family:"Roboto",sans-serif;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = customMsg || `✓ Imagem colada no card ${idx + 1}`;
+  toast.style.opacity = '1';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2800);
+}
+
+
 async function compareCardExport(idx) {
   const card = S.cards[idx];
   const total = S.cards.length;
@@ -7486,7 +7965,8 @@ function triggerBgImageUpload(idx) {
 
 // ── Shared: apply any image File/Blob to a card's background ──
 function applyImageFileToCardBg(idx, file) {
-  const reader = new FileReader();
+  return new Promise((resolve) => {
+    const reader = new FileReader();
   reader.onload = (ev) => {
     const img = new Image();
     img.onload = () => {
@@ -7505,12 +7985,14 @@ function applyImageFileToCardBg(idx, file) {
       S.cards[idx].bg.imageScale = 1;
       S.cards[idx].bg.imageX = 0; S.cards[idx].bg.imageY = 0;
       S.cards[idx].bg.boxImgX = 0; S.cards[idx].bg.boxImgY = 0;
-      refreshCard(idx); renderCardSidebar();
+      refreshCard(idx);
       saveImagesToStorage(activeSessionId || 'current');
+      resolve();
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
+  });
 }
 
 // ── Paste image (Ctrl+V / clique direito + colar) ──
@@ -10794,6 +11276,7 @@ function renderStep(step) {
   if (step === 1 && S.triagem) renderTriagem();
   else if (step === 2 && S.headlines.length) renderHeadlines();
   else if (step === 3 && S.espinha) renderEspinha();
+  else if (step === 3.5) renderTemplateSelector();
   else if (step === 4 && S.cards.length) renderFinal();
 }
 
