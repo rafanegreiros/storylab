@@ -4122,7 +4122,7 @@ async function analyzeImage() {
         "Authorization": "Bearer " + token
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1000,
         messages: [{
           role: "user",
@@ -5036,7 +5036,7 @@ async function checkApiStatus() {
         "Authorization": "Bearer " + token
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 10,
         messages: [{ role: "user", content: "responda só: ok" }]
       })
@@ -10472,7 +10472,7 @@ async function callClaude(prompt, maxTokens, retries = 4) {
           "Authorization": "Bearer " + token
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: maxTokens || 1000,
           messages: [{ role: "user", content: prompt }]
         })
@@ -10515,7 +10515,7 @@ async function callClaudeWithSearch(prompt, maxTokens, retries = 4) {
           "Authorization": "Bearer " + token
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: maxTokens || 1500,
           tools: [{ type: "web_search_20250305", name: "web_search" }],
           messages: [{ role: "user", content: prompt }]
