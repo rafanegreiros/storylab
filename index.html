@@ -2577,6 +2577,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 </svg></div>
   <div class="header-right">
     <button class="icon-btn" onclick="openHistory()" title="Histórico" id="history-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
+    <button class="icon-btn" onclick="openTemplateManager()" title="Templates"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
     <button class="icon-btn" onclick="openBrand()" title="Identidade Visual"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17a4 4 0 0 1-8 0V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2Z"/><path d="M16.7 13H19a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H7"/><path d="M 7 17h.01"/><path d="m11 8 2.3-2.3a2.4 2.4 0 0 1 3.404.004L18.6 7.6a2.4 2.4 0 0 1 .026 3.434L9.9 19.8"/></svg></button>
     <button class="icon-btn theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Alternar tema"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
     <button class="icon-btn" onclick="_clearSession();supabaseClient.auth.signOut()" title="Sair" style="font-size:0.7rem;width:auto;padding:0 10px;font-family:'Roboto',sans-serif">Sair</button>
@@ -2618,6 +2619,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 <div id="mobile-menu">
 
   <button class="mobile-menu-item" onclick="openHistory();toggleMobileMenu()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Histórico</button>
+  <button class="mobile-menu-item" onclick="openTemplateManager();toggleMobileMenu()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Templates</button>
   <button class="mobile-menu-item" onclick="openBrand();toggleMobileMenu()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17a4 4 0 0 1-8 0V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2Z"/><path d="M16.7 13H19a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H7"/><path d="M 7 17h.01"/><path d="m11 8 2.3-2.3a2.4 2.4 0 0 1 3.404.004L18.6 7.6a2.4 2.4 0 0 1 .026 3.434L9.9 19.8"/></svg> Identidade Visual</button>
   <button class="mobile-menu-item" onclick="toggleTheme();toggleMobileMenu()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg> Alternar tema</button>
   <div class="mobile-menu-divider"></div>
@@ -4905,10 +4907,11 @@ function renderTemplateSelector() {
       ${isSelected ? `<div style="position:absolute;top:6px;right:6px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;font-family:'Poppins',sans-serif;">✓</div>` : ''}
       <div style="display:flex;gap:2px;margin-bottom:8px;height:64px;">${miniCards}</div>
       <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.72rem;color:var(--ink);margin-bottom:1px;">${tpl.name}</div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;margin-bottom:6px;">
         <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,113,227,0.08);color:var(--accent);font-family:'Poppins',sans-serif;">${tpl.cardCount} cards</span>
         ${imgCount>0?`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--muted);font-family:'Poppins',sans-serif;">${imgCount} fotos</span>`:''}
       </div>
+      <button onclick="event.stopPropagation();openTemplateEditor('${tpl.id}')" style="width:100%;padding:3px 6px;border-radius:5px;border:1.5px solid var(--border);background:transparent;font-size:10px;cursor:pointer;color:var(--muted);font-family:'Poppins',sans-serif;">✏ Editar template</button>
     </div>`;
   }
 
@@ -7382,7 +7385,159 @@ function renderCardSidebar() {
 }
 
 
-// ── Upload em lote com drag and drop ──
+// ── TEMPLATE EDITOR ──
+// Opens a template in the carousel editor for full editing
+// Built-ins are always saved as a new copy; user templates can be overwritten
+
+const TEMPLATE_EDIT_PLACEHOLDER_SRC = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500"><rect width="400" height="500" fill="%23e8e5de"/><rect x="60" y="100" width="280" height="200" rx="8" fill="none" stroke="%23aaa9a3" stroke-width="3"/><circle cx="150" cy="165" r="28" fill="none" stroke="%23aaa9a3" stroke-width="3"/><polyline points="60,300 150,200 220,270 280,210 340,300" fill="none" stroke="%23aaa9a3" stroke-width="3" stroke-linejoin="round"/><text x="200" y="380" text-anchor="middle" font-family="sans-serif" font-size="22" fill="%23aaa9a3">Clique para adicionar foto</text></svg>`;
+
+function openTemplateEditor(tplId) {
+  document.getElementById('template-manager-modal')?.remove();
+
+  const allTpls = getTemplates();
+  const tpl = allTpls.find(t => t.id === tplId);
+  if (!tpl || !tpl.cardStyles) { alert('Template não encontrado.'); return; }
+
+  const isBuiltIn = tpl.id.startsWith('builtin_');
+  const b = getBrand();
+
+  // Save current S state to restore later
+  const savedState = JSON.parse(JSON.stringify(S));
+
+  // Build fake cards from template cardStyles
+  const editCards = tpl.cardStyles.map((style, i) => {
+    const resolved = _resolveCardTokens(JSON.parse(JSON.stringify(style)), b);
+    resolved.title.text = resolved.title.text || `Título do card ${i+1}`;
+    resolved.body.text  = resolved.body.text  || `Texto do card ${i+1}`;
+    if (!resolved.cta) resolved.cta = { visible: false, text: 'Saiba mais', bgColor: b.accent||'#e8450a', textColor: '#ffffff', radius: 20 };
+    // Image cards get the placeholder
+    if (resolved.bg.type === 'image') {
+      resolved.bg.imageSrc  = TEMPLATE_EDIT_PLACEHOLDER_SRC;
+      resolved.bg.imageMime = 'image/svg+xml';
+    }
+    resolved.idx = i;
+    return resolved;
+  });
+
+  // Switch to editor mode with template cards
+  S.cards = editCards;
+  S.activeCardIdx = 0;
+  S.step = 4;
+  // Mark as template editing mode
+  S._editingTemplate = { id: tplId, name: tpl.name, isBuiltIn, savedState };
+  S.renderAnalysis = { tema: `Editando template: ${tpl.name}`, funil: '', objetivo: '', razao_viral: '' };
+
+  _undoStack.length = 0;
+  pushUndoSnapshot();
+  initSidebar();
+  renderFinal();
+
+  // Show save banner at top
+  _showTemplateSaveBanner(tpl, isBuiltIn);
+}
+
+function _showTemplateSaveBanner(tpl, isBuiltIn) {
+  document.getElementById('tpl-edit-banner')?.remove();
+  const banner = document.createElement('div');
+  banner.id = 'tpl-edit-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:8000;background:rgba(0,113,227,0.95);color:#fff;padding:8px 16px;display:flex;align-items:center;gap:12px;font-family:\'Poppins\',sans-serif;font-size:0.78rem;';
+  banner.innerHTML = `
+    <span style="flex:1;">✏ Editando template: <strong>${tpl.name}</strong>${isBuiltIn ? ' — será salvo como cópia' : ''}</span>
+    <button onclick="_saveTemplateFromEditor()" style="padding:5px 14px;border-radius:6px;background:#fff;color:#0071e3;border:none;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.75rem;">💾 Salvar template</button>
+    <button onclick="_cancelTemplateEdit()" style="padding:5px 12px;border-radius:6px;background:rgba(255,255,255,0.15);color:#fff;border:none;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.75rem;">✕ Cancelar</button>
+  `;
+  document.body.appendChild(banner);
+  // Push canvas down to make room for banner
+  const canvas = document.getElementById('canvas');
+  if (canvas) canvas.style.paddingTop = '44px';
+}
+
+function _saveTemplateFromEditor() {
+  const editInfo = S._editingTemplate;
+  if (!editInfo) return;
+
+  const isBuiltIn = editInfo.isBuiltIn;
+  const currentStyles = S.cards.map(card => {
+    const c = JSON.parse(JSON.stringify(card));
+    // Replace placeholder back to type:image marker
+    if (c.bg.imageSrc === TEMPLATE_EDIT_PLACEHOLDER_SRC) {
+      c.bg.imageSrc  = null;
+      c.bg.imageMime = null;
+      c.bg.type      = 'image';
+    }
+    c.title.text = '';
+    c.body.text  = '';
+    if (c.cta) c.cta.text = '';
+    return c;
+  });
+
+  if (isBuiltIn) {
+    // Must save as a new name
+    const newName = prompt(`Este é um template da ferramenta.\nSalvar como cópia com qual nome?`, `${editInfo.name} (meu)`);
+    if (!newName?.trim()) return;
+    const userTpls = getUserTemplates();
+    userTpls.push({
+      id: 'user_' + Date.now(),
+      name: newName.trim(),
+      headline: '',
+      description: '',
+      cardCount: currentStyles.length,
+      cardStyles: currentStyles,
+      createdAt: new Date().toISOString(),
+    });
+    saveTemplates(userTpls);
+    alert(`✅ Template "${newName.trim()}" salvo nos seus templates!`);
+  } else {
+    // User template — ask overwrite or new
+    const choice = confirm(`Sobrescrever "${editInfo.name}"?\n\nOK = Sobrescrever | Cancelar = Salvar como novo`);
+    const userTpls = getUserTemplates();
+    if (choice) {
+      const idx = userTpls.findIndex(t => t.id === editInfo.id);
+      if (idx >= 0) {
+        userTpls[idx].cardStyles = currentStyles;
+        userTpls[idx].cardCount  = currentStyles.length;
+      }
+    } else {
+      const newName = prompt('Nome para o novo template:', `${editInfo.name} (cópia)`);
+      if (!newName?.trim()) return;
+      userTpls.push({
+        id: 'user_' + Date.now(),
+        name: newName.trim(),
+        headline: '',
+        description: '',
+        cardCount: currentStyles.length,
+        cardStyles: currentStyles,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    saveTemplates(userTpls);
+    alert('✅ Template salvo!');
+  }
+
+  _cancelTemplateEdit();
+}
+
+function _cancelTemplateEdit() {
+  document.getElementById('tpl-edit-banner')?.remove();
+  const canvas = document.getElementById('canvas');
+  if (canvas) canvas.style.paddingTop = '';
+
+  const saved = S._editingTemplate?.savedState;
+  if (saved) {
+    Object.assign(S, saved);
+    S._editingTemplate = null;
+    if (S.step === 4 && S.cards.length) {
+      initSidebar(); renderFinal();
+    } else {
+      initSidebar(); renderStepCanvas();
+    }
+  } else {
+    S._editingTemplate = null;
+    resetAll();
+  }
+}
+
+
 function openBatchImageUpload() {
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
@@ -8900,16 +9055,19 @@ function openTemplateManager() {
     const imgCount = tpl.cardStyles.filter(c => c.bg?.type==='image' || c.bg?.boxMode).length;
     const isBuiltIn = tpl.id.startsWith('builtin_');
     const dimStyle = dim ? 'opacity:0.5;' : '';
-    return `<div onclick="${dim ? '' : `applyTemplateFromManager('${tpl.id}')`}"
-      style="background:var(--surface);border:${isSelected?'2px solid var(--accent)':'1.5px solid var(--border)'};border-radius:10px;padding:10px;cursor:${dim?'default':'pointer'};position:relative;${dimStyle}">
+    return `<div style="background:var(--surface);border:${isSelected?'2px solid var(--accent)':'1.5px solid var(--border)'};border-radius:10px;padding:10px;cursor:default;position:relative;${dimStyle}">
       ${isSelected ? `<div style="position:absolute;top:6px;right:6px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;font-family:'Poppins',sans-serif;">atual</div>` : ''}
       ${isBuiltIn && !isSelected ? `<div style="position:absolute;top:6px;right:6px;background:rgba(255,170,0,0.12);color:#ffaa00;font-size:9px;padding:1px 6px;border-radius:8px;font-family:'Poppins',sans-serif;">validado</div>` : ''}
       <div style="display:flex;gap:2px;margin-bottom:8px;height:60px;">${tpl.cardStyles.map(miniCardHtml).join('')}</div>
       <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.7rem;color:var(--ink);margin-bottom:4px;">${tpl.name}</div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;">
         <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,113,227,0.08);color:var(--accent);font-family:'Poppins',sans-serif;">${tpl.cardCount} cards</span>
         ${imgCount>0?`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--muted);font-family:'Poppins',sans-serif;">${imgCount} fotos</span>`:''}
       </div>
+      ${dim ? '' : `<div style="display:flex;gap:4px;">
+        <button onclick="document.getElementById('template-manager-modal').remove();openTemplateEditor('${tpl.id}')" style="flex:1;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border);background:transparent;font-size:10px;cursor:pointer;color:var(--muted);font-family:'Poppins',sans-serif;">✏ Editar</button>
+        ${!isSelected ? `<button onclick="applyTemplateFromManager('${tpl.id}')" style="flex:2;padding:4px 6px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:10px;cursor:pointer;font-family:'Poppins',sans-serif;font-weight:600;">▶ Usar</button>` : `<div style="flex:2;padding:4px 6px;border-radius:6px;background:rgba(0,113,227,0.06);font-size:10px;color:var(--accent);font-family:'Poppins',sans-serif;text-align:center;display:flex;align-items:center;justify-content:center;">✓ Em uso</div>`}
+      </div>`}
     </div>`;
   }
 
