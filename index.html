@@ -7404,16 +7404,49 @@ function openTemplateEditor(tplId) {
   // Save current S state to restore later
   const savedState = JSON.parse(JSON.stringify(S));
 
+  // Lorem ipsum texts for each card position — give real feel to the template
+  const LOREM_TITLES = [
+    'Como este tema mudou tudo',
+    'O que ninguém te contou sobre isso',
+    'A verdade por trás dos números',
+    'Por que a maioria erra aqui',
+    'O dado que muda a conversa',
+    'O que os melhores fazem diferente',
+    'Quando tudo parece impossível',
+    'A virada que ninguém esperava',
+    'O que isso significa para você',
+  ];
+  const LOREM_BODIES = [
+    'A maioria das pessoas ignora esse ponto e perde a oportunidade mais óbvia do mercado.',
+    'Estudos mostram que 73% dos profissionais cometem esse erro repetidamente sem perceber.',
+    'O mecanismo é simples: quando você entende a causa raiz, a solução aparece naturalmente.',
+    'Não é sobre trabalhar mais. É sobre trabalhar no que realmente move o resultado.',
+    'Esse número parece assustador, mas ele revela exatamente onde está a oportunidade.',
+    'A diferença entre os que crescem e os que estacionam está nessa decisão específica.',
+    'É exatamente nesse momento que a maioria desiste. Os que persistem chegam ao outro lado.',
+    'A história se repete porque as pessoas não aprendem o padrão — até agora.',
+    'Salve este carrossel. Compartilhe com quem precisa ver isso. A conversa começa aqui.',
+  ];
+
   // Build fake cards from template cardStyles
   const editCards = tpl.cardStyles.map((style, i) => {
     const resolved = _resolveCardTokens(JSON.parse(JSON.stringify(style)), b);
-    resolved.title.text = resolved.title.text || `Título do card ${i+1}`;
-    resolved.body.text  = resolved.body.text  || `Texto do card ${i+1}`;
+    resolved.title.text = LOREM_TITLES[i] || LOREM_TITLES[i % LOREM_TITLES.length];
+    resolved.body.text  = LOREM_BODIES[i] || LOREM_BODIES[i % LOREM_BODIES.length];
     if (!resolved.cta) resolved.cta = { visible: false, text: 'Saiba mais', bgColor: b.accent||'#e8450a', textColor: '#ffffff', radius: 20 };
-    // Image cards get the placeholder
+    // Image cards AND box-mode cards get the placeholder
     if (resolved.bg.type === 'image') {
       resolved.bg.imageSrc  = TEMPLATE_EDIT_PLACEHOLDER_SRC;
       resolved.bg.imageMime = 'image/svg+xml';
+      resolved.bg.imgNaturalW = 400;
+      resolved.bg.imgNaturalH = 500;
+    }
+    if (resolved.bg.boxMode) {
+      resolved.bg.imageSrc  = TEMPLATE_EDIT_PLACEHOLDER_SRC;
+      resolved.bg.imageMime = 'image/svg+xml';
+      resolved.bg.type      = 'image';
+      resolved.bg.imgNaturalW = 400;
+      resolved.bg.imgNaturalH = 500;
     }
     resolved.idx = i;
     return resolved;
@@ -7426,6 +7459,8 @@ function openTemplateEditor(tplId) {
   // Mark as template editing mode
   S._editingTemplate = { id: tplId, name: tpl.name, isBuiltIn, savedState };
   S.renderAnalysis = { tema: `Editando template: ${tpl.name}`, funil: '', objetivo: '', razao_viral: '' };
+  // Set selectedTemplate so batch upload knows which cards expect images
+  S.selectedTemplate = tplId;
 
   _undoStack.length = 0;
   pushUndoSnapshot();
@@ -7459,12 +7494,16 @@ function _saveTemplateFromEditor() {
   const isBuiltIn = editInfo.isBuiltIn;
   const currentStyles = S.cards.map(card => {
     const c = JSON.parse(JSON.stringify(card));
-    // Replace placeholder back to type:image marker
-    if (c.bg.imageSrc === TEMPLATE_EDIT_PLACEHOLDER_SRC) {
+    // Strip ALL images from templates — quota protection
+    // The bg.type='image' or boxMode flag tells applyTemplate to expect a photo here
+    if (c.bg.imageSrc) {
       c.bg.imageSrc  = null;
       c.bg.imageMime = null;
-      c.bg.type      = 'image';
+      c.bg.imgNaturalW = null;
+      c.bg.imgNaturalH = null;
     }
+    // Keep bg.type as 'image' — that's the signal that this card expects a photo
+    // If boxMode was set with a placeholder, keep boxMode but clear the image
     c.title.text = '';
     c.body.text  = '';
     if (c.cta) c.cta.text = '';
