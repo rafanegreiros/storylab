@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Storylab v3 — Agente de Carrosséis</title>
+<title>Storycards — Carrosséis com narrativa</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NTAgNDUwIj48cGF0aCBmaWxsPSIjMDA3MWUzIiBkPSJNMzg2LjI4LDU4Ljc5QzM0OC42OSwxOS42NCwyOTYuMjQsMCwyMjguODksMFMxMDcuNzYsMTkuNjQsNjcuNjIsNTguNzlDMjcuNDUsOTguMDEsNy4zOSwxNTEuMzksNy4zOSwyMTguOTNjMCw3Mi45OSwyMC4wNSwxMjkuNzMsNjAuMjMsMTcwLjI2LDQwLjE0LDQwLjU2LDkzLjg4LDYwLjgxLDE2MS4yNyw2MC44MSwxNDIuNDQsMCwyMTMuNzItNzcuMDIsMjEzLjcyLTIzMS4wNywwLTY3LjU0LTE4LjgzLTEyMC45Mi01Ni4zMi0xNjAuMTRaIi8+PC9zdmc+">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.383.0/umd/lucide.min.js"></script>
@@ -122,6 +122,8 @@ header {
 [data-theme="light"] .logo { color: #141210; }
 :root .logo { color: #f0f0f5; }
 .logo svg { display: block; }
+.logo-img { filter: invert(1); transition: filter 0.3s; }
+[data-theme="light"] .logo-img { filter: none; }
 
 .header-right {
   display: flex;
@@ -2024,7 +2026,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
   header {
     padding: 12px 18px;
   }
-  .logo svg { height: 22px; }
+  .logo svg, .logo-img { height: 20px !important; }
 
   /* Hide all header-right items except dots and hamburger */
   .header-right > .icon-btn,
@@ -2500,17 +2502,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 <!-- ── LOGIN SCREEN ── -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 378.88 123.3" height="36" style="display:block" aria-label="Storylab">
-  <g class="logo-type"><path d="M36.35,50.97c-2.7-2.16-5.54-4.23-8.51-6.18-2.74-1.88-5.34-3.75-7.81-5.63-2.47-1.88-4.46-3.98-5.99-6.31s-2.29-5.04-2.29-8.14c0-2.53.49-4.59,1.47-6.18.98-1.59,2.27-2.8,3.87-3.61,1.6-.81,3.38-1.22,5.34-1.22,3.13,0,5.79.88,7.98,2.63,2.19,1.76,3.99,3.86,5.4,6.31,1.41,2.45,2.54,4.8,3.4,7.04.86,2.25,1.53,3.86,2,4.84.16.25.41.31.76.18.35-.12.53-.31.53-.55v-18c0-.49-.1-.94-.29-1.35-.2-.41-.69-.78-1.47-1.1-1.64-.73-3.87-1.37-6.69-1.9-2.82-.53-5.64-.8-8.45-.8-3.91,0-7.77.7-11.56,2.08-3.8,1.39-6.93,3.53-9.39,6.43-2.47,2.9-3.7,6.63-3.7,11.21,0,3.59.78,6.68,2.35,9.25,1.56,2.57,3.6,4.86,6.1,6.86,2.5,2,5.13,3.94,7.87,5.82,2.82,1.88,5.52,3.86,8.1,5.94,2.58,2.08,4.7,4.49,6.34,7.23,1.64,2.74,2.47,6.02,2.47,9.86,0,3.02-.53,5.39-1.58,7.1-1.06,1.71-2.41,2.9-4.05,3.55-1.64.65-3.37.98-5.17.98-2.82,0-5.32-.75-7.51-2.27-2.19-1.51-4.17-3.45-5.93-5.82-1.76-2.37-3.35-4.96-4.75-7.78-1.41-2.82-2.7-5.49-3.87-8.02-.08-.33-.33-.47-.76-.43-.43.04-.61.27-.53.67l.35,19.47c0,.73.12,1.25.35,1.53.23.29.51.55.82.8.94.82,2.44,1.59,4.52,2.33,2.07.73,4.38,1.35,6.93,1.84,2.54.49,4.99.73,7.34.73,4.85,0,9.18-.92,12.97-2.76,3.8-1.84,6.81-4.39,9.04-7.66,2.23-3.27,3.35-7.06,3.35-11.39,0-3.92-.88-7.29-2.64-10.1-1.76-2.82-3.99-5.31-6.69-7.47Z"/>
-    <path d="M84.6,80.43c-1.1.9-2.45,1.74-4.05,2.51-1.61.78-3.31,1.16-5.11,1.16-2.35,0-4.33-.69-5.93-2.08-1.6-1.39-2.41-3.71-2.41-6.98v-29.07c1.88.07,3.7.18,5.46.35,3.01.29,6.12.8,9.33,1.53.31.08.6-.26.88-1.04.27-.77.41-1.57.41-2.39,0-.73-.1-1.41-.29-2.02-.2-.61-.37-.92-.53-.92-3.52.33-6.83.61-9.92.86-1.76.14-3.54.23-5.34.29v-9.84c0-.33-.26-.49-.76-.49s-.84.16-1,.49c-1.25,3.27-3.13,5.74-5.64,7.41-2.51,1.67-5.75,2.59-9.74,2.76-.31,0-.47.37-.47,1.1s.16,1.1.47,1.1c1.49,0,2.66.21,3.52.61.86.41,1.49,1.1,1.88,2.08.39.98.59,2.33.59,4.04v27.19c0,2.94.65,5.23,1.94,6.86,1.29,1.64,2.89,2.78,4.81,3.43,1.92.65,3.82.98,5.69.98,3.13,0,6.05-.72,8.75-2.14s5.5-3.65,8.39-6.68c.31-.24.29-.55-.06-.92s-.65-.43-.88-.18Z"/>
-    <path d="M127.92,43.68c-3.56-2.45-7.85-3.67-12.86-3.67-2.98,0-5.99.49-9.04,1.47-3.05.98-5.87,2.47-8.45,4.47-2.58,2-4.66,4.55-6.22,7.66-1.57,3.1-2.35,6.78-2.35,11.02,0,4.57.98,8.84,2.93,12.8,1.95,3.96,4.73,7.13,8.34,9.49,3.6,2.37,7.87,3.55,12.8,3.55,4.62,0,8.88-1.04,12.8-3.12,3.91-2.08,7.06-5.02,9.45-8.82,2.39-3.8,3.58-8.18,3.58-13.17,0-4.33-.94-8.41-2.82-12.25-1.88-3.84-4.6-6.98-8.16-9.43ZM123.63,83.12c-1.57,3.18-3.91,4.78-7.04,4.78-2.74,0-5.25-1.14-7.51-3.43-2.27-2.29-4.07-5.53-5.4-9.74-1.33-4.21-2-9.08-2-14.64,0-5.96.8-10.37,2.41-13.23,1.6-2.86,3.93-4.29,6.99-4.29,2.5,0,4.89,1.02,7.16,3.06,2.27,2.04,4.13,5.06,5.58,9.06,1.45,4,2.17,8.98,2.17,14.94s-.78,10.29-2.35,13.47Z"/>
-    <path d="M185.5,47.24c0-2.04-.88-3.69-2.64-4.96-1.76-1.27-3.46-1.9-5.11-1.9-1.17,0-2.51.39-3.99,1.16-1.49.78-3.29,2.14-5.4,4.1-1.17,1.08-2.48,2.43-3.93,4.04-.14-2.67-.55-4.79-1.23-6.36-.86-1.96-1.72-2.94-2.58-2.94-.08,0-.35.08-.82.24l-16.32,8.33c-.16.08-.16.37,0,.86.16.49.39.65.7.49,1.17-.57,2.23-1,3.17-1.29.94-.29,1.76-.43,2.47-.43,1.33,0,2.27.59,2.82,1.78.55,1.18.82,3.04.82,5.57v23.03c0,3.27-.43,5.49-1.29,6.68-.86,1.18-2.51,1.78-4.93,1.78-.23,0-.35.24-.35.73s.12.73.35.73c1.56,0,3.36-.04,5.4-.12,2.03-.08,4.15-.12,6.34-.12,3.13,0,6.05.04,8.75.12,2.7.08,5.11.12,7.22.12.31,0,.47-.24.47-.73s-.16-.73-.47-.73c-2.66,0-4.75-.24-6.28-.73-1.53-.49-2.6-1.37-3.23-2.63-.63-1.27-.94-2.96-.94-5.08v-26.36c.79-.8,1.47-1.47,2.06-2,1.21-1.1,2.15-1.84,2.82-2.21.66-.37,1.27-.55,1.82-.55,1.25,0,2.21.43,2.88,1.29.66.86,1.41,1.74,2.23,2.63.82.9,2.06,1.35,3.7,1.35s3.07-.55,4.05-1.65c.98-1.1,1.47-2.51,1.47-4.23Z"/>
-    <path d="M241.92,41.6c-1.72,0-3.19.04-4.4.12-1.21.08-2.76.12-4.64.12-2.66,0-4.83-.04-6.52-.12-1.68-.08-3.46-.12-5.34-.12-.16,0-.23.24-.23.73s.08.73.23.73c3.21,0,5.38,1.16,6.52,3.49,1.13,2.33,1.04,5.49-.29,9.49l-7.06,21.34-13.84-29.55c-.86-1.88-.9-3.14-.12-3.8.78-.65,2.54-.98,5.28-.98.23,0,.35-.24.35-.73s-.12-.73-.35-.73c-1.72,0-3.64.04-5.75.12-2.11.08-4.58.12-7.4.12-1.57,0-3.23-.04-4.99-.12-1.76-.08-3.42-.12-4.99-.12-.23,0-.35.24-.35.73s.12.73.35.73c1.41,0,2.6.55,3.58,1.65.98,1.1,2.33,3.45,4.05,7.04l18.8,39.57c-1.8,5.02-3.41,9.13-4.83,12.3-1.8,4.04-3.48,6.9-5.05,8.57-1.57,1.67-3.29,2.51-5.17,2.51-1.25,0-2.27-.27-3.05-.8-.78-.53-1.57-1.06-2.35-1.59-.78-.53-1.84-.8-3.17-.8-1.49,0-2.8.47-3.93,1.41-1.13.94-1.7,2.39-1.7,4.35s.65,3.45,1.94,4.47c1.29,1.02,3.07,1.53,5.34,1.53,2.97,0,5.79-.94,8.45-2.82,2.66-1.88,5.3-5.08,7.93-9.61,2.62-4.53,5.34-10.72,8.16-18.56l13.03-36.13c1.41-4,3.01-7.18,4.81-9.55,1.8-2.37,4.03-3.55,6.69-3.55.16,0,.24-.24.24-.73s-.08-.73-.24-.73Z"/>
-    <path d="M264.48.08l-18.2,9.31c-.31.08-.39.37-.23.86.16.49.39.7.7.61,3.21-1.63,5.3-2.04,6.28-1.23.98.82,1.15,3.18.53,7.1l-10.8,61.24c-.63,3.92-.59,6.9.12,8.94.7,2.04,2.39,3.06,5.05,3.06,2.27,0,4.46-.84,6.57-2.51,2.11-1.67,4.38-4.02,6.81-7.04.31-.33.31-.65,0-.98-.31-.33-.63-.33-.94,0-1.25,1.22-2.39,2.25-3.41,3.06-1.02.82-1.96,1.22-2.82,1.22-.63,0-1.14-.39-1.53-1.16-.39-.78-.35-2.31.12-4.59L265.89,1.06c.08-.16-.04-.41-.35-.73-.31-.33-.67-.41-1.06-.24Z"/>
-    <path d="M314.61,79.45c-1.25,1.31-2.43,2.35-3.52,3.12-1.1.78-2.04,1.16-2.82,1.16-1.57,0-1.99-1.92-1.29-5.76l6.81-38.58c.08-.16-.1-.33-.53-.49-.43-.16-.72-.12-.88.12-1,1.6-2.21,2.97-3.62,4.1-1.04-.97-2.22-1.71-3.54-2.2-1.64-.61-3.25-.92-4.81-.92-3.29,0-6.71,1.16-10.27,3.49-3.56,2.33-6.93,5.39-10.1,9.19-3.17,3.8-5.83,7.88-7.98,12.25-2.15,4.37-3.5,8.63-4.05,12.8-.63,4.49-.18,7.74,1.35,9.74,1.53,2,3.62,3,6.28,3,3.21,0,6.5-1.25,9.86-3.74,3.36-2.49,6.53-6.1,9.51-10.84,1.18-1.88,2.27-3.92,3.28-6.11l-1.4,8.19c-.63,4.16-.49,7.21.41,9.12.9,1.92,2.6,2.88,5.11,2.88,2.03,0,4.13-.84,6.28-2.51,2.15-1.67,4.44-4.02,6.87-7.04.23-.24.19-.53-.12-.86-.31-.33-.59-.37-.82-.12ZM294.01,73.2c-1.6,2.45-3.35,4.45-5.22,6-1.88,1.55-3.76,2.33-5.64,2.33-1.72,0-3.05-1-3.99-3-.94-2-1.02-5.57-.23-10.72.7-4.24,1.88-8,3.52-11.27,1.64-3.26,3.52-5.84,5.64-7.72,2.11-1.88,4.26-2.82,6.46-2.82,2.35,0,4.07,1.06,5.17,3.18,1.09,2.12,1.33,5.02.7,8.7-.39,2.29-1.16,4.8-2.29,7.53-1.14,2.74-2.51,5.33-4.11,7.78Z"/>
-    <path d="M357.34,40.01c-3.13,0-6.16.92-9.1,2.76s-5.64,4.35-8.1,7.53c-2.28,2.94-4.24,6.34-5.92,10.15l10.08-59.39c.08-.16-.04-.41-.35-.73-.31-.33-.67-.41-1.06-.24l-18.2,9.31c-.31.08-.39.37-.23.86.16.49.39.7.7.61,3.21-1.63,5.3-2.04,6.28-1.23.98.82,1.15,3.18.53,7.1l-10.8,61.48c-.63,3.76.22,6.74,2.52,8.94,2.31,2.2,5.77,3.31,10.39,3.31,2.82,0,5.91-.7,9.28-2.08,3.36-1.39,6.65-3.43,9.86-6.12,3.21-2.69,6.03-6.06,8.45-10.11,2.43-4.04,4.11-8.72,5.05-14.02.86-5.31.43-9.65-1.29-13.04-1.72-3.39-4.42-5.08-8.1-5.08ZM355.11,61.93c-.78,5.31-2.06,9.84-3.82,13.59-1.76,3.76-3.76,6.61-5.99,8.57-2.23,1.96-4.52,2.94-6.87,2.94s-4.23-.94-5.64-2.82c-1.41-1.88-1.88-4.24-1.41-7.1,1.02-5.71,2.48-10.74,4.4-15.07,1.92-4.33,4.17-7.72,6.75-10.17,2.58-2.45,5.28-3.67,8.1-3.67,1.64,0,2.86.61,3.64,1.84.78,1.23,1.25,2.88,1.41,4.96.16,2.08-.04,4.39-.59,6.92Z"/></g>
-  <g fill="#0071e3"><path  d="M377.18,78.04c-1.14-1.18-2.72-1.78-4.76-1.78s-3.66.59-4.87,1.78c-1.21,1.18-1.82,2.8-1.82,4.84,0,2.21.61,3.92,1.82,5.14,1.21,1.23,2.84,1.84,4.87,1.84,4.3,0,6.46-2.33,6.46-6.98,0-2.04-.57-3.65-1.7-4.84Z"/></g>
-</svg></div>
+    <div class="login-logo"><img class="logo-img" src="data:image/png;base64,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" alt="Storycards" height="30" style="display:block;height:30px;width:auto"/></div>
     <div class="login-tagline">
   <div class="login-tagline-main">SEM IDEIA &nbsp;·&nbsp; SEM TEMPO &nbsp;·&nbsp; QUALQUER NICHO</div>
   <div class="login-tagline-sub">CARROSSÉIS COM POSICIONAMENTO E AUTORIDADE</div>
@@ -2560,21 +2552,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 </div>
 
 <header>
-  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 378.88 123.3" height="34" style="display:block" aria-label="Storylab">
-  <g class="logo-type">
-    <path d="M36.35,50.97c-2.7-2.16-5.54-4.23-8.51-6.18-2.74-1.88-5.34-3.75-7.81-5.63-2.47-1.88-4.46-3.98-5.99-6.31s-2.29-5.04-2.29-8.14c0-2.53.49-4.59,1.47-6.18.98-1.59,2.27-2.8,3.87-3.61,1.6-.81,3.38-1.22,5.34-1.22,3.13,0,5.79.88,7.98,2.63,2.19,1.76,3.99,3.86,5.4,6.31,1.41,2.45,2.54,4.8,3.4,7.04.86,2.25,1.53,3.86,2,4.84.16.25.41.31.76.18.35-.12.53-.31.53-.55v-18c0-.49-.1-.94-.29-1.35-.2-.41-.69-.78-1.47-1.1-1.64-.73-3.87-1.37-6.69-1.9-2.82-.53-5.64-.8-8.45-.8-3.91,0-7.77.7-11.56,2.08-3.8,1.39-6.93,3.53-9.39,6.43-2.47,2.9-3.7,6.63-3.7,11.21,0,3.59.78,6.68,2.35,9.25,1.56,2.57,3.6,4.86,6.1,6.86,2.5,2,5.13,3.94,7.87,5.82,2.82,1.88,5.52,3.86,8.1,5.94,2.58,2.08,4.7,4.49,6.34,7.23,1.64,2.74,2.47,6.02,2.47,9.86,0,3.02-.53,5.39-1.58,7.1-1.06,1.71-2.41,2.9-4.05,3.55-1.64.65-3.37.98-5.17.98-2.82,0-5.32-.75-7.51-2.27-2.19-1.51-4.17-3.45-5.93-5.82-1.76-2.37-3.35-4.96-4.75-7.78-1.41-2.82-2.7-5.49-3.87-8.02-.08-.33-.33-.47-.76-.43-.43.04-.61.27-.53.67l.35,19.47c0,.73.12,1.25.35,1.53.23.29.51.55.82.8.94.82,2.44,1.59,4.52,2.33,2.07.73,4.38,1.35,6.93,1.84,2.54.49,4.99.73,7.34.73,4.85,0,9.18-.92,12.97-2.76,3.8-1.84,6.81-4.39,9.04-7.66,2.23-3.27,3.35-7.06,3.35-11.39,0-3.92-.88-7.29-2.64-10.1-1.76-2.82-3.99-5.31-6.69-7.47Z"/>
-    <path d="M84.6,80.43c-1.1.9-2.45,1.74-4.05,2.51-1.61.78-3.31,1.16-5.11,1.16-2.35,0-4.33-.69-5.93-2.08-1.6-1.39-2.41-3.71-2.41-6.98v-29.07c1.88.07,3.7.18,5.46.35,3.01.29,6.12.8,9.33,1.53.31.08.6-.26.88-1.04.27-.77.41-1.57.41-2.39,0-.73-.1-1.41-.29-2.02-.2-.61-.37-.92-.53-.92-3.52.33-6.83.61-9.92.86-1.76.14-3.54.23-5.34.29v-9.84c0-.33-.26-.49-.76-.49s-.84.16-1,.49c-1.25,3.27-3.13,5.74-5.64,7.41-2.51,1.67-5.75,2.59-9.74,2.76-.31,0-.47.37-.47,1.1s.16,1.1.47,1.1c1.49,0,2.66.21,3.52.61.86.41,1.49,1.1,1.88,2.08.39.98.59,2.33.59,4.04v27.19c0,2.94.65,5.23,1.94,6.86,1.29,1.64,2.89,2.78,4.81,3.43,1.92.65,3.82.98,5.69.98,3.13,0,6.05-.72,8.75-2.14s5.5-3.65,8.39-6.68c.31-.24.29-.55-.06-.92s-.65-.43-.88-.18Z"/>
-    <path d="M127.92,43.68c-3.56-2.45-7.85-3.67-12.86-3.67-2.98,0-5.99.49-9.04,1.47-3.05.98-5.87,2.47-8.45,4.47-2.58,2-4.66,4.55-6.22,7.66-1.57,3.1-2.35,6.78-2.35,11.02,0,4.57.98,8.84,2.93,12.8,1.95,3.96,4.73,7.13,8.34,9.49,3.6,2.37,7.87,3.55,12.8,3.55,4.62,0,8.88-1.04,12.8-3.12,3.91-2.08,7.06-5.02,9.45-8.82,2.39-3.8,3.58-8.18,3.58-13.17,0-4.33-.94-8.41-2.82-12.25-1.88-3.84-4.6-6.98-8.16-9.43ZM123.63,83.12c-1.57,3.18-3.91,4.78-7.04,4.78-2.74,0-5.25-1.14-7.51-3.43-2.27-2.29-4.07-5.53-5.4-9.74-1.33-4.21-2-9.08-2-14.64,0-5.96.8-10.37,2.41-13.23,1.6-2.86,3.93-4.29,6.99-4.29,2.5,0,4.89,1.02,7.16,3.06,2.27,2.04,4.13,5.06,5.58,9.06,1.45,4,2.17,8.98,2.17,14.94s-.78,10.29-2.35,13.47Z"/>
-    <path d="M185.5,47.24c0-2.04-.88-3.69-2.64-4.96-1.76-1.27-3.46-1.9-5.11-1.9-1.17,0-2.51.39-3.99,1.16-1.49.78-3.29,2.14-5.4,4.1-1.17,1.08-2.48,2.43-3.93,4.04-.14-2.67-.55-4.79-1.23-6.36-.86-1.96-1.72-2.94-2.58-2.94-.08,0-.35.08-.82.24l-16.32,8.33c-.16.08-.16.37,0,.86.16.49.39.65.7.49,1.17-.57,2.23-1,3.17-1.29.94-.29,1.76-.43,2.47-.43,1.33,0,2.27.59,2.82,1.78.55,1.18.82,3.04.82,5.57v23.03c0,3.27-.43,5.49-1.29,6.68-.86,1.18-2.51,1.78-4.93,1.78-.23,0-.35.24-.35.73s.12.73.35.73c1.56,0,3.36-.04,5.4-.12,2.03-.08,4.15-.12,6.34-.12,3.13,0,6.05.04,8.75.12,2.7.08,5.11.12,7.22.12.31,0,.47-.24.47-.73s-.16-.73-.47-.73c-2.66,0-4.75-.24-6.28-.73-1.53-.49-2.6-1.37-3.23-2.63-.63-1.27-.94-2.96-.94-5.08v-26.36c.79-.8,1.47-1.47,2.06-2,1.21-1.1,2.15-1.84,2.82-2.21.66-.37,1.27-.55,1.82-.55,1.25,0,2.21.43,2.88,1.29.66.86,1.41,1.74,2.23,2.63.82.9,2.06,1.35,3.7,1.35s3.07-.55,4.05-1.65c.98-1.1,1.47-2.51,1.47-4.23Z"/>
-    <path d="M241.92,41.6c-1.72,0-3.19.04-4.4.12-1.21.08-2.76.12-4.64.12-2.66,0-4.83-.04-6.52-.12-1.68-.08-3.46-.12-5.34-.12-.16,0-.23.24-.23.73s.08.73.23.73c3.21,0,5.38,1.16,6.52,3.49,1.13,2.33,1.04,5.49-.29,9.49l-7.06,21.34-13.84-29.55c-.86-1.88-.9-3.14-.12-3.8.78-.65,2.54-.98,5.28-.98.23,0,.35-.24.35-.73s-.12-.73-.35-.73c-1.72,0-3.64.04-5.75.12-2.11.08-4.58.12-7.4.12-1.57,0-3.23-.04-4.99-.12-1.76-.08-3.42-.12-4.99-.12-.23,0-.35.24-.35.73s.12.73.35.73c1.41,0,2.6.55,3.58,1.65.98,1.1,2.33,3.45,4.05,7.04l18.8,39.57c-1.8,5.02-3.41,9.13-4.83,12.3-1.8,4.04-3.48,6.9-5.05,8.57-1.57,1.67-3.29,2.51-5.17,2.51-1.25,0-2.27-.27-3.05-.8-.78-.53-1.57-1.06-2.35-1.59-.78-.53-1.84-.8-3.17-.8-1.49,0-2.8.47-3.93,1.41-1.13.94-1.7,2.39-1.7,4.35s.65,3.45,1.94,4.47c1.29,1.02,3.07,1.53,5.34,1.53,2.97,0,5.79-.94,8.45-2.82,2.66-1.88,5.3-5.08,7.93-9.61,2.62-4.53,5.34-10.72,8.16-18.56l13.03-36.13c1.41-4,3.01-7.18,4.81-9.55,1.8-2.37,4.03-3.55,6.69-3.55.16,0,.24-.24.24-.73s-.08-.73-.24-.73Z"/>
-    <path d="M264.48.08l-18.2,9.31c-.31.08-.39.37-.23.86.16.49.39.7.7.61,3.21-1.63,5.3-2.04,6.28-1.23.98.82,1.15,3.18.53,7.1l-10.8,61.24c-.63,3.92-.59,6.9.12,8.94.7,2.04,2.39,3.06,5.05,3.06,2.27,0,4.46-.84,6.57-2.51,2.11-1.67,4.38-4.02,6.81-7.04.31-.33.31-.65,0-.98-.31-.33-.63-.33-.94,0-1.25,1.22-2.39,2.25-3.41,3.06-1.02.82-1.96,1.22-2.82,1.22-.63,0-1.14-.39-1.53-1.16-.39-.78-.35-2.31.12-4.59L265.89,1.06c.08-.16-.04-.41-.35-.73-.31-.33-.67-.41-1.06-.24Z"/>
-    <path d="M314.61,79.45c-1.25,1.31-2.43,2.35-3.52,3.12-1.1.78-2.04,1.16-2.82,1.16-1.57,0-1.99-1.92-1.29-5.76l6.81-38.58c.08-.16-.1-.33-.53-.49-.43-.16-.72-.12-.88.12-1,1.6-2.21,2.97-3.62,4.1-1.04-.97-2.22-1.71-3.54-2.2-1.64-.61-3.25-.92-4.81-.92-3.29,0-6.71,1.16-10.27,3.49-3.56,2.33-6.93,5.39-10.1,9.19-3.17,3.8-5.83,7.88-7.98,12.25-2.15,4.37-3.5,8.63-4.05,12.8-.63,4.49-.18,7.74,1.35,9.74,1.53,2,3.62,3,6.28,3,3.21,0,6.5-1.25,9.86-3.74,3.36-2.49,6.53-6.1,9.51-10.84,1.18-1.88,2.27-3.92,3.28-6.11l-1.4,8.19c-.63,4.16-.49,7.21.41,9.12.9,1.92,2.6,2.88,5.11,2.88,2.03,0,4.13-.84,6.28-2.51,2.15-1.67,4.44-4.02,6.87-7.04.23-.24.19-.53-.12-.86-.31-.33-.59-.37-.82-.12ZM294.01,73.2c-1.6,2.45-3.35,4.45-5.22,6-1.88,1.55-3.76,2.33-5.64,2.33-1.72,0-3.05-1-3.99-3-.94-2-1.02-5.57-.23-10.72.7-4.24,1.88-8,3.52-11.27,1.64-3.26,3.52-5.84,5.64-7.72,2.11-1.88,4.26-2.82,6.46-2.82,2.35,0,4.07,1.06,5.17,3.18,1.09,2.12,1.33,5.02.7,8.7-.39,2.29-1.16,4.8-2.29,7.53-1.14,2.74-2.51,5.33-4.11,7.78Z"/>
-    <path d="M357.34,40.01c-3.13,0-6.16.92-9.1,2.76s-5.64,4.35-8.1,7.53c-2.28,2.94-4.24,6.34-5.92,10.15l10.08-59.39c.08-.16-.04-.41-.35-.73-.31-.33-.67-.41-1.06-.24l-18.2,9.31c-.31.08-.39.37-.23.86.16.49.39.7.7.61,3.21-1.63,5.3-2.04,6.28-1.23.98.82,1.15,3.18.53,7.1l-10.8,61.48c-.63,3.76.22,6.74,2.52,8.94,2.31,2.2,5.77,3.31,10.39,3.31,2.82,0,5.91-.7,9.28-2.08,3.36-1.39,6.65-3.43,9.86-6.12,3.21-2.69,6.03-6.06,8.45-10.11,2.43-4.04,4.11-8.72,5.05-14.02.86-5.31.43-9.65-1.29-13.04-1.72-3.39-4.42-5.08-8.1-5.08ZM355.11,61.93c-.78,5.31-2.06,9.84-3.82,13.59-1.76,3.76-3.76,6.61-5.99,8.57-2.23,1.96-4.52,2.94-6.87,2.94s-4.23-.94-5.64-2.82c-1.41-1.88-1.88-4.24-1.41-7.1,1.02-5.71,2.48-10.74,4.4-15.07,1.92-4.33,4.17-7.72,6.75-10.17,2.58-2.45,5.28-3.67,8.1-3.67,1.64,0,2.86.61,3.64,1.84.78,1.23,1.25,2.88,1.41,4.96.16,2.08-.04,4.39-.59,6.92Z"/>
-  </g>
-  <g fill="#0071e3">
-    <path  d="M377.18,78.04c-1.14-1.18-2.72-1.78-4.76-1.78s-3.66.59-4.87,1.78c-1.21,1.18-1.82,2.8-1.82,4.84,0,2.21.61,3.92,1.82,5.14,1.21,1.23,2.84,1.84,4.87,1.84,4.3,0,6.46-2.33,6.46-6.98,0-2.04-.57-3.65-1.7-4.84Z"/>
-  </g>
-</svg></div>
+  <div class="logo"><img class="logo-img" src="data:image/png;base64,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" alt="Storycards" height="26" style="display:block;height:26px;width:auto"/></div>
   <div class="header-right">
     <button class="icon-btn" onclick="openHistory()" title="Histórico" id="history-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
     <button class="icon-btn" onclick="openTemplateManager()" title="Templates"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
@@ -2849,7 +2827,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
         <div style="display:grid;grid-template-columns:1fr 1.2fr 2fr;gap:8px;margin-bottom:8px;">
           <div>
             <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">@ Handle</div>
-            <input class="modal-input" id="brand-handle" type="text" placeholder="@bystorylab" style="margin-bottom:0;padding:8px 10px;"/>
+            <input class="modal-input" id="brand-handle" type="text" placeholder="@storycards__" style="margin-bottom:0;padding:8px 10px;"/>
           </div>
           <div>
             <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Nicho / Categoria</div>
@@ -2970,7 +2948,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 
   <main class="canvas" id="canvas">
     <div class="empty-state" id="empty-state">
-      <div class="empty-title">Bem-vindo ao Storylab</div>
+      <div class="empty-title">Bem-vindo ao Storycards</div>
       <div class="empty-sub">O agente que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.</div>
       <div class="flow-steps">
         <div class="flow-step"><div class="flow-step-num">1</div>Cole o insumo (ideia, texto, link)</div>
@@ -3040,7 +3018,7 @@ function saveConfig() {
 const BRAND_DEFAULTS = {
   primary: '#0071e3', accent: '#2de300', dark: '#2f2d2d', light: '#eaeaec', cta: '#e3fe03',
   fontDisplay: "'Poppins', sans-serif", fontBody: "'Roboto', sans-serif",
-  handle: '@bystorylab', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
+  handle: '@storycards__', tagline: 'Carrosséis com posicionamento e autoridade.', year: new Date().getFullYear().toString(),
   nicho: '',
   // Header style overrides (global, apply to all cards)
   headerWeight: 400,        // 300 | 400 | 700
@@ -3087,6 +3065,7 @@ function getAllBrands() {
 function saveAllBrands(brands) {
   try {
     localStorage.setItem('storylab_brands', JSON.stringify(brands));
+    _kvPush('brands');
   } catch(e) {
     // QuotaExceededError — try saving without avatar images as fallback
     console.warn('saveAllBrands: localStorage quota exceeded, stripping avatars', e);
@@ -3113,12 +3092,13 @@ function getActiveBrandId() {
 
 function setActiveBrandId(id) {
   localStorage.setItem('storylab_active_brand_id', id);
+  _kvPush('active_brand_id');
 }
 
 // Plan limits (checked locally with backend as source of truth)
-let _userPlan = null; // { plan: 'individual'|'agency_starter'|'agency_pro', max_brands: 1|5|10 }
-const PLAN_LIMITS = { individual: 1, agency_starter: 5, agency_pro: 10 };
-const PLAN_LABELS = { individual: 'Individual', agency_starter: 'Agência Starter', agency_pro: 'Agência Pro' };
+let _userPlan = null; // { plan: 'beta'|'solo'|'estudio'|'agencia'|'admin', max_brands }
+const PLAN_LIMITS = { beta: 5, solo: 1, estudio: 5, agencia: 999, admin: 999 };
+const PLAN_LABELS = { beta: 'Beta', solo: 'Solo', estudio: 'Estúdio', agencia: 'Agência', admin: 'Admin' };
 
 // Emails with unrestricted access (no plan limits)
 const SUPERADMIN_EMAILS = ['rafanegreiros@gmail.com'];
@@ -3143,7 +3123,7 @@ async function fetchUserPlan() {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    _userPlan = { plan: data.plan || 'individual', max_brands: data.max_brands || 1 };
+    _userPlan = { plan: data.plan || 'solo', max_brands: data.max_brands || 1 };
     return _userPlan;
   } catch(e) {
     return null;
@@ -4116,8 +4096,7 @@ function clearImage() {
 async function analyzeImage() {
   try {
     const token = getAuthToken();
-    const API = (window.STORYLAB_API || 'https://storylab-api-production.up.railway.app');
-    const res = await fetch(`${API}/api/claude`, {
+    const res = await fetch(`${BACKEND_URL}/api/claude`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -4144,7 +4123,9 @@ Retorne APENAS JSON válido (sem markdown):
       })
     });
     const data = await res.json();
-    if (!res.ok || !data.content) throw new Error(data.error?.message || 'Erro na análise');
+    if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
+    if (data.error === 'quota_exceeded') throw new Error(data.message);
+    if (!res.ok || !data.content) throw new Error(data.error?.message || data.message || 'Erro na análise');
     const text = data.content.map(i => i.text||'').join('').replace(/```json|```/g,'').trim();
     const parsed = extractJSON(text);
     S.insumoFinal = `${parsed.conteudo_extraido}\n\nObservações: ${parsed.observacoes}`;
@@ -4388,7 +4369,7 @@ function resetAll() {
   initSidebar();
   document.getElementById('canvas').innerHTML = `
     <div class="empty-state">
-      <div class="empty-title">Bem-vindo ao Storylab</div>
+      <div class="empty-title">Bem-vindo ao Storycards</div>
       <div class="empty-sub">O agente que transforma qualquer ideia em carrossel profissional.</div>
       <div class="flow-steps">
         <div class="flow-step"><div class="flow-step-num">1</div>Cole o insumo ou link</div>
@@ -5900,6 +5881,7 @@ function saveTemplates(tpls) {
   const userOnly = tpls.filter(t => !t.id.startsWith('builtin_'));
   try {
     localStorage.setItem('storylab_templates', JSON.stringify(userOnly));
+    _kvPush('templates');
   } catch(e) {
     console.error('saveTemplates quota error:', e);
     alert('⚠️ Espaço de armazenamento esgotado. Apague alguns templates antigos.');
@@ -8105,6 +8087,7 @@ async function exportCardAsVideo(idx) {
     try {
       res = await fetch(`${BACKEND_URL}/video/compose`, {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + getAuthToken() },
         body: form,
       });
     } finally {
@@ -8366,7 +8349,7 @@ function triggerBgVideoUpload(idx) {
         const form = new FormData();
         form.append('video', file);
         form.append('t', '1'); // extract frame at 1s
-        const res = await fetch(`${BACKEND_URL}/video/frame`, { method: 'POST', body: form });
+        const res = await fetch(`${BACKEND_URL}/video/frame`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + getAuthToken() }, body: form });
         if (res.ok) {
           const blob = await res.blob();
           S.cards[idx].bg.framePng = await createImageBitmap(blob);
@@ -8814,7 +8797,7 @@ function renderSaveTemplateModal() {
     <div style="background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;padding:28px;width:380px;max-width:90vw;">
       <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;">Salvar Template</div>
       <div class="field-label">Nome</div>
-      <input id="tpl-name" type="text" placeholder="Ex: Storylab Dark" style="margin-bottom:12px;"/>
+      <input id="tpl-name" type="text" placeholder="Ex: Minha Marca Dark" style="margin-bottom:12px;"/>
       <div class="field-label">Headline</div>
       <input id="tpl-headline" type="text" placeholder="Quando você quer que o carrossel pareça feito por um diretor de arte." style="margin-bottom:12px;"/>
       <div class="field-label">Descrição</div>
@@ -9408,7 +9391,7 @@ async function exportAllCards() {
       const folder = zip.folder(tema);
       pngBlobs.forEach(({name, blob}) => folder.file(name, blob));
       const zipBlob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{level:3} });
-      triggerDownload(zipBlob, `${tema}-storylab.zip`);
+      triggerDownload(zipBlob, `${tema}-storycards.zip`);
     } else {
       for (const {name, blob} of pngBlobs) {
         triggerDownload(blob, name);
@@ -10716,6 +10699,8 @@ async function callClaude(prompt, maxTokens, retries = 4) {
       throw new Error(e.message === 'timeout' ? 'A requisição excedeu o tempo limite. Tente novamente.' : e.message);
     }
     const data = await res.json();
+    if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
+    if (data.error === 'quota_exceeded') throw new Error(data.message);
     if (res.status === 429 || data.error === 'rate_limit') {
       if (attempt < retries) {
         const wait = attempt * 15000;
@@ -10760,6 +10745,8 @@ async function callClaudeWithSearch(prompt, maxTokens, retries = 4) {
       throw new Error(e.message === 'timeout' ? 'A busca excedeu o tempo limite. Tente novamente.' : e.message);
     }
     const data = await res.json();
+    if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
+    if (data.error === 'quota_exceeded') throw new Error(data.message);
     if (res.status === 429 || data.error === 'rate_limit') {
       if (attempt < retries) {
         const wait = attempt * 15000;
@@ -10971,8 +10958,74 @@ function hideLoginScreen() {
   document.getElementById('login-screen').style.display = 'none';
   document.querySelector('.app') && (document.querySelector('.app').style.visibility = 'visible');
   document.querySelector('header') && (document.querySelector('header').style.visibility = 'visible');
-  // Fetch plan in background so brand limits are accurate
-  fetchUserPlan().catch(() => {});
+  // Verifica acesso e sincroniza marcas/templates; plano em seguida
+  checkAccessAndSync().then(() => fetchUserPlan()).catch(() => {});
+}
+
+// ── ACESSO + SYNC ENTRE APARELHOS ──
+// Marcas e templates ficam em localStorage (cache) e na nuvem (/api/kv)
+const _KV_MAP = { brands: 'storylab_brands', active_brand_id: 'storylab_active_brand_id', templates: 'storylab_templates' };
+let _kvReady = false;
+const _kvTimers = {};
+let _accessChecked = false;
+
+function _kvPush(key) {
+  if (!_kvReady || !getAuthToken()) return;
+  clearTimeout(_kvTimers[key]);
+  _kvTimers[key] = setTimeout(() => {
+    const raw = localStorage.getItem(_KV_MAP[key]);
+    let value = raw;
+    if (key !== 'active_brand_id') { try { value = JSON.parse(raw); } catch(e) { value = null; } }
+    fetch(BACKEND_URL + '/api/kv/' + key, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken() },
+      body: JSON.stringify({ value })
+    }).catch(e => console.warn('Sync falhou:', key, e.message));
+  }, 800);
+}
+
+async function checkAccessAndSync() {
+  if (_accessChecked) return;
+  const token = getAuthToken();
+  if (!token) return;
+  const me = await fetch(BACKEND_URL + '/api/me', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!me) return; // backend fora — não bloqueia, tenta de novo no próximo login
+  _accessChecked = true;
+  if (!me.access?.allowed) { showNoAccessScreen(me.email); return; }
+
+  const res = await fetch(BACKEND_URL + '/api/kv', { headers: { 'Authorization': 'Bearer ' + token } }).catch(() => null);
+  if (!res || !res.ok) return;
+  const cloud = await res.json();
+  _kvReady = true;
+  let changed = false;
+  for (const [key, lsKey] of Object.entries(_KV_MAP)) {
+    const c = cloud[key];
+    if (c && c.value != null) {
+      const v = key === 'active_brand_id' ? c.value : JSON.stringify(c.value);
+      if (localStorage.getItem(lsKey) !== v) { localStorage.setItem(lsKey, v); changed = true; }
+    } else if (localStorage.getItem(lsKey)) {
+      _kvPush(key); // primeiro acesso: sobe o que já existe neste aparelho
+    }
+  }
+  if (changed) { try { applyBrandToCards(); } catch(e) {} }
+}
+
+function showNoAccessScreen(email) {
+  if (document.getElementById('no-access-screen')) return;
+  const el = document.createElement('div');
+  el.id = 'no-access-screen';
+  el.style.cssText = 'position:fixed;inset:0;z-index:20000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px';
+  el.innerHTML = `<div class="login-box" style="text-align:center;max-width:380px">
+    <div class="login-logo">${document.querySelector('.login-logo')?.innerHTML || ''}</div>
+    <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:10px">Seu acesso ainda não foi liberado</div>
+    <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;margin-bottom:20px">
+      O Storycards está em beta fechado. ${email ? `O e-mail <strong style="color:var(--ink)">${email}</strong> ainda não está na lista de acesso.` : ''}
+      Fale com a gente no Instagram <a href="https://www.instagram.com/storycards__/" target="_blank" rel="noopener" style="color:var(--accent)">@storycards__</a>.
+    </p>
+    <button class="login-btn" onclick="_clearSession();supabaseClient.auth.signOut().then(()=>location.reload())">Entrar com outro e-mail</button>
+  </div>`;
+  document.body.appendChild(el);
 }
 
 async function doMagicLink() {
@@ -11087,6 +11140,7 @@ async function saveImagesToStorage(sessionId) {
     if (hasAny) tx.objectStore(_IDB_STORE).put(payload, key);
     else        tx.objectStore(_IDB_STORE).delete(key);
     await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    if (sessionId) _pushImagesToCloud(sessionId, payload);
   } catch(e) {
     // Fallback to localStorage with size warning
     try {
@@ -11097,7 +11151,39 @@ async function saveImagesToStorage(sessionId) {
   }
 }
 
+// Sobe as imagens só quando mudaram (evita reenviar MBs a cada autosave)
+const _cloudImgSent = {};
+function _pushImagesToCloud(sessionId, payload) {
+  const body = JSON.stringify(payload);
+  if (_cloudImgSent[sessionId] === body) return;
+  _cloudImgSent[sessionId] = body;
+  fetch(BACKEND_URL + '/api/history/' + sessionId + '/media', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken() },
+    body
+  }).then(r => { if (!r.ok) delete _cloudImgSent[sessionId]; })
+    .catch(() => { delete _cloudImgSent[sessionId]; });
+}
+
+async function _loadImagesFromCloud(sessionId) {
+  try {
+    const res = await fetch(BACKEND_URL + '/api/history/' + sessionId + '/media', {
+      headers: { 'Authorization': 'Bearer ' + getAuthToken() }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data && (data.cardImages || data.cardBgImages)) ? data : null;
+  } catch(e) { return null; }
+}
+
 async function loadImagesFromStorage(sessionId) {
+  const local = await _loadImagesLocal(sessionId);
+  const hasLocal = local && (Object.keys(local.cardImages || {}).length || Object.keys(local.cardBgImages || {}).length);
+  if (hasLocal || !sessionId) return local;
+  return (await _loadImagesFromCloud(sessionId)) || local;
+}
+
+async function _loadImagesLocal(sessionId) {
   const key  = 'storylab_images_' + (sessionId || 'current');
   const key2 = 'storylab_images_current';
   try {
