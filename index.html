@@ -6245,6 +6245,93 @@ function renderFinal() {
   }, 50);
 }
 
+// ── FORMATAÇÃO INLINE (compartilhada entre prévia e export) ──
+// **negrito** __sublinhado__ _itálico_ ~~riscado~~ {bg#cor|fundo} {#cor|cor da letra} {w700|peso}
+// Aceita formatos aninhados ({bg#924dea|{#ffffff|8 vezes}}) e códigos em CAIXA ALTA.
+function parseInlineTree(text) {
+  let i = 0;
+  const MARK = { '**': 'bold', '__': 'underline', '~~': 'strike', '_': 'italic' };
+  function closingBrace(from, end) {
+    let depth = 1;
+    for (let j = from; j < end; j++) {
+      if (text[j] === '{') depth++;
+      else if (text[j] === '}' && --depth === 0) return j;
+    }
+    return -1;
+  }
+  function parse(end) {
+    const nodes = [];
+    let buf = '';
+    const flush = () => { if (buf) { nodes.push(buf); buf = ''; } };
+    while (i < end) {
+      if (text[i] === '{') {
+        const m = text.slice(i, end).match(/^\{(bg#[0-9a-f]{3,8}|#[0-9a-f]{3,8}|w\d{3})\|/i);
+        const close = m ? closingBrace(i + m[0].length, end) : -1;
+        if (close !== -1) {
+          flush();
+          const tag = m[1].toLowerCase();
+          i += m[0].length;
+          const children = parse(close);
+          i = close + 1;
+          if (tag.startsWith('bg')) nodes.push({ bg: tag.slice(2), children });
+          else if (tag[0] === '#') nodes.push({ color: tag, children });
+          else nodes.push({ weight: tag.slice(1), children });
+          continue;
+        }
+      }
+      const pair = ['**', '__', '~~'].find(p => text.startsWith(p, i)) || (text[i] === '_' ? '_' : null);
+      if (pair) {
+        const close = text.indexOf(pair, i + pair.length);
+        if (close !== -1 && close < end && close > i + pair.length) {
+          flush();
+          i += pair.length;
+          const children = parse(close);
+          i = close + pair.length;
+          nodes.push({ [MARK[pair]]: true, children });
+          continue;
+        }
+      }
+      buf += text[i++];
+    }
+    flush();
+    return nodes;
+  }
+  return parse(text.length);
+}
+
+function inlineTreeToHtml(nodes) {
+  const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return nodes.map(n => {
+    if (typeof n === 'string') return esc(n);
+    const inner = inlineTreeToHtml(n.children);
+    if (n.bold)      return `<strong>${inner}</strong>`;
+    if (n.underline) return `<u>${inner}</u>`;
+    if (n.italic)    return `<em>${inner}</em>`;
+    if (n.strike)    return `<s>${inner}</s>`;
+    if (n.bg)        return `<mark style="background:${n.bg};color:inherit;padding:0 2px;border-radius:2px;">${inner}</mark>`;
+    if (n.color)     return `<span style="color:${n.color};">${inner}</span>`;
+    if (n.weight)    return `<span style="font-weight:${n.weight};">${inner}</span>`;
+    return inner;
+  }).join('');
+}
+
+// Achata a árvore em trechos com o estilo herdado (usado no export em canvas)
+function inlineTreeToRuns(nodes, style, out = []) {
+  for (const n of nodes) {
+    if (typeof n === 'string') { out.push({ ...style, text: n }); continue; }
+    const st = { ...style };
+    if (n.bold)      st.weight = '700';
+    if (n.underline) st.underline = true;
+    if (n.italic)    st.italic = true;
+    if (n.strike)    st.strike = true;
+    if (n.bg)        st.bgColor = n.bg;
+    if (n.color)     st.color = n.color;
+    if (n.weight)    st.weight = n.weight;
+    inlineTreeToRuns(n.children, st, out);
+  }
+  return out;
+}
+
 // ── RENDER CARD HTML (preview) ──
 // Reads S.cards[i] state and generates HTML with 100% inline styles
 function renderCardHtml(card, idx, total) {
@@ -6444,22 +6531,7 @@ function renderCardHtml(card, idx, total) {
 
   // Parse inline markers: **bold**, _italic_, __underline__, ~~strike~~, {#color|text}, {w700|text}, {bg#color|text}
   function parseInlineMarkers(text) {
-    let out = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    // Bold **text**
-    out = out.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Underline __text__ (before italic to avoid conflict)
-    out = out.replace(/__(.*?)__/g, '<u>$1</u>');
-    // Italic _text_
-    out = out.replace(/_(.*?)_/g, '<em>$1</em>');
-    // Strikethrough ~~text~~
-    out = out.replace(/~~(.*?)~~/g, '<s>$1</s>');
-    // Background color {bg#rrggbb|text} — process before fg color
-    out = out.replace(/\{bg(#[0-9a-fA-F]{3,8})\|(.*?)\}/g, '<mark style="background:$1;color:inherit;padding:0 2px;border-radius:2px;">$2</mark>');
-    // Foreground color {#rrggbb|text}
-    out = out.replace(/\{(#[0-9a-fA-F]{3,8})\|(.*?)\}/g, '<span style="color:$1;">$2</span>');
-    // Inline weight {w700|text}
-    out = out.replace(/\{w(\d{3})\|(.*?)\}/g, '<span style="font-weight:$1;">$2</span>');
-    return out;
+    return inlineTreeToHtml(parseInlineTree(text));
   }
   const titleHtml = parseInlineMarkers(card.title.text || '');
 
@@ -9476,38 +9548,9 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   //   {w100|text}       → weight override (100–900), keeps block family
   //   ~~text~~          → strikethrough (drawn manually)
   function parseSegments(rawText, blockStyle) {
-    const { weight, italic: bItalic, color: bColor, family: bFamily } = blockStyle;
-    const segments = [];
-    // Order matters: {bg#...} must come before {#...} to avoid false matches
-    const re = /\*\*(.*?)\*\*|__(.*?)__(?!_)|_(.*?)_|\{bg(#[0-9a-fA-F]{3,8})\|(.*?)\}|\{(#[0-9a-fA-F]{3,8})\|(.*?)\}|\{w(\d{3})\|(.*?)\}|~~(.*?)~~|([^*_~{]+|[*_~{])/gs;
-    let match;
-    while ((match = re.exec(rawText)) !== null) {
-      if (match[1] !== undefined) {
-        // **bold**
-        segments.push({ text: match[1], weight: '700', italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false, bgColor: null });
-      } else if (match[2] !== undefined) {
-        // __underline__
-        segments.push({ text: match[2], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: true, bgColor: null });
-      } else if (match[3] !== undefined) {
-        // _italic_
-        segments.push({ text: match[3], weight: String(weight), italic: true, color: bColor, family: bFamily, strike: false, underline: false, bgColor: null });
-      } else if (match[5] !== undefined) {
-        // {bg#color|text} — background highlight
-        segments.push({ text: match[5], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false, bgColor: match[4] });
-      } else if (match[7] !== undefined) {
-        // {#color|text} — foreground color
-        segments.push({ text: match[7], weight: String(weight), italic: bItalic, color: match[6], family: bFamily, strike: false, underline: false, bgColor: null });
-      } else if (match[9] !== undefined) {
-        // {w700|text} — inline weight override
-        segments.push({ text: match[9], weight: match[8], italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false, bgColor: null });
-      } else if (match[10] !== undefined) {
-        // ~~strikethrough~~
-        segments.push({ text: match[10], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: true, underline: false, bgColor: null });
-      } else if (match[11] !== undefined) {
-        if (match[11]) segments.push({ text: match[11], weight: String(weight), italic: bItalic, color: bColor, family: bFamily, strike: false, underline: false, bgColor: null });
-      }
-    }
-    return segments.filter(s => s.text);
+    const { weight, italic, color, family } = blockStyle;
+    const base = { weight: String(weight), italic: !!italic, color, family, strike: false, underline: false, bgColor: null };
+    return inlineTreeToRuns(parseInlineTree(rawText), base).filter(r => r.text);
   }
 
   // Measure a single line of segments on canvas
@@ -9522,81 +9565,96 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
   // Draw a single line of segments; returns total width drawn
   function drawSegments(ctx, segs, x, y, fontSize) {
+    const fontOf = seg => `${seg.italic ? 'italic ' : ''}${seg.weight} ${fontSize}px ${seg.family}`;
+    const pos = [];
     let cx = x;
     for (const seg of segs) {
-      ctx.font = `${seg.italic ? 'italic ' : ''}${seg.weight} ${fontSize}px ${seg.family}`;
-      const segW = ctx.measureText(seg.text).width;
-      // Background highlight — draw before text
-      if (seg.bgColor) {
-        const padH = Math.round(fontSize * 0.12);
-        const padV = Math.round(fontSize * 0.08);
-        ctx.save();
-        ctx.fillStyle = seg.bgColor;
-        ctx.beginPath();
-        ctx.roundRect
-          ? ctx.roundRect(cx - padV, y - fontSize + padH, segW + padV * 2, fontSize + padH, Math.round(fontSize * 0.1))
-          : ctx.rect(cx - padV, y - fontSize + padH, segW + padV * 2, fontSize + padH);
-        ctx.fill();
-        ctx.restore();
-      }
-      ctx.fillStyle = seg.color;
-      ctx.fillText(seg.text, cx, y);
-      // Strikethrough
-      if (seg.strike) {
-        ctx.save();
-        ctx.strokeStyle = seg.color;
-        ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.06));
-        const strikeY = y - fontSize * 0.3;
-        ctx.beginPath(); ctx.moveTo(cx, strikeY); ctx.lineTo(cx + segW, strikeY); ctx.stroke();
-        ctx.restore();
-      }
-      // Inline underline
-      if (seg.underline) {
-        ctx.save();
-        ctx.strokeStyle = seg.color;
-        ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.06));
-        const ulY = y + Math.round(fontSize * 0.12);
-        ctx.beginPath(); ctx.moveTo(cx, ulY); ctx.lineTo(cx + segW, ulY); ctx.stroke();
-        ctx.restore();
-      }
-      cx += segW;
+      ctx.font = fontOf(seg);
+      const w = ctx.measureText(seg.text).width;
+      pos.push([cx, w]);
+      cx += w;
     }
+    // 1ª passada: fundos — trechos vizinhos com o mesmo fundo viram um bloco só, desenhado antes do texto
+    const padH = Math.round(fontSize * 0.12);
+    const padV = Math.round(fontSize * 0.08);
+    for (let k = 0; k < segs.length; ) {
+      const bg = segs[k].bgColor;
+      if (!bg) { k++; continue; }
+      let j = k;
+      while (j + 1 < segs.length && segs[j + 1].bgColor === bg) j++;
+      const x0 = pos[k][0], x1 = pos[j][0] + pos[j][1];
+      ctx.save();
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.roundRect
+        ? ctx.roundRect(x0 - padV, y - fontSize + padH, x1 - x0 + padV * 2, fontSize + padH, Math.round(fontSize * 0.1))
+        : ctx.rect(x0 - padV, y - fontSize + padH, x1 - x0 + padV * 2, fontSize + padH);
+      ctx.fill();
+      ctx.restore();
+      k = j + 1;
+    }
+    // 2ª passada: texto, riscado e sublinhado
+    segs.forEach((seg, k) => {
+      const [sx, segW] = pos[k];
+      ctx.font = fontOf(seg);
+      ctx.fillStyle = seg.color;
+      ctx.fillText(seg.text, sx, y);
+      const line = (lineY) => {
+        ctx.save();
+        ctx.strokeStyle = seg.color;
+        ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.06));
+        ctx.beginPath(); ctx.moveTo(sx, lineY); ctx.lineTo(sx + segW, lineY); ctx.stroke();
+        ctx.restore();
+      };
+      if (seg.strike) line(y - fontSize * 0.3);
+      if (seg.underline) line(y + Math.round(fontSize * 0.12));
+    });
     return cx - x;
   }
 
   // Wrap text with inline markers — returns array of { segs } per line
-  // Handles \n (hard breaks) and word-wrap within maxWidth
+  // Interpreta a formatação ANTES de quebrar as linhas: um trecho marcado com várias
+  // palavras pode atravessar linhas sem expor os códigos. Respeita \n (quebra manual).
   function wrapSegmentedText(ctx, rawText, blockStyle, maxWidth, fontSize) {
-    ctx.font = `${blockStyle.italic ? 'italic ' : ''}${blockStyle.weight} ${fontSize}px ${blockStyle.family}`;
+    const fontOf = seg => `${seg.italic ? 'italic ' : ''}${seg.weight} ${fontSize}px ${seg.family}`;
+    const widthOf = pieces => pieces.reduce((w, p) => { ctx.font = fontOf(p); return w + ctx.measureText(p.text).width; }, 0);
 
-    // Strip markers for width measurement only
-    function stripMarkers(t) {
-      return t
-        .replace(/\*\*(.*?)\*\*/g, '$1').replace(/__(.*?)__/g, '$1')
-        .replace(/_(.*?)_/g, '$1').replace(/~~(.*?)~~/g, '$1')
-        .replace(/\{bg#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
-        .replace(/\{#[0-9a-fA-F]{3,8}\|(.*?)\}/g, '$1')
-        .replace(/\{w\d{3}\|(.*?)\}/g, '$1');
+    // Divide os trechos formatados em parágrafos e em pedaços (palavras / espaços), mantendo o estilo
+    const paragraphs = [[]];
+    for (const run of parseSegments(rawText, blockStyle)) {
+      run.text.split('\n').forEach((part, k) => {
+        if (k > 0) paragraphs.push([]);
+        part.split(/( +)/).forEach(t => { if (t) paragraphs[paragraphs.length - 1].push({ ...run, text: t }); });
+      });
     }
 
-    // Split on hard line breaks first, then word-wrap each paragraph
-    const paragraphs = rawText.split('\n');
     const result = [];
-
     for (const para of paragraphs) {
-      if (!para.trim()) { result.push({ segs: [] }); continue; }
-      const rawWords = para.split(' ');
-      let currentLine = '';
-      for (const word of rawWords) {
-        const test = currentLine ? currentLine + ' ' + word : word;
-        if (ctx.measureText(stripMarkers(test)).width > maxWidth && currentLine) {
-          result.push({ segs: parseSegments(currentLine, blockStyle) });
-          currentLine = word;
-        } else {
-          currentLine = test;
-        }
+      // Pedaços colados sem espaço formam uma palavra (ex: "cór" vermelho + "nea" normal)
+      const tokens = [];
+      for (const p of para) {
+        const isSpace = /^ +$/.test(p.text);
+        const last = tokens[tokens.length - 1];
+        if (last && last.space === isSpace) last.pieces.push(p);
+        else tokens.push({ space: isSpace, pieces: [p] });
       }
-      if (currentLine) result.push({ segs: parseSegments(currentLine, blockStyle) });
+      if (!tokens.some(t => !t.space)) { result.push({ segs: [] }); continue; }
+
+      let line = [], lineW = 0, pendingSpace = null;
+      for (const t of tokens) {
+        if (t.space) { if (line.length) pendingSpace = t; continue; }
+        const w = widthOf(t.pieces);
+        const sw = pendingSpace ? widthOf(pendingSpace.pieces) : 0;
+        if (line.length && lineW + sw + w > maxWidth) {
+          result.push({ segs: line });
+          line = [...t.pieces]; lineW = w;
+        } else {
+          if (pendingSpace) line.push(...pendingSpace.pieces);
+          line.push(...t.pieces); lineW += sw + w;
+        }
+        pendingSpace = null;
+      }
+      if (line.length) result.push({ segs: line });
     }
     return result;
   }
