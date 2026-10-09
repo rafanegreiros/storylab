@@ -6337,9 +6337,20 @@ function renderCardHtml(card, idx, total) {
         layers += `<div data-box-img="${idx}" style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};"><img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:${rendW}px;height:${rendH}px;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px);transform-origin:center;pointer-events:none;user-select:none;" draggable="false"/></div>${swapBtn}`;
       }
     } else {
-      // ── FULL MODE ── image covers entire card
+      // ── FULL MODE ── imagem com a proporção original; o card funciona como máscara
+      if (!card.bg.imgNaturalW || !card.bg.imgNaturalH) {
+        // Card antigo sem dimensões salvas — descobre e redesenha
+        const _tmpFull = new Image();
+        _tmpFull.onload = () => {
+          S.cards[idx].bg.imgNaturalW = _tmpFull.naturalWidth;
+          S.cards[idx].bg.imgNaturalH = _tmpFull.naturalHeight;
+          refreshCard(idx);
+        };
+        _tmpFull.src = card.bg.imageSrc;
+      }
+      const _fr = _fullImgRect(card.bg);
       layers += `<div style="position:absolute;inset:0;overflow:hidden;z-index:1;">
-        <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${card.bg.imageScale||1});transform-origin:center;object-fit:${card.bg.imageMode==='contain'?'contain':card.bg.imageMode==='fill'?'fill':'cover'};pointer-events:none;user-select:none;" draggable="false"/>
+        <img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:${_fr.w/3.2}%;height:${_fr.h/4}%;max-width:none;max-height:none;transform:translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${card.bg.imageScale||1});transform-origin:center;pointer-events:none;user-select:none;" draggable="false"/>
         <div class="img-upload-overlay" onclick="triggerBgImageUpload(${idx})" title="Trocar imagem" style="position:absolute;top:8px;right:8px;z-index:5;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.3);">
           <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
           <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;color:rgba(255,255,255,0.8);letter-spacing:0.8px;text-transform:uppercase;">Trocar</span>
@@ -8133,13 +8144,15 @@ function setCardGradAngle(idx, angle) {
 
 function setCardImgMode(idx, mode) {
   S.cards[idx].bg.imageMode = mode;
+  _clampFullImgOffset(S.cards[idx].bg);
   refreshCard(idx); renderCardSidebar();
 }
-function setCardImgX(idx, v) { S.cards[idx].bg.imageX = parseInt(v); refreshCard(idx); }
-function setCardImgY(idx, v) { S.cards[idx].bg.imageY = parseInt(v); refreshCard(idx); }
+function setCardImgX(idx, v) { S.cards[idx].bg.imageX = parseInt(v); _clampFullImgOffset(S.cards[idx].bg); refreshCard(idx); }
+function setCardImgY(idx, v) { S.cards[idx].bg.imageY = parseInt(v); _clampFullImgOffset(S.cards[idx].bg); refreshCard(idx); }
 
 function setCardImgScale(idx, scale) {
   S.cards[idx].bg.imageScale = parseFloat(scale);
+  _clampFullImgOffset(S.cards[idx].bg);
   refreshCard(idx);
 }
 
@@ -8231,13 +8244,14 @@ function applyImageFileToCardBg(idx, file) {
       img.onerror = () => { console.warn('Image load error for card', idx); resolve(); };
       img.onload = () => {
         try {
-          const MAX = 900;
+          // Mantém resolução suficiente para export 1080×1350 com zoom (antes 900px → export borrado)
+          const MAX = 2400;
           const scale = Math.min(1, MAX / Math.max(img.width, img.height));
           const cvs = document.createElement('canvas');
           cvs.width  = Math.round(img.width  * scale);
           cvs.height = Math.round(img.height * scale);
           cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
-          const compressed = cvs.toDataURL('image/jpeg', 0.82);
+          const compressed = cvs.toDataURL('image/jpeg', 0.9);
           S.cards[idx].bg.imageSrc    = compressed;
           S.cards[idx].bg.imageMime   = 'image/jpeg';
           S.cards[idx].bg.type        = 'image';
@@ -10337,13 +10351,32 @@ function roundedRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// ── Imagem de fundo (modo cheio): tamanho no card de prévia 320×400, mantendo a proporção ──
+// cover = preenche o card (o excedente fica fora, arrastável) · contain = cabe inteira · fill = estica
+function _fullImgRect(bg) {
+  const natW = bg.imgNaturalW, natH = bg.imgNaturalH;
+  if (!natW || !natH || bg.imageMode === 'fill') return { w: 320, h: 400 };
+  const s = bg.imageMode === 'contain' ? Math.min(320 / natW, 400 / natH) : Math.max(320 / natW, 400 / natH);
+  return { w: natW * s, h: natH * s };
+}
+
+// Imagem maior que o card: arrasta até a borda da imagem (sem faixas vazias).
+// Imagem menor que o card (zoom < 100% ou "conter"): move livre, mas sem sair do card.
+function _clampFullImgOffset(bg) {
+  if (bg.type !== 'image' || bg.boxMode) return;
+  const r = _fullImgRect(bg), sc = bg.imageScale || 1;
+  const mx = Math.abs(r.w * sc - 320) / 2, my = Math.abs(r.h * sc - 400) / 2;
+  bg.imageX = Math.round(Math.max(-mx, Math.min(mx, bg.imageX || 0)));
+  bg.imageY = Math.round(Math.max(-my, Math.min(my, bg.imageY || 0)));
+}
+
 async function drawImageOnCanvas(ctx, src, bgState, W, H) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      const scale = Math.max(W / img.naturalWidth, H / img.naturalHeight) * (bgState.imageScale || 1);
-      const rW = img.naturalWidth * scale;
-      const rH = img.naturalHeight * scale;
+      const r = _fullImgRect({ ...bgState, imgNaturalW: img.naturalWidth, imgNaturalH: img.naturalHeight });
+      const rW = r.w * (W / 320) * (bgState.imageScale || 1);
+      const rH = r.h * (H / 400) * (bgState.imageScale || 1);
       const dx = (W - rW) / 2 + (bgState.imageX || 0) * (W/320);
       const dy = (H - rH) / 2 + (bgState.imageY || 0) * (H/400);
       ctx.save();
@@ -11817,6 +11850,7 @@ function bcNavigate(targetStep) {
     if (_drag.mode === 'full') {
       card.bg.imageX = Math.round(_drag.origX + dx);
       card.bg.imageY = Math.round(_drag.origY + dy);
+      _clampFullImgOffset(card.bg);
       // Update image/video transform directly — no DOM replacement during drag
       const mediaEl = document.querySelector(`.c-card[data-idx="${_drag.idx}"] img[data-card-img], .c-card[data-idx="${_drag.idx}"] video[data-card-vid]`);
       if (mediaEl) mediaEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX}px,${card.bg.imageY}px) scale(${card.bg.imageScale||1})`;
@@ -11838,6 +11872,8 @@ function bcNavigate(targetStep) {
     document.removeEventListener('mouseup', onDragEnd);
     document.removeEventListener('touchmove', onDragMove);
     document.removeEventListener('touchend', onDragEnd);
+    // Atualiza Posição X/Y no painel lateral (como o zoom já faz ao soltar)
+    renderCardSidebar();
   }
 
   window.startImgDrag = function(e, idx, overrideStartX, overrideStartY) {
@@ -11896,6 +11932,7 @@ function bcNavigate(targetStep) {
       const scale = parseFloat(Math.min(4, Math.max(0.3, _rsz.origScale * distNow / distOrig)).toFixed(3));
       S.cards[_rsz.idx].bg.imageScale = scale;
       const card = S.cards[_rsz.idx];
+      _clampFullImgOffset(card.bg);
       const imgEl = document.querySelector(`.c-card[data-idx="${_rsz.idx}"] img[data-card-img]`);
       if (imgEl) imgEl.style.transform = `translate(-50%,-50%) translate(${card.bg.imageX||0}px,${card.bg.imageY||0}px) scale(${scale})`;
 
