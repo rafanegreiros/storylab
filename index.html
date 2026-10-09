@@ -10116,16 +10116,28 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
   // Replicate textTop / textBottom from renderCardHtml exactly
   const _avVisible = card.avatar.visible;
-  const _avIsTop   = _avVisible && (card.avatar.placement || 'bottom') === 'top';
-  const _avIsBot   = _avVisible && !_avIsTop;
+  const _avIsTop   = _avVisible && card.avatar.placement === 'top';
+  const _avIsBot   = _avVisible && card.avatar.placement === 'bottom';
+  const _hasFooterX = (card.footer ? card.footer.visible : card.pageNum?.visible) &&
+                      (card.footer?.template || 'numeric') !== 'none';
   const _textTopPx    = _avIsTop ? 80 : (card.header.visible ? 44 : 20);
   const _textBottomPx = card.cta.visible ? 70
                       : (_avIsBot ? 80
-                      : (card.pageNum.visible ? 28 : 20));
+                      : (_hasFooterX ? 28 : 20));
   const _textTopSC    = Math.round(_textTopPx    * SC);
   const _textBotSC    = Math.round(_textBottomPx * SC);
   // Center of the text container — same as HTML
   const CARD_CENTER_Y = _textTopSC + (EXH - _textTopSC - _textBotSC) / 2;
+
+  // Distância do topo da linha até a linha de base, igual ao CSS (line-height = lh × tamanho)
+  function baselineIn(style, fontPx, lh) {
+    ctx.font = `${style.italic ? 'italic ' : ''}${style.weight} ${fontPx}px ${style.family}`;
+    const m = ctx.measureText('Hg');
+    const asc  = m.fontBoundingBoxAscent  != null ? m.fontBoundingBoxAscent  : fontPx * 0.8;
+    const desc = m.fontBoundingBoxDescent != null ? m.fontBoundingBoxDescent : fontPx * 0.2;
+    return (lh * fontPx - (asc + desc)) / 2 + asc;
+  }
+  const GAP_SC = 6 * SC; // gap:6px entre título e corpo no HTML
 
   // offsetY/X from user controls — same scale as preview (px * SC)
   const tOffY = (card.title.offsetY || 0) * SC;
@@ -10165,12 +10177,13 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       bodyWrapped2 = wrapSegmentedText(ctx, bodyRaw2, bBlockStyle2, availW, bFS2);
     }
 
-    const gapSC = Math.round(22 * SC);
+    const bOffYsc = (card.body.offsetY || 0) * SC;
     const effectiveTitleH = titleWrapped.length * tFS * 1.1;
-    const totalBodyH = bodyWrapped2.length > 0 ? gapSC + bodyWrapped2.length * bFS2 * 1.42 : 0;
+    const totalBodyH = bodyWrapped2.length > 0 ? GAP_SC + bOffYsc + bodyWrapped2.length * bFS2 * 1.42 : 0;
     const totalBlockH = effectiveTitleH + totalBodyH;
-    const textCenterY = card.bg.boxMode ? (EXH / 2) : CARD_CENTER_Y;
-    let y = textCenterY + tOffY - totalBlockH / 2 + tFS * 1.1;
+    // Bloco centralizado na faixa do texto (também em modo box, como no HTML)
+    const tBase = baselineIn(tBlockStyle, tFS, 1.1);
+    let y = CARD_CENTER_Y + tOffY - totalBlockH / 2 + tBase;
 
     // Draw title lines
     for (const { segs, rawLine } of titleWrapped) {
@@ -10203,8 +10216,10 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
     // Body (normal mode — rendered as part of title block)
     if (bodyWrapped2.length) {
-      const bOffYsc = (card.body.offsetY || 0) * SC;
-      y = y - tFS * 1.1 + gapSC + bOffYsc;
+      const bBase2 = baselineIn({ weight: '400', italic: card.body.italic, family: card.body.fontFamily || "'Syne', sans-serif" }, bFS2, 1.42);
+      // fim do título + gap + margin-top do corpo + linha de base do corpo
+      y = y - tBase + GAP_SC + bOffYsc + bBase2;
+      const bShiftX = tOffX + (card.body.offsetX || 0) * SC; // corpo acompanha o translate do bloco
       const bAlign = card.body.align || 'left';
       for (const { segs: bSegs } of bodyWrapped2) {
         const bLineW = measureSegments(ctx, bSegs, bFS2);
@@ -10212,6 +10227,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
         if (bAlign === 'center') bX = (EXW - bLineW) / 2;
         else if (bAlign === 'right') bX = EXW - tPad - bLineW;
         else bX = tPad;
+        bX += bShiftX;
         ctx.textAlign = 'left';
         drawSegments(ctx, bSegs, bX, y, bFS2);
 
@@ -10245,7 +10261,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     const bodyWrapped3 = wrapSegmentedText(ctx, bodyRaw3, bBlockStyle3, availW, bFS3);
     const bAlign3 = card.body.align || 'left';
     const bOffY3 = (card.body.offsetY || 0) * SC;
-    let by = (EXH / 2) + bOffY3 + bFS3;
+    let by = (EXH / 2) + bOffY3 + baselineIn(bBlockStyle3, bFS3, 1.42);
 
     for (const { segs: bSegs3 } of bodyWrapped3) {
       const bLineW3 = measureSegments(ctx, bSegs3, bFS3);
