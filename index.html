@@ -4808,7 +4808,7 @@ Cada campo com 2 a 4 frases, específicas: use nomes, datas e números presentes
 - hook: a cena ou tensão concreta que abre a história
 - mecanismo: por que isso acontece (a explicação causal)
 - aplicacao: a consequência ampla e real; por que isso importa para quem lê
-- direcao: o ARCO do carrossel, em que ordem a história será contada, do gancho à conclusão (é o plano dos blocos do roteiro)
+- direcao: o ARCO do carrossel em 4 a 6 movimentos, em que ordem a história será contada, do gancho à conclusão
 
 IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
 {"hook":"","mecanismo":"","aplicacao":"","direcao":""}`;
@@ -4902,9 +4902,9 @@ function renderEspinha() {
 // A IA escreve o texto inteiro em blocos (virada + parágrafos), sem pensar em cards.
 // A paginação distribui os blocos no número de cards escolhido; o template só define o visual.
 const PROFUNDIDADES = {
-  direto:      { label: 'Direto',      desc: 'Feed rápido · textos curtos por card',      blocos: '3',      pars: '1 a 2', palavras: '20 a 30', maxCard: 40 },
-  padrao:      { label: 'Padrão',      desc: 'Equilíbrio entre ritmo e conteúdo',          blocos: '4',      pars: '2',     palavras: '30 a 40', maxCard: 60 },
-  aprofundado: { label: 'Aprofundado', desc: 'Análise densa · fatos, nomes e ressalvas',   blocos: '4 a 5',  pars: '2 a 3', palavras: '40 a 60', maxCard: 80 },
+  direto:      { label: 'Direto',      desc: 'Feed rápido · textos curtos por card',      blocos: 3, pars: '1 a 2', palavras: '20 a 30', maxCard: 40 },
+  padrao:      { label: 'Padrão',      desc: 'Equilíbrio entre ritmo e conteúdo',          blocos: 4, pars: '2',     palavras: '30 a 40', maxCard: 55 },
+  aprofundado: { label: 'Aprofundado', desc: 'Análise densa · fatos, nomes e ressalvas',   blocos: 5, pars: '2',     palavras: '40 a 55', maxCard: 70 },
 };
 const ROTEIRO_ROLES = {
   capa:            ['Capa',            '#EEEDFE', '#3C3489'],
@@ -4980,7 +4980,8 @@ async function runRoteiro() {
 
 ${_roteiroContext()}
 
-PROFUNDIDADE: ${pf.label} → ${pf.blocos} blocos; cada bloco com ${pf.pars} parágrafos de ${pf.palavras} palavras.
+PROFUNDIDADE: ${pf.label} → EXATAMENTE ${pf.blocos} blocos; cada bloco com ${pf.pars} parágrafos de ${pf.palavras} palavras.
+A Direção da espinha indica a ORDEM da história: agrupe os movimentos dela nesses ${pf.blocos} blocos (não crie um bloco por movimento).
 
 ${ROTEIRO_REGRAS}
 - "conclusao": fechamento em 1 a 2 frases que amarra a tese (não é CTA).
@@ -5017,7 +5018,7 @@ function paginarRoteiro(r, wanted) {
   };
   let target;
   if (wanted === 'auto') {
-    while (groups.some(g => wordsOf(g) > pf.maxCard) && splitLargest()) {}
+    while (groups.length < 10 && groups.some(g => wordsOf(g) > pf.maxCard) && splitLargest()) {}
     target = groups.length;
   } else {
     target = Math.max(1, wanted - 2);
@@ -5276,11 +5277,56 @@ function fitCardText(card) {
   const hasBody = card.body.visible && card.body.text;
   const height = () => _titleH(card) + (hasBody ? 6 + _bodyH(card) : 0);
   let guard = 60;
+  const minBody = card.bg.boxMode ? 10 : 11;
   while (height() > avail && guard-- > 0) {
-    if (card.title.size > 18 && (!hasBody || card.title.size >= card.body.size * 1.7 || card.body.size <= 11)) card.title.size -= 1;
-    else if (hasBody && card.body.size > 11) card.body.size = Math.round((card.body.size - 0.5) * 2) / 2;
+    if (card.title.size > 18 && (!hasBody || card.title.size >= card.body.size * 1.7 || card.body.size <= minBody)) card.title.size -= 1;
+    else if (hasBody && card.body.size > minBody) card.body.size = Math.round((card.body.size - 0.5) * 2) / 2;
     else break;
   }
+  // Ainda não coube no modo box: diminui a área da imagem (mín. 26%) e, se precisar, vira card só de texto
+  if (card.bg.boxMode && height() > avail) {
+    if (card.bg.boxH == null) card.bg.boxH = 42;
+    const layout = card.bg.boxTextLayout || ((card.bg.boxY || 0) <= 5 ? 'top' : 'bottom');
+    while (height() > avail && card.bg.boxH > 26) {
+      card.bg.boxH -= 2; avail += 8;
+      if (layout === 'bottom') card.bg.boxY = 100 - card.bg.boxH;
+    }
+    if (height() > avail) {
+      card.bg.boxMode = false;
+      if (!card.bg.imageSrc) card.bg.type = 'solid';   // sem foto: fundo sólido na cor do card
+      fitCardText(card);
+    }
+  }
+}
+
+// Contraste mínimo legível entre texto e fundo sólido (troca por branco ou escuro da marca)
+function _hexRgb(c) {
+  if (!c) return null;
+  let m = String(c).trim().match(/^#([0-9a-f]{6})$/i);
+  if (m) return [0, 2, 4].map(i => parseInt(m[1].substr(i, 2), 16));
+  m = String(c).trim().match(/^#([0-9a-f]{3})$/i);
+  if (m) return [...m[1]].map(h => parseInt(h + h, 16));
+  m = String(c).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  return m ? [+m[1], +m[2], +m[3]] : null;
+}
+function _contrastRatio(a, b) {
+  const L = rgb => { const [r, g, bl] = rgb.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * bl; };
+  const l1 = L(a), l2 = L(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+function _ensureContrast(card) {
+  // Só em fundo sólido (no modo cheio de imagem/gradiente o overlay cuida da leitura)
+  if (card.bg.type !== 'solid' && !card.bg.boxMode) return;
+  const bg = _hexRgb(card.bg.color);
+  if (!bg) return;
+  const options = ['#ffffff', getBrand().dark || '#141210', '#141210'];
+  const fix = (col, min) => {
+    const c = _hexRgb(col);
+    if (!c || _contrastRatio(c, bg) >= min) return col;
+    return options.slice().sort((x, y) => _contrastRatio(_hexRgb(y) || [0,0,0], bg) - _contrastRatio(_hexRgb(x) || [0,0,0], bg))[0];
+  };
+  card.title.color = fix(card.title.color, 3);
+  if (card.body.visible) card.body.color = fix(card.body.color, 4.5);
 }
 
 // Estilo do template por função: capa = 1º estilo, fechamento = último, meio = alterna os do meio
@@ -6542,7 +6588,7 @@ async function runRender() {
       }
     }
     // Garante que o texto caiba em cada card e, no modo box, posiciona título e corpo ao redor da imagem
-    S.cards.forEach(c => { fitCardText(c); _layoutBoxText(c); });
+    S.cards.forEach(c => { _ensureContrast(c); fitCardText(c); _layoutBoxText(c); });
 
     initSidebar();
     renderFinal();
@@ -6649,7 +6695,7 @@ function renderFinal() {
         <div style="font-family:'Poppins',sans-serif;font-size:0.58rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);">Texto completo dos cards</div>
         <button class="copy-btn" onclick="copyCardsText()" style="font-size:0.65rem;">Copiar tudo</button>
       </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:0.78rem;line-height:1.8;color:var(--ink);white-space:pre-wrap;font-family:'Syne',sans-serif;" id="cards-text-markdown">${S.cards.map((c,i) => `texto ${i+1} - ${c.title.text}${c.body.text ? '\n' + c.body.text : ''}`).join('\n')}</div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:0.78rem;line-height:1.8;color:var(--ink);white-space:pre-wrap;font-family:'Syne',sans-serif;" id="cards-text-markdown">${S.cards.map((c,i) => `texto ${i+1} - ${_escHtml(_plainText(c.title.text))}${c.body.text ? '\n' + _escHtml(_plainText(c.body.text)) : ''}`).join('\n')}</div>
     </div>
     <div class="code-block" id="code-output" style="display:none">${codeText}</div>
 
@@ -6760,6 +6806,61 @@ function inlineTreeToRuns(nodes, style, out = []) {
     inlineTreeToRuns(n.children, st, out);
   }
   return out;
+}
+
+// ── Espaço reservado de foto ──
+// Indica ao usuário onde entra a imagem dele (template com foto, mas sem imagem enviada)
+function _phRect(card) {
+  if (!card.bg.boxMode) return null;
+  const w = card.bg.boxW != null ? card.bg.boxW : 100, h = card.bg.boxH != null ? card.bg.boxH : 42, y = card.bg.boxY != null ? card.bg.boxY : 10;
+  return { x: (100 - w) / 2, y, w, h };
+}
+function _imgPlaceholderHtml(card, idx) {
+  const dark = isColorDark(card.bg.boxMode ? (card.bg.color || '#141210') : '#000000');
+  const fg = dark ? 'rgba(255,255,255,0.55)' : 'rgba(20,18,16,0.45)';
+  const bg = dark ? 'rgba(255,255,255,0.07)' : 'rgba(20,18,16,0.06)';
+  const r = _phRect(card);
+  const pos = r ? `left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%;border-radius:4px;` : 'inset:0;';
+  const inner = `<div onclick="event.stopPropagation();triggerBgImageUpload(${idx})" title="Adicionar sua foto" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;pointer-events:auto;color:${fg};font-family:'Poppins',sans-serif;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+      <span style="font-size:0.55rem;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;">Sua foto aqui</span>
+    </div>`;
+  return `<div data-img-placeholder="${idx}" style="position:absolute;${pos}z-index:1;background:${bg};border:1px dashed ${fg};display:flex;justify-content:center;align-items:${r ? 'center' : 'flex-start'};${r ? '' : 'padding-top:22%;'}pointer-events:none;box-sizing:border-box;">${inner}</div>`;
+}
+// Mesmo marcador no export (canvas)
+function _drawImgPlaceholder(ctx, card, W, H, SC) {
+  const r = _phRect(card);
+  const x = r ? W * r.x / 100 : 0, y = r ? H * r.y / 100 : 0, w = r ? W * r.w / 100 : W, h = r ? H * r.h / 100 : H;
+  const dark = isColorDark(card.bg.boxMode ? (card.bg.color || '#141210') : '#000000');
+  const fg = dark ? 'rgba(255,255,255,0.55)' : 'rgba(20,18,16,0.45)';
+  ctx.save();
+  ctx.fillStyle = dark ? 'rgba(255,255,255,0.07)' : 'rgba(20,18,16,0.06)';
+  ctx.fillRect(x, y, w, h);
+  ctx.setLineDash([4 * SC, 3 * SC]); ctx.strokeStyle = fg; ctx.lineWidth = Math.max(1, SC);
+  ctx.strokeRect(x + SC / 2, y + SC / 2, w - SC, h - SC);
+  ctx.setLineDash([]);
+  const s = 26 * SC / 24;
+  const cx = x + w / 2, cy = r ? y + h / 2 - 8 * SC : y + h * 0.22 + 13 * SC;
+  ctx.save();
+  ctx.translate(cx - 12 * s, cy - 12 * s); ctx.scale(s, s);
+  ctx.strokeStyle = fg; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.stroke(new Path2D('M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M11 9a2 2 0 1 1-4 0a2 2 0 1 1 4 0 M21 15l-3.1-3.1a2 2 0 0 0-2.8 0L6 21'));
+  ctx.restore();
+  ctx.fillStyle = fg;
+  ctx.font = `600 ${Math.round(8.8 * SC)}px 'Poppins', sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('SUA FOTO AQUI', cx, cy + 12 * s + 6 * SC);
+  ctx.restore();
+}
+function _needsPhoto(card) {
+  if (card.bg.imageSrc || (card.bg.type === 'video' && card.bg.videoSrc)) return false;
+  return card.bg.type === 'image' || !!card.bg.boxMode;
+}
+function _confirmPhotoPlaceholders() {
+  const pend = S.cards.map((c, i) => _needsPhoto(c) ? i + 1 : null).filter(Boolean);
+  if (!pend.length) return true;
+  const um = pend.length === 1;
+  return confirm(`${um ? 'O card' : 'Os cards'} ${pend.join(', ')} ainda ${um ? 'está' : 'estão'} com o espaço de foto vazio ("Sua foto aqui"). Exportar assim mesmo?`);
 }
 
 // ── RENDER CARD HTML (preview) ──
@@ -6874,6 +6975,9 @@ function renderCardHtml(card, idx, total) {
         </div>
       </div>`;
     }
+  } else if (_needsPhoto(card)) {
+    // Sem foto ainda: mostra onde a imagem do usuário vai entrar
+    layers += _imgPlaceholderHtml(card, idx);
   } else if (card.bg.type !== 'image') {
     // Show image upload button when no image
     layers += `<div onclick="triggerBgImageUpload(${idx})" style="position:absolute;top:8px;right:8px;z-index:20;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);border:1px dashed rgba(255,255,255,0.25);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;" title="Adicionar imagem de fundo">
@@ -9664,9 +9768,12 @@ function applyTemplateFromManager(tplId) {
 let currentTpls; // temp var used inside openTemplateManager
 
 // ── COPY CARDS TEXT ──
+// Texto puro, sem marcações de formatação (**, _, {#cor|...})
+function _plainText(t) { return inlineTreeToRuns(parseInlineTree(t || ''), {}).map(r => r.text).join(''); }
+
 function copyCardsText() {
   const text = S.cards.map((c,i) =>
-    `Card ${i+1}: ${c.title.text}${c.body.text ? ' — ' + c.body.text : ''}`
+    `Card ${i+1}: ${_plainText(c.title.text)}${c.body.text ? ' — ' + _plainText(c.body.text) : ''}`
   ).join('\n');
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelector('.copy-btn');
@@ -9814,6 +9921,7 @@ function _isMobile() {
 // ── Single-image export (mobile-friendly — no ZIP) ──
 // Triggers sequential download of each card as individual PNG
 async function exportAllCardsSingle() {
+  if (!_confirmPhotoPlaceholders()) return;
   const btn = document.getElementById('export-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Exportando...'; }
   try {
@@ -9838,6 +9946,7 @@ async function exportAllCardsSingle() {
 
 async function exportAllCards() {
   if (!S.cards.length) return;
+  if (!_confirmPhotoPlaceholders()) return;
   const btn = document.getElementById('export-btn');
   if (btn) btn.disabled = true;
 
@@ -10104,6 +10213,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   if (card.bg.type === 'solid') {
     ctx.fillStyle = card.bg.color;
     ctx.fillRect(0, 0, EXW, EXH);
+    if (card.bg.boxMode && _needsPhoto(card)) _drawImgPlaceholder(ctx, card, EXW, EXH, SC);
   } else if (card.bg.type === 'gradient') {
     const angle = (card.bg.gradAngle || 180) * Math.PI / 180;
     const cx2 = EXW/2, cy2 = EXH/2;
@@ -10139,11 +10249,15 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
         }
       } else if (card.bg.type === 'image' && card.bg.imageSrc) {
         await drawBoxImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXW, EXH, SC);
+      } else if (_needsPhoto(card)) {
+        _drawImgPlaceholder(ctx, card, EXW, EXH, SC);
       }
     } else {
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, EXW, EXH);
-      if (card.bg.type === 'image' && card.bg.imageSrc) {
+      if (card.bg.type === 'image' && !card.bg.imageSrc) {
+        _drawImgPlaceholder(ctx, card, EXW, EXH, SC);
+      } else if (card.bg.type === 'image' && card.bg.imageSrc) {
         await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXW, EXH);
       } else if (card.bg.type === 'video' && card.bg.videoSrc) {
         // Draw current video frame full
