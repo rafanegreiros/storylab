@@ -2491,6 +2491,38 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 .lfd-slot:hover { box-shadow: inset 0 0 0 2px var(--brand-accent, #2de300); }
 .lfd-slot.slot-active { box-shadow: inset 0 0 0 2.5px var(--brand-accent, #2de300); }
 
+/* ── ETAPA ROTEIRO ── */
+.rt-wrap { width: 100%; max-width: 920px; min-width: 0; box-sizing: border-box; margin: 0 auto; padding: 8px 4px 24px; }
+.rt-wrap > * { min-width: 0; }
+.rt-eyebrow { font-family:'Poppins',sans-serif; font-size:0.6rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+.rt-title { font-family:'Poppins',sans-serif; font-size:1.1rem; font-weight:700; color:var(--ink); margin:4px 0 12px; }
+.rt-seg { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.rt-seg button { font-family:'Poppins',sans-serif; font-size:0.72rem; padding:6px 12px; border-radius:20px; border:1.5px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; }
+.rt-seg button.on { border-color:var(--accent); background:var(--accent); color:#fff; }
+.rt-seg input { width:64px; padding:5px 8px; border-radius:20px; border:1.5px solid var(--border); background:transparent; color:var(--ink); font-size:0.72rem; }
+.rt-hint { font-size:0.75rem; color:var(--muted); margin-top:8px; min-height:16px; }
+.rt-strip { display:flex; gap:8px; overflow-x:auto; padding:12px 0 8px; scrollbar-width:thin; }
+.rt-mc { flex:0 0 86px; aspect-ratio:4/5; border-radius:6px; padding:7px; display:flex; flex-direction:column; gap:3px; font-size:0.62rem; line-height:1.3; overflow:hidden; }
+.rt-mc .n { font-size:0.55rem; opacity:0.7; }
+.rt-mc .w { margin-top:auto; font-size:0.55rem; opacity:0.7; }
+.rt-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:0.68rem; color:var(--muted); margin-bottom:14px; }
+.rt-legend i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+.rt-list { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:4px 16px; }
+.rt-blk { padding:12px 0; border-top:1px solid var(--border); }
+.rt-blk:first-child { border-top:none; }
+.rt-blk-head { display:flex; align-items:center; gap:8px; }
+.rt-tag { font-family:'Poppins',sans-serif; font-size:0.6rem; font-weight:600; padding:2px 8px; border-radius:6px; white-space:nowrap; }
+.rt-acts { margin-left:auto; display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+.rt-acts button { font-family:'Poppins',sans-serif; font-size:0.65rem; padding:3px 8px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; }
+.rt-acts button:hover:not(:disabled) { color:var(--ink); border-color:var(--ink2); }
+.rt-acts button:disabled { opacity:0.35; cursor:default; }
+.rt-par { margin-top:8px; padding-left:10px; border-left:2px solid var(--border); }
+.rt-wrap [contenteditable]:focus { background:var(--surface2); border-radius:4px; }
+@media (max-width: 768px) {
+  .rt-acts button { padding:5px 9px; } .rt-mc { flex-basis:78px; }
+  /* No celular a barra lateral rola com a página (fixa, cobria metade da tela) */
+  .sidebar { position: relative; top: auto; }
+}
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -2584,11 +2616,15 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
     <span class="bc-sep">›</span>
   </div>
   <div class="bc-item">
-    <button class="bc-btn" id="bc-4" onclick="bcNavigate(4)">Template</button>
+    <button class="bc-btn" id="bc-4" onclick="bcNavigate(4)">Roteiro</button>
     <span class="bc-sep">›</span>
   </div>
   <div class="bc-item">
-    <button class="bc-btn" id="bc-5" onclick="bcNavigate(5)">Carrossel</button>
+    <button class="bc-btn" id="bc-5" onclick="bcNavigate(5)">Visual</button>
+    <span class="bc-sep">›</span>
+  </div>
+  <div class="bc-item">
+    <button class="bc-btn" id="bc-6" onclick="bcNavigate(6)">Carrossel</button>
     <span class="bc-sep">›</span>
   </div>
 </nav>
@@ -2986,6 +3022,10 @@ const S = {
   selectedHeadline: null,
   espinha: null,
   espinhaSources: [],
+  profundidade: 'padrao', // direto | padrao | aprofundado
+  roteiro: null,          // contrato de blocos: { blocos:[{virada, paragrafos:[{destaque,texto}]}], conclusao, cta, credito, objetivo, razao_viral }
+  roteiroCompleto: null,  // versão antes de condensar (para voltar a mais cards)
+  cardCount: 'auto',      // 'auto' | número total de cards
   // New card system
   cards: [],            // S.cards[i] = full card state with all layers
   activeCardIdx: 0,     // which card is selected in sidebar
@@ -3894,14 +3934,15 @@ const STEPS = [
   { title: 'Insumo', desc: 'Envie uma ideia, insight, texto, artigo, link ou uma imagem/infográfico. O agente extrai o tema e estrutura a narrativa.' },
   { title: 'Triagem', desc: 'Análise narrativa do insumo. Confirme para avançar às headlines.' },
   { title: 'Headlines', desc: 'Escolha a capa do carrossel. Cada opção tem uma lógica de captura diferente.' },
-  { title: 'Espinha Dorsal', desc: 'Estrutura narrativa completa baseada na headline escolhida.' },
+  { title: 'Espinha Dorsal', desc: 'O plano narrativo do carrossel. Escolha a profundidade do texto e gere o roteiro.' },
   { title: 'Template', desc: 'Escolha o estilo visual do carrossel.' },
   { title: 'Carrossel', desc: 'Render final pronto para postar.' },
 ];
 
 // Safe STEPS lookup — handles step 3.5 (template selection)
 function getStepMeta(step) {
-  if (step === 3.5) return { title: 'Template', desc: 'Escolha o estilo visual do carrossel.' };
+  if (step === 3.2) return { title: 'Roteiro', desc: 'O texto completo do carrossel, bloco a bloco. Escolha quantos cards e ajuste o texto antes do visual.' };
+  if (step === 3.5) return { title: 'Visual', desc: 'Escolha o estilo visual. O número de cards já foi definido no roteiro.' };
   return STEPS[Math.floor(step)] || STEPS[0];
 }
 
@@ -4036,7 +4077,11 @@ function initSidebar() {
         </div>
       </div>`;
   } else if (S.step === 3) {
-    btn.textContent = 'Escolher template →';
+    btn.textContent = 'Gerar roteiro →';
+    document.getElementById('sidebar-body').innerHTML = _profundidadeHtml('Define o volume de texto de cada card. Dá para mudar depois, no roteiro.');
+  } else if (S.step === 3.2) {
+    btn.textContent = 'Escolher visual →';
+    document.getElementById('sidebar-body').innerHTML = _profundidadeHtml('Mudou a profundidade? Use “Refazer” para reescrever o roteiro.');
   } else if (S.step === 3.5) {
     btn.textContent = 'Gerar carrossel →';
     btn.disabled = !S.selectedTemplate;
@@ -4330,7 +4375,9 @@ async function handlePrimary() {
     await sleep(1500);
     await runEspinha();
   } else if (S.step === 3) {
-    // Always go to template selection first
+    await runRoteiro();
+  } else if (S.step === 3.2) {
+    if (!S.roteiro) { alert('Gere o roteiro para continuar.'); return; }
     S.step = 3.5;
     initSidebar();
     renderTemplateSelector();
@@ -4343,7 +4390,8 @@ async function handlePrimary() {
 
 function handleSecondary() {
   if (S.step === 2) { runHeadlines(); return; }
-  if (S.step === 3.5) { S.step = 3; initSidebar(); renderEspinha(); return; }
+  if (S.step === 3.2) { runRoteiro(); return; }
+  if (S.step === 3.5) { S.step = S.roteiro ? 3.2 : 3; initSidebar(); S.roteiro ? renderRoteiro() : renderEspinha(); return; }
   if (S.step > 0) { S.step--; initSidebar(); renderStepCanvas(); }
 }
 
@@ -4351,6 +4399,7 @@ function renderStepCanvas() {
   if (S.step === 1 && S.triagem) renderTriagem();
   else if (S.step === 2 && S.headlines.length) renderHeadlines();
   else if (S.step === 3 && S.espinha) renderEspinha();
+  else if (S.step === 3.2 && S.roteiro) renderRoteiro();
   else if (S.step === 3.5) renderTemplateSelector();
   else if (S.step === 4 && S.cards.length) renderFinal();
 }
@@ -4364,7 +4413,7 @@ function resetAll() {
     step:0, inputMode:'text', insumo:'', insumoFinal:'', isUrl:false, urlExtracted:false,
     imageData:null, imageAnalyzed:false, imageMime:'image/jpeg', cardImages:{}, editedCards: new Set(),
     fonteMode:'enriquecer', funil:'auto', tom:'Autoridade', triagem:null, triagemDeep:null, showDeep:false, headlines:[], headlineAngle:'',
-    selectedHeadline:null, espinha:null, espinhaSources:[], selectedTemplate:null, renderCards:[], renderAnalysis:null, sources:[], postDescricao:'', postComentario:'',
+    selectedHeadline:null, espinha:null, espinhaSources:[], profundidade:'padrao', roteiro:null, roteiroCompleto:null, cardCount:'auto', selectedTemplate:null, renderCards:[], renderAnalysis:null, sources:[], postDescricao:'', postComentario:'',
     cards:[], activeCardIdx:0 });
   initSidebar();
   document.getElementById('canvas').innerHTML = `
@@ -4746,26 +4795,35 @@ async function runEspinha() {
 
   // ── Etapa 1: Estrutura narrativa (hook, mecanismo, aplicação, direção) ──
   showLoading('Construindo estrutura narrativa...');
-  const promptEstrutura = `Construção narrativa carrossel Instagram.
+  const promptEstrutura = `Você é editor de um perfil editorial no Instagram. Construa a ESPINHA DORSAL de um carrossel: o plano narrativo que vai guiar o texto final.
 
 Tema: ${t.tema_central} | Headline: "${h.l1} / ${h.l2}" | Tom: ${S.tom} | Funil: ${t.funil_detectado}
+Transformação: ${t.transformacao}
 Fricção: ${t.friccao_central}
-Insumo: ${(S.insumoFinal || S.insumo || '').substring(0, 600)}
+Ângulo: ${t.angulo_narrativo}
+Evidências da triagem: ${(t.evidencias || []).join(' | ')}
+Insumo: ${(S.insumoFinal || S.insumo || '').substring(0, 2500)}
+
+Cada campo com 2 a 4 frases, específicas: use nomes, datas e números presentes no material. NUNCA invente dados.
+- hook: a cena ou tensão concreta que abre a história
+- mecanismo: por que isso acontece (a explicação causal)
+- aplicacao: a consequência ampla e real; por que isso importa para quem lê
+- direcao: o ARCO do carrossel, em que ordem a história será contada, do gancho à conclusão (é o plano dos blocos do roteiro)
 
 IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
-{"hook":"abre o conflito narrativo em 1 frase forte","mecanismo":"explica por que acontece em 1-2 frases","aplicacao":"consequência ampla e real em 1 frase","direcao":"próximo passo acionável em 1 frase"}`;
+{"hook":"","mecanismo":"","aplicacao":"","direcao":""}`;
 
   try {
-    const estrutura = extractJSON(await callClaude(promptEstrutura, 600));
+    const estrutura = extractJSON(await callClaude(promptEstrutura, 1400));
 
     // ── Etapa 2: Provas reais via web_search ──
     showLoading('Buscando dados e evidências reais...');
-    const promptProvas = `Pesquisador de dados para conteúdo de Instagram. Preciso de 3 provas com dados reais e verificáveis para o seguinte contexto:
+    const promptProvas = `Pesquisador de dados para conteúdo de Instagram. Preciso de 3 a 5 provas com dados reais e verificáveis para o seguinte contexto:
 
 Tema: ${t.tema_central}
 Argumento central: ${estrutura.mecanismo}
 
-Use web_search para encontrar 3 dados/estudos/estatísticas REAIS que suportem este argumento.
+Use web_search para encontrar 3 a 5 dados/estudos/estatísticas REAIS que suportem este argumento (com nomes, datas e números).
 
 REGRAS CRÍTICAS:
 - Cada prova deve ter um número ou dado concreto verificável (%, R$, número de usuários, etc.)
@@ -4777,7 +4835,7 @@ REGRAS CRÍTICAS:
 Retorne APENAS este JSON (sem markdown):
 {"provas":[{"dado":"estatística ou dado concreto em 1 frase","fonte_titulo":"nome do estudo ou publicação","fonte_url":"url_real_da_busca","fonte_veiculo":"nome do site"}]}`;
 
-    const provasData = extractJSON(await callClaudeWithSearch(promptProvas, 1200));
+    const provasData = extractJSON(await callClaudeWithSearch(promptProvas, 1800));
 
     // Merge estrutura + provas
     S.espinha = {
@@ -4840,9 +4898,408 @@ function renderEspinha() {
 }
 
 
+// ── ETAPA 3.2 — ROTEIRO (contrato de blocos → cards) ──
+// A IA escreve o texto inteiro em blocos (virada + parágrafos), sem pensar em cards.
+// A paginação distribui os blocos no número de cards escolhido; o template só define o visual.
+const PROFUNDIDADES = {
+  direto:      { label: 'Direto',      desc: 'Feed rápido · textos curtos por card',      blocos: '3',      pars: '1 a 2', palavras: '20 a 30', maxCard: 40 },
+  padrao:      { label: 'Padrão',      desc: 'Equilíbrio entre ritmo e conteúdo',          blocos: '4',      pars: '2',     palavras: '30 a 40', maxCard: 60 },
+  aprofundado: { label: 'Aprofundado', desc: 'Análise densa · fatos, nomes e ressalvas',   blocos: '4 a 5',  pars: '2 a 3', palavras: '40 a 60', maxCard: 80 },
+};
+const ROTEIRO_ROLES = {
+  capa:            ['Capa',            '#EEEDFE', '#3C3489'],
+  virada:          ['Virada',          '#FAECE7', '#712B13'],
+  desenvolvimento: ['Desenvolvimento', '#F1EFE8', '#444441'],
+  fechamento:      ['Fechamento',      '#E6F1FB', '#0C447C'],
+};
+
+function _words(t) { return (t || '').trim().split(/\s+/).filter(Boolean).length; }
+function _escHtml(t) { return (t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function _profundidadeHtml(note) {
+  const cur = S.profundidade || 'padrao';
+  return `<div>
+    <div class="field-label">Profundidade do texto</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${Object.entries(PROFUNDIDADES).map(([k, p]) => `
+        <div class="fonte-opt ${cur === k ? 'active' : ''}" onclick="setProfundidade('${k}')" style="cursor:pointer">
+          <div class="fo-label">${p.label}</div><div class="fo-sub">${p.desc}</div>
+        </div>`).join('')}
+    </div>
+    ${note ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:8px;line-height:1.5">${note}</div>` : ''}
+  </div>`;
+}
+function setProfundidade(val) { S.profundidade = val; initSidebar(); autoSave(); }
+
+// Todo o material das etapas anteriores, para o roteiro não perder profundidade
+function _roteiroContext() {
+  const t = S.triagem || {}, d = S.triagemDeep || {}, e = S.espinha || {}, h = S.selectedHeadline || {};
+  const provas = (e.provasFontes || []).length
+    ? e.provasFontes.map((p, i) => `${String.fromCharCode(65 + i)}) ${p.dado} (Fonte: ${p.fonte_veiculo || p.fonte_titulo || 'sem fonte'})`).join('\n')
+    : (e.prova || []).join('\n');
+  return `HEADLINE (capa já definida, não repetir): "${h.l1} / ${h.l2}"
+Tom: ${S.tom} | Funil: ${t.funil_detectado || S.funil}
+Tema: ${t.tema_central}
+Transformação: ${t.transformacao}
+Fricção central: ${t.friccao_central}
+Ângulo: ${t.angulo_narrativo}
+${d.publico_alvo ? `Público: ${d.publico_alvo}\nObjeção: ${d.objecao_principal}\nGancho emocional: ${d.gancho_emocional}\n` : ''}
+ESPINHA DORSAL
+Hook: ${e.hook}
+Mecanismo: ${e.mecanismo}
+Aplicação: ${e.aplicacao}
+Direção (arco narrativo): ${e.direcao}
+
+PROVAS (dados reais pesquisados):
+${provas}
+
+EVIDÊNCIAS DA TRIAGEM:
+${(t.evidencias || []).join('\n')}
+
+INSUMO ORIGINAL (trecho):
+"${(S.insumoFinal || S.insumo || '').substring(0, 3000)}"`;
+}
+
+const ROTEIRO_REGRAS = `REGRAS DE ESCRITA:
+- Texto editorial, específico e verificável: nomes, datas, números e fontes vindos das PROVAS e do INSUMO. NUNCA invente dados.
+- Inclua ressalvas honestas quando as evidências tiverem limites ou divergências.
+- Terceira pessoa (sem "você"), exceto no CTA.
+- "virada": frase curta de impacto que abre o bloco (máx. 14 palavras) e funciona sozinha como título de card.
+- "destaque": título curto do parágrafo (máx. 8 palavras), usado se o parágrafo virar um card próprio.
+- Cada bloco avança a história, sem repetir ideias de outros blocos. Siga a Direção da espinha.
+- Pode marcar 1 a 3 palavras-chave por parágrafo com **negrito**.`;
+
+async function runRoteiro() {
+  document.getElementById('primary-btn').disabled = true;
+  const pf = PROFUNDIDADES[S.profundidade || 'padrao'];
+  showLoading('Escrevendo o roteiro do carrossel...');
+  const fonte = (S.sources || [])[0];
+  const fonteTitulo = fonte ? (fonte.titulo || '').replace(/"/g, '') : '';
+  const fonteVeiculo = fonte ? (fonte.veiculo || '').replace(/"/g, '') : '';
+  const prompt = `Você é editor-chefe de um perfil editorial no Instagram. Escreva o TEXTO COMPLETO de um carrossel em blocos, a partir do material abaixo.
+
+${_roteiroContext()}
+
+PROFUNDIDADE: ${pf.label} → ${pf.blocos} blocos; cada bloco com ${pf.pars} parágrafos de ${pf.palavras} palavras.
+
+${ROTEIRO_REGRAS}
+- "conclusao": fechamento em 1 a 2 frases que amarra a tese (não é CTA).
+- "cta": chamada curta para ação (salvar, compartilhar ou comentar), coerente com o funil.
+- "credito": ${fonte ? `"Produzido com ajuda de IA a partir de: ${fonteTitulo}${fonteVeiculo ? ' — ' + fonteVeiculo : ''}"` : 'deixe vazio'}
+
+Responda SOMENTE com JSON válido:
+{"objetivo":"objetivo do post em até 8 palavras","razao_viral":"por que esse conteúdo prende, em 1 frase","blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":""}]}],"conclusao":"","cta":"","credito":""}`;
+  try {
+    const data = extractJSON(await callClaude(prompt, 4000, 4, 150000));
+    if (!data.blocos?.length) throw new Error('O roteiro veio vazio. Tente novamente.');
+    S.roteiro = data;
+    S.roteiroCompleto = null;
+    S.cardCount = 'auto';
+    S.step = 3.2; initSidebar(); renderRoteiro(); autoSave();
+  } catch(e) { showError(e.message, handlePrimary); }
+  document.getElementById('primary-btn').disabled = false;
+}
+
+// Distribui os blocos em cards: capa + meio + fechamento.
+// Mais cards que blocos → divide blocos por parágrafo. Menos → precisa condensar (IA).
+function paginarRoteiro(r, wanted) {
+  const pf = PROFUNDIDADES[S.profundidade || 'padrao'];
+  const blocos = (r?.blocos || []).filter(b => b && (b.virada || (b.paragrafos || []).length));
+  const parsOf = b => b.paragrafos || [];
+  const wordsOf = g => _words(g.from === 0 ? g.b.virada : '') + parsOf(g.b).slice(g.from, g.to + 1).reduce((n, p) => n + _words(p.texto), 0);
+  let groups = blocos.map((b, bi) => ({ b, bi, from: 0, to: Math.max(0, parsOf(b).length - 1) }));
+  const splitLargest = () => {
+    const cand = groups.filter(g => g.to > g.from).sort((a, b) => wordsOf(b) - wordsOf(a))[0];
+    if (!cand) return false;
+    const mid = Math.floor((cand.from + cand.to) / 2);
+    groups.splice(groups.indexOf(cand), 1, { ...cand, to: mid }, { ...cand, from: mid + 1 });
+    return true;
+  };
+  let target;
+  if (wanted === 'auto') {
+    while (groups.some(g => wordsOf(g) > pf.maxCard) && splitLargest()) {}
+    target = groups.length;
+  } else {
+    target = Math.max(1, wanted - 2);
+    while (groups.length < target && splitLargest()) {}
+  }
+  const h = S.selectedHeadline || {};
+  const cards = [{ role: 'capa', title: h.l1 || '', body: h.l2 || '' }];
+  groups.forEach(g => {
+    const ps = parsOf(g.b).slice(g.from, g.to + 1);
+    const first = g.from === 0;
+    cards.push({
+      role: first ? 'virada' : 'desenvolvimento',
+      title: first ? (g.b.virada || ps[0]?.destaque || '') : (ps[0]?.destaque || ''),
+      body: ps.map(p => p.texto).join(' '),
+      bi: g.bi,
+    });
+  });
+  cards.push({ role: 'fechamento', title: r?.conclusao || '', body: r?.cta || '' });
+  return {
+    cards,
+    total: cards.length,
+    precisaCondensar: wanted !== 'auto' && groups.length > target,
+    max: 2 + blocos.reduce((n, b) => n + Math.max(1, parsOf(b).length), 0),
+  };
+}
+
+async function condensarRoteiro(nBlocos) {
+  const base = S.roteiroCompleto || S.roteiro;
+  showLoading(`Condensando a história em ${nBlocos + 2} cards...`);
+  const prompt = `Reescreva o roteiro abaixo em EXATAMENTE ${nBlocos} bloco(s), cada um com 1 parágrafo de 35 a 55 palavras. Preserve os fatos mais fortes, as fontes e a sequência lógica. Mantenha conclusao, cta e credito.
+${ROTEIRO_REGRAS}
+
+ROTEIRO COMPLETO (JSON):
+${JSON.stringify({ blocos: base.blocos, conclusao: base.conclusao, cta: base.cta, credito: base.credito })}
+
+Responda SOMENTE com JSON no mesmo formato:
+{"blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":""}]}],"conclusao":"","cta":"","credito":""}`;
+  const data = extractJSON(await callClaude(prompt, 2500, 4, 150000));
+  if (!data.blocos?.length) throw new Error('Não foi possível condensar o roteiro.');
+  S.roteiro = { ...base, ...data };
+}
+
+async function setCardCount(val) {
+  if (val !== 'auto') {
+    val = Math.round(Number(val));
+    if (!val || val < 3) val = 3;
+    if (val > 15) val = 15;
+  }
+  S.cardCount = val;
+  const M = val === 'auto' ? Infinity : val - 2;
+  const nCompleto = (S.roteiroCompleto || S.roteiro).blocos.length;
+  try {
+    if (M >= nCompleto && S.roteiroCompleto) {
+      // Cabe a versão completa de novo: desfaz a condensação
+      S.roteiro = S.roteiroCompleto; S.roteiroCompleto = null;
+    } else if (M < S.roteiro.blocos.length || (S.roteiroCompleto && M !== S.roteiro.blocos.length && M < nCompleto)) {
+      if (!S.roteiroCompleto) S.roteiroCompleto = JSON.parse(JSON.stringify(S.roteiro));
+      await condensarRoteiro(M);
+    }
+  } catch(e) {
+    showError(e.message, () => setCardCount(val));
+    return;
+  }
+  renderRoteiro(); autoSave();
+}
+
+async function aprofundarBloco(bi) {
+  const b = S.roteiro?.blocos[bi];
+  if (!b) return;
+  showLoading('Aprofundando o bloco...');
+  const prompt = `Aprofunde ESTE bloco de um carrossel editorial: mais especificidade (nomes, datas, números e exemplos concretos vindos do material), sem repetir os outros blocos. Mantenha a virada (pode lapidar) e entregue 2 a 3 parágrafos de 40 a 60 palavras.
+
+${_roteiroContext()}
+
+${ROTEIRO_REGRAS}
+
+OUTROS BLOCOS (não repetir): ${S.roteiro.blocos.filter((_, i) => i !== bi).map(x => x.virada).join(' | ')}
+BLOCO ATUAL: ${JSON.stringify(b)}
+
+Responda SOMENTE com JSON: {"virada":"","paragrafos":[{"destaque":"","texto":""}]}`;
+  try {
+    const nb = extractJSON(await callClaude(prompt, 1500, 4, 120000));
+    if (nb.paragrafos?.length) { S.roteiro.blocos[bi] = nb; S.roteiroCompleto = null; }
+  } catch(e) { alert('Não foi possível aprofundar o bloco: ' + e.message); }
+  renderRoteiro(); autoSave();
+}
+
+function moverBloco(bi, dir) {
+  const a = S.roteiro.blocos, j = bi + dir;
+  if (j < 0 || j >= a.length) return;
+  [a[bi], a[j]] = [a[j], a[bi]];
+  S.roteiroCompleto = null;
+  renderRoteiro(); autoSave();
+}
+
+function removerBloco(bi) {
+  if (S.roteiro.blocos.length <= 1) return;
+  if (!confirm('Remover este bloco do roteiro?')) return;
+  S.roteiro.blocos.splice(bi, 1);
+  S.roteiroCompleto = null;
+  renderRoteiro(); autoSave();
+}
+
+// Edição direta do texto: path = 'b.0.virada' | 'b.0.p.1.texto' | 'conclusao' | 'cta' | 'credito'
+function editRoteiro(path, el) {
+  const v = el.innerText.replace(/\n+/g, ' ').trim();
+  const k = path.split('.');
+  if (k[0] === 'b') {
+    const b = S.roteiro.blocos[+k[1]];
+    if (k[2] === 'virada') b.virada = v; else b.paragrafos[+k[3]][k[4]] = v;
+  } else {
+    S.roteiro[k[0]] = v;
+  }
+  S.roteiroCompleto = null;
+  _renderRoteiroStrip(); autoSave();
+}
+
+function _roteiroTag(role, label) {
+  const r = ROTEIRO_ROLES[role];
+  return `<span class="rt-tag" style="background:${r[1]};color:${r[2]}">${label || r[0]}</span>`;
+}
+
+function renderRoteiro() {
+  const r = S.roteiro;
+  if (!r) return;
+  const h = S.selectedHeadline || {};
+  const ed = (path, text, style) => `<div contenteditable="true" spellcheck="false" onblur="editRoteiro('${path}',this)" style="outline:none;cursor:text;${style || ''}">${_escHtml(text)}</div>`;
+  const blocosHtml = r.blocos.map((b, bi) => `
+    <div class="rt-blk">
+      <div class="rt-blk-head">
+        ${_roteiroTag('virada', 'Bloco ' + (bi + 1))}
+        <div class="rt-acts">
+          <button onclick="moverBloco(${bi},-1)" title="Subir" ${bi === 0 ? 'disabled' : ''}>↑</button>
+          <button onclick="moverBloco(${bi},1)" title="Descer" ${bi === r.blocos.length - 1 ? 'disabled' : ''}>↓</button>
+          <button onclick="aprofundarBloco(${bi})" title="Reescrever este bloco com mais profundidade">Aprofundar</button>
+          <button onclick="removerBloco(${bi})" title="Remover bloco" ${r.blocos.length <= 1 ? 'disabled' : ''}>✕</button>
+        </div>
+      </div>
+      ${ed(`b.${bi}.virada`, b.virada, "font-family:'Poppins',sans-serif;font-weight:700;font-size:0.95rem;color:var(--ink);margin:8px 0 2px")}
+      ${(b.paragrafos || []).map((p, pi) => `<div class="rt-par">
+        ${ed(`b.${bi}.p.${pi}.destaque`, p.destaque, "font-family:'Poppins',sans-serif;font-size:0.6rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:3px")}
+        ${ed(`b.${bi}.p.${pi}.texto`, p.texto, "font-size:0.84rem;line-height:1.6;color:var(--ink)")}
+      </div>`).join('')}
+    </div>`).join('');
+
+  document.getElementById('canvas').innerHTML = `
+    <div class="rt-wrap">
+      <div class="rt-eyebrow">Etapa 4 · Roteiro · ${PROFUNDIDADES[S.profundidade || 'padrao'].label}</div>
+      <div class="rt-title">Quantos cards para contar essa história?</div>
+      <div class="rt-seg" id="rt-seg"></div>
+      <div class="rt-hint" id="rt-hint"></div>
+      <div class="rt-strip" id="rt-strip"></div>
+      <div class="rt-legend">${Object.values(ROTEIRO_ROLES).map(v => `<span><i style="background:${v[1]};border:1px solid ${v[2]}"></i>${v[0]}</span>`).join('')}</div>
+      <div class="rt-list">
+        <div class="rt-blk">
+          <div class="rt-blk-head">${_roteiroTag('capa')}<span style="font-size:0.68rem;color:var(--muted)">headline escolhida</span></div>
+          <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.95rem;color:var(--ink);margin-top:8px">${_escHtml(h.l1)}</div>
+          <div style="font-size:0.84rem;color:var(--muted);margin-top:2px">${_escHtml(h.l2)}</div>
+        </div>
+        ${blocosHtml}
+        <div class="rt-blk">
+          <div class="rt-blk-head">${_roteiroTag('fechamento')}</div>
+          ${ed('conclusao', r.conclusao, "font-family:'Poppins',sans-serif;font-weight:700;font-size:0.95rem;color:var(--ink);margin:8px 0 4px")}
+          ${ed('cta', r.cta, "font-size:0.84rem;color:var(--ink)")}
+          ${r.credito ? ed('credito', r.credito, "font-size:0.7rem;color:var(--muted);margin-top:8px") : ''}
+        </div>
+      </div>
+    </div>${buildSourcesHtml()}`;
+  _renderRoteiroStrip();
+}
+
+function _renderRoteiroStrip() {
+  const cur = S.cardCount || 'auto';
+  const pag = paginarRoteiro(S.roteiro, cur);
+  const autoN = paginarRoteiro(S.roteiro, 'auto').total;
+  const seg = document.getElementById('rt-seg');
+  if (!seg) return;
+  const opts = [['auto', `Automático (${autoN})`], [5, '5'], [7, '7'], [9, '9'], [12, '12']];
+  const isPreset = cur === 'auto' || [5, 7, 9, 12].includes(cur);
+  seg.innerHTML = opts.map(([k, l]) => `<button class="${k === cur ? 'on' : ''}" onclick="setCardCount(${k === 'auto' ? "'auto'" : k})">${l}</button>`).join('')
+    + `<input type="number" min="3" max="15" placeholder="Outro" value="${isPreset ? '' : cur}" title="Outro número de cards (3 a 15)" onchange="setCardCount(this.value)"/>`;
+  const words = pag.cards.slice(1, -1).map(c => _words(c.title) + _words(c.body));
+  const media = words.length ? Math.round(words.reduce((a, b) => a + b, 0) / words.length) : 0;
+  let hint = cur === 'auto'
+    ? `Sugestão da ferramenta: ${pag.total} cards, cerca de ${media} palavras por card.`
+    : `${pag.total} cards, cerca de ${media} palavras por card.`;
+  if (cur !== 'auto' && pag.total < cur) hint = `Este roteiro rende no máximo ${pag.max} cards. Use “Aprofundar” em um bloco para ganhar mais conteúdo.`;
+  if (S.roteiroCompleto) hint += ' Texto condensado pela IA; escolha mais cards para voltar à versão completa.';
+  document.getElementById('rt-hint').textContent = hint;
+  document.getElementById('rt-strip').innerHTML = pag.cards.map((c, i) => {
+    const role = ROTEIRO_ROLES[c.role];
+    const t = (c.title || '').replace(/\*\*/g, '').split(/\s+/).slice(0, 9).join(' ');
+    return `<div class="rt-mc" style="background:${role[1]};color:${role[2]}" title="${_escHtml((c.title || '') + ' — ' + (c.body || '')).replace(/"/g, '&quot;')}">
+      <span class="n">${String(i + 1).padStart(2, '0')}</span><span>${_escHtml(t)}</span>
+      <span class="w">${_words(c.title) + _words(c.body)} palavras</span></div>`;
+  }).join('');
+}
+
+// Número de linhas que um texto ocupa no card de prévia (largura útil 280px)
+function _countTextLines(text, size, weight, family, upper) {
+  const ctx = (_countTextLines._c || (_countTextLines._c = document.createElement('canvas'))).getContext('2d');
+  let plain = inlineTreeToRuns(parseInlineTree(text || ''), {}).map(r => r.text).join('');
+  if (upper) plain = plain.toUpperCase();
+  ctx.font = `${weight} ${size}px ${family}`;
+  let n = 0;
+  for (const para of plain.split('\n')) {
+    let line = ''; n++;
+    for (const w of para.split(/\s+/)) {
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > 280 && line) { n++; line = w; } else line = test;
+    }
+  }
+  return n;
+}
+const _titleH = c => _countTextLines(c.title.text, c.title.size, c.title.weight || 700, c.title.fontFamily, c.title.uppercase) * c.title.size * 1.1;
+const _bodyH  = c => (c.body.visible && c.body.text) ? _countTextLines(c.body.text, c.body.size, 400, c.body.fontFamily, c.body.uppercase) * c.body.size * 1.42 : 0;
+
+// Faixa vertical do texto no card (mesma regra de renderCardHtml)
+function _textBand(card) {
+  const hasFooter = (card.footer ? card.footer.visible : card.pageNum?.visible) && (card.footer?.template || 'numeric') !== 'none';
+  const top = card.avatar.visible && card.avatar.placement === 'top' ? 80 : (card.header.visible ? 44 : 20);
+  const bottom = card.cta.visible ? 70 : (card.avatar.visible && card.avatar.placement === 'bottom' ? 80 : (hasFooter ? 28 : 20));
+  return { top, bottom };
+}
+
+// Modo box: empilha título e corpo na área livre ao redor da imagem, medindo a altura real do texto
+function _layoutBoxText(card) {
+  if (!card.bg.boxMode) return;
+  const { top, bottom } = _textBand(card);
+  const bY = card.bg.boxY != null ? card.bg.boxY : 10, bH = card.bg.boxH != null ? card.bg.boxH : 42;
+  const boxTop = bY * 4, boxBot = (bY + bH) * 4;
+  const layout = card.bg.boxTextLayout || (bY <= 5 ? 'top' : (bY + bH) >= 95 ? 'bottom' : 'middle');
+  const tH = _titleH(card), bodyH = _bodyH(card), GAP = 6, M = 12;
+  const center = top + (400 - top - bottom) / 2;          // centro do container do título no HTML
+  let titleTop, bodyTop;
+  if (layout === 'middle') {
+    const r1 = [top, boxTop - M], r2 = [boxBot + M, 400 - bottom];
+    titleTop = r1[0] + Math.max(0, (r1[1] - r1[0] - tH) / 2);
+    bodyTop = r2[0];
+  } else {
+    const r = layout === 'top' ? [boxBot + M, 400 - bottom] : [top, boxTop - M];
+    const blockH = tH + (bodyH ? GAP + bodyH : 0);
+    titleTop = r[0] + Math.max(0, (r[1] - r[0] - blockH) / 2);
+    bodyTop = titleTop + tH + GAP;
+  }
+  card.title.offsetY = Math.round(titleTop + tH / 2 - center);
+  card.body.offsetY  = Math.round(bodyTop - 200);           // corpo em modo box: topo = 200 + offsetY
+}
+
+// Ajusta título/corpo para caber na área de texto do card (prévia 320×400)
+function fitCardText(card) {
+  const { top, bottom } = _textBand(card);
+  let avail = 400 - top - bottom - 8;
+  if (card.bg.boxMode) avail -= 400 * ((card.bg.boxH != null ? card.bg.boxH : 42) / 100);
+  avail = Math.max(avail, 110);
+  const hasBody = card.body.visible && card.body.text;
+  const height = () => _titleH(card) + (hasBody ? 6 + _bodyH(card) : 0);
+  let guard = 60;
+  while (height() > avail && guard-- > 0) {
+    if (card.title.size > 18 && (!hasBody || card.title.size >= card.body.size * 1.7 || card.body.size <= 11)) card.title.size -= 1;
+    else if (hasBody && card.body.size > 11) card.body.size = Math.round((card.body.size - 0.5) * 2) / 2;
+    else break;
+  }
+}
+
+// Estilo do template por função: capa = 1º estilo, fechamento = último, meio = alterna os do meio
+function _tplStyleIdx(i, n, len) {
+  if (len <= 1 || i === 0) return 0;
+  if (i === n - 1) return len - 1;
+  if (len === 2) return 0;
+  return 1 + ((i - 1) % (len - 2));
+}
+
 // ── ETAPA 3.5 — SELETOR VISUAL DE TEMPLATES ──
 function renderTemplateSelector() {
-  const templates = getBuiltInTemplates();
+  // Uma opção por família (a versão com mais estilos); o número de cards vem do roteiro
+  const templates = Object.values(getBuiltInTemplates().reduce((acc, t) => {
+    const fam = t.name.replace(/\s*—\s*\d+\s*cards?$/i, '');
+    if (!acc[fam] || t.cardStyles.length > acc[fam].cardStyles.length) acc[fam] = { ...t, name: fam };
+    return acc;
+  }, {}));
+  const totalCards = S.roteiro ? paginarRoteiro(S.roteiro, S.cardCount || 'auto').total : null;
   const btn = document.getElementById('primary-btn');
 
   function getBgColor(code, b) {
@@ -4889,15 +5346,14 @@ function renderTemplateSelector() {
       <div style="display:flex;gap:2px;margin-bottom:8px;height:64px;">${miniCards}</div>
       <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.72rem;color:var(--ink);margin-bottom:1px;">${tpl.name}</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;margin-bottom:6px;">
-        <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,113,227,0.08);color:var(--accent);font-family:'Poppins',sans-serif;">${tpl.cardCount} cards</span>
+        <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,113,227,0.08);color:var(--accent);font-family:'Poppins',sans-serif;">${totalCards || tpl.cardCount} cards</span>
         ${imgCount>0?`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--muted);font-family:'Poppins',sans-serif;">${imgCount} fotos</span>`:''}
       </div>
       <button onclick="event.stopPropagation();openTemplateEditor('${tpl.id}')" style="width:100%;padding:3px 6px;border-radius:5px;border:1.5px solid var(--border);background:transparent;font-size:10px;cursor:pointer;color:var(--muted);font-family:'Poppins',sans-serif;">✏ Editar template</button>
     </div>`;
   }
 
-  // Group by card count
-  const counts = [...new Set(templates.map(t=>t.cardCount))].sort((a,b)=>a-b);
+  const counts = [];
 
   let filtersHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
     <button onclick="filterTemplateSelector('all')" id="tsf-all" style="padding:4px 10px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-size:0.68rem;font-family:'Poppins',sans-serif;cursor:pointer;">Todos</button>
@@ -4911,9 +5367,9 @@ function renderTemplateSelector() {
   document.getElementById('canvas').innerHTML = `
     <div style="padding:20px;max-width:900px;margin:0 auto;">
       <div style="margin-bottom:16px;">
-        <div style="font-family:'Poppins',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Etapa 3.5</div>
-        <div style="font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700;color:var(--ink);">Escolha o template</div>
-        <div style="font-family:'Poppins',sans-serif;font-size:0.78rem;color:var(--muted);margin-top:4px;">A IA vai gerar exatamente o número de cards do template. As cores e fontes seguem a sua identidade visual.</div>
+        <div style="font-family:'Poppins',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Etapa 5 · Visual</div>
+        <div style="font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700;color:var(--ink);">Escolha o visual</div>
+        <div style="font-family:'Poppins',sans-serif;font-size:0.78rem;color:var(--muted);margin-top:4px;">${totalCards ? `Seu roteiro tem ${totalCards} cards. ` : ''}O template define a aparência; cores e fontes seguem a sua identidade visual.</div>
       </div>
       ${filtersHtml}
       ${gridHtml}
@@ -6005,44 +6461,22 @@ function defaultCardState(idx, titulo, corpo) {
 // ── ETAPA 5 — RENDER ──
 async function runRender() {
   document.getElementById('primary-btn').disabled = true;
-  showLoading('Gerando carrossel...');
-
-  const t = S.triagem; const h = S.selectedHeadline; const e = S.espinha;
-  const provasStr = (e.provasFontes||e.prova||[]).map(p => typeof p==='object'?p.dado:p).slice(0,3).join(' | ');
-
-  // If a template was selected, tell the AI exactly how many cards to generate
-  const tplCardCount = S.selectedTemplate
-    ? (getBuiltInTemplates().find(tp => tp.id === S.selectedTemplate)?.cardCount || null)
-    : null;
-  const cardCountInstruction = tplCardCount
-    ? `EXATAMENTE ${tplCardCount} cards — nem mais, nem menos.`
-    : `EXATAMENTE entre 7 e 12 cards — a quantidade ideal para narrar esta história.`;
-
-  const prompt = `Carrossel Instagram. ${cardCountInstruction}
-
-Tema: ${t.tema_central}
-Headline: "${h.l1} / ${h.l2}"
-Hook: ${e.hook}
-Mecanismo: ${e.mecanismo}
-Aplicação: ${e.aplicacao}
-Direção/CTA: ${e.direcao}
-Provas: ${provasStr}
-Tom: ${S.tom} | Funil: ${t.funil_detectado}
-
-REGRAS:
-- Card 1: capa com headline forte (titulo até 12 palavras). corpo = subtítulo que amplia a tensão/promessa.
-- Último card: CTA claro — titulo = afirmação de transformação. corpo = chamada para ação específica.
-- Cards intermediários: narrativa progressiva Hook→Tensão→Mecanismo→Provas→Aplicação.
-- Máx 50 palavras por card. titulo NUNCA vazio. corpo NUNCA vazio.
-- Sem 2ª pessoa ("você").
-- layout sugerido: "cover" para card 1, "cta" para último, "text" para texto puro, "image" quando imagem seria ideal, "split" para comparações.
-
-Responda SOMENTE JSON:
-{"tema":"","funil":"","objetivo":"","razao_viral":"","num_cards":${tplCardCount||8},"cards":[{"num":1,"tipo":"capa","titulo":"","corpo":"","dica_imagem":"","layout":"cover"}]}`;
+  showLoading('Montando o carrossel...');
 
   try {
-    const data = extractJSON(await callClaude(prompt, 3000));
-    const rawCards = data.cards || [];
+    if (!S.roteiro) throw new Error('Gere o roteiro antes de montar o carrossel.');
+    // Texto vem do roteiro (sem nova chamada à IA); a paginação define quantos cards
+    const pag = paginarRoteiro(S.roteiro, S.cardCount || 'auto');
+    const rawCards = pag.cards.map((c, i) => ({
+      num: i + 1, tipo: c.role, titulo: c.title, corpo: c.body,
+      layout: c.role === 'capa' ? 'cover' : c.role === 'fechamento' ? 'cta' : 'text',
+    }));
+    const data = {
+      tema: S.triagem?.tema_central || '',
+      funil: S.triagem?.funil_detectado || S.funil,
+      objetivo: S.roteiro.objetivo || '',
+      razao_viral: S.roteiro.razao_viral || '',
+    };
     const b = getBrand();
 
     // Build S.cards[] with full state for each card
@@ -6052,14 +6486,8 @@ Responda SOMENTE JSON:
       const isDark = isFirst || isLast || c.layout === 'image' || c.layout === 'cover' || c.layout === 'cta';
       const state = defaultCardState(i, c.titulo, c.corpo);
       state.layout = c.layout || (isFirst ? 'cover' : isLast ? 'cta' : 'text');
-      state.dicaImagem = c.dica_imagem || '';
+      state.dicaImagem = '';
       state.tipo = c.tipo || '';
-      // Auto-configure based on layout
-      if (c.layout === 'image') {
-        state.overlay.visible = true;
-        state.overlay.opacityStart = 0.75;
-        state.overlay.reach = 55;
-      }
       if (isDark) {
         state.bg.color = b.dark || '#141210';
         state.title.color = '#ffffff';
@@ -6096,7 +6524,7 @@ Responda SOMENTE JSON:
       if (tpl && tpl.cardStyles) {
         const br = getBrand();
         S.cards = S.cards.map((card, i) => {
-          const styleIdx = Math.min(i, tpl.cardStyles.length - 1);
+          const styleIdx = _tplStyleIdx(i, S.cards.length, tpl.cardStyles.length);
           const resolved = _resolveCardTokens(JSON.parse(JSON.stringify(tpl.cardStyles[styleIdx])), br);
           resolved.title.text = card.title.text;
           resolved.body.text  = card.body.text;
@@ -6113,6 +6541,8 @@ Responda SOMENTE JSON:
         localStorage.setItem('storylab_active_template', S.selectedTemplate);
       }
     }
+    // Garante que o texto caiba em cada card e, no modo box, posiciona título e corpo ao redor da imagem
+    S.cards.forEach(c => { fitCardText(c); _layoutBoxText(c); });
 
     initSidebar();
     renderFinal();
@@ -8264,26 +8694,15 @@ function _applyBoxTextLayout(idx, layout) {
   const card = S.cards[idx];
 
   if (layout === 'top') {
-    card.bg.boxY       = 0;
-    card.bg.boxH       = 50;
-    card.bg.boxW       = 100;
-    card.title.offsetY = 58;
-    card.body.offsetY  = 122;
-
+    card.bg.boxY = 0;  card.bg.boxH = 50; card.bg.boxW = 100;
   } else if (layout === 'middle') {
-    card.bg.boxY       = 31;
-    card.bg.boxH       = 43;
-    card.bg.boxW       = 89;
-    card.title.offsetY = -128;
-    card.body.offsetY  = 104;
-
+    card.bg.boxY = 31; card.bg.boxH = 43; card.bg.boxW = 89;
   } else if (layout === 'bottom') {
-    card.bg.boxY       = 50;
-    card.bg.boxH       = 50;
-    card.bg.boxW       = 100;
-    card.title.offsetY = -132;
-    card.body.offsetY  = -84;
+    card.bg.boxY = 50; card.bg.boxH = 50; card.bg.boxW = 100;
   }
+  // Posição do texto calculada pela altura real (antes eram valores fixos que encavalavam textos longos)
+  card.bg.boxTextLayout = layout;
+  _layoutBoxText(card);
 }
 
 function clearBgImage(idx) {
@@ -9274,6 +9693,7 @@ async function generatePostContent() {
   const prompt = `Crie para Instagram com base no carrossel:
 Headline: ${h.l1} ${h.l2}
 Tema: ${t.tema_central} | Hook: ${e.hook} | Tom: ${S.tom}
+${S.roteiro?.credito ? `Termine a descrição com esta linha de crédito, sem alterar: ${S.roteiro.credito}` : ''}
 
 JSON sem markdown:
 {"descricao":"texto do post max 150 palavras, hook forte, CTA para salvar, 2-3 hashtags","primeiro_comentario":"comentário do autor, curto e humano, max 3 linhas, sem hashtags"}`;
@@ -10784,7 +11204,7 @@ async function fetchWithTimeout(url, options, timeoutMs = 60000) {
   }
 }
 
-async function callClaude(prompt, maxTokens, retries = 4) {
+async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000) {
   const token = getAuthToken();
   if (!token) { showLoginScreen(); throw new Error('Faça login para continuar.'); }
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -10801,7 +11221,7 @@ async function callClaude(prompt, maxTokens, retries = 4) {
           max_tokens: maxTokens || 1000,
           messages: [{ role: "user", content: prompt }]
         })
-      }, 90000); // 90s timeout
+      }, timeoutMs);
     } catch(e) {
       if (e.message === 'timeout' && attempt < retries) {
         showLoading(`Resposta demorou, tentando novamente (${attempt}/${retries})...`);
@@ -11201,6 +11621,10 @@ function getSessionSnapshot() {
     headlineAngle: S.headlineAngle,
     selectedHeadline: S.selectedHeadline,
     espinha: S.espinha,
+    profundidade: S.profundidade,
+    roteiro: S.roteiro,
+    roteiroCompleto: S.roteiroCompleto,
+    cardCount: S.cardCount,
     selectedTemplate: S.selectedTemplate,
     renderCards: S.renderCards,
     cards: S.cards.map(c => {
@@ -11775,6 +12199,10 @@ function restoreSnap(snap, sessionId) {
     headlineAngle: snap.headlineAngle || '',
     selectedHeadline: snap.selectedHeadline || null,
     espinha: snap.espinha || null,
+    profundidade: snap.profundidade || 'padrao',
+    roteiro: snap.roteiro || null,
+    roteiroCompleto: snap.roteiroCompleto || null,
+    cardCount: snap.cardCount || 'auto',
     selectedTemplate: snap.selectedTemplate || null,
     renderCards: snap.renderCards || [],
     cards: (snap.cards || snap.renderCards || []).map(migrateCard),
@@ -11821,6 +12249,7 @@ function renderStep(step) {
   if (step === 1 && S.triagem) renderTriagem();
   else if (step === 2 && S.headlines.length) renderHeadlines();
   else if (step === 3 && S.espinha) renderEspinha();
+  else if (step === 3.2 && S.roteiro) renderRoteiro();
   else if (step === 3.5) renderTemplateSelector();
   else if (step === 4 && S.cards.length) renderFinal();
 }
@@ -11882,34 +12311,29 @@ function bindHistoryEvents() {
 // ── BREADCRUMB NAVIGATION ──
 const BC_LABELS = ['Insumo','Triagem','Headlines','Espinha Dorsal','Template','Carrossel'];
 
+// Posição de cada botão do breadcrumb → etapa real (S.step)
+const BC_STEPS = [0, 1, 2, 3, 3.2, 3.5, 4];
+
 function updateBreadcrumb() {
-  const cur = Math.floor(S.step); // 3.5 → 3 (template step shows espinha dorsal as active)
-  const curReal = S.step; // for step 3.5 highlight the template breadcrumb (index 4)
-  for (let i = 0; i <= 5; i++) {
+  const curIdx = BC_STEPS.indexOf(S.step);
+  for (let i = 0; i < BC_STEPS.length; i++) {
     const btn = document.getElementById('bc-' + i);
     if (!btn) continue;
     btn.classList.remove('active', 'done');
-    if (S.step === 3.5) {
-      // Espinha (3) = done, Template (4) = active
-      if (i < 4) btn.classList.add('done');
-      else if (i === 4) btn.classList.add('active');
-    } else {
-      if (i === cur) btn.classList.add('active');
-      else if (i < cur) btn.classList.add('done');
-    }
+    if (i === curIdx) btn.classList.add('active');
+    else if (i < curIdx) btn.classList.add('done');
   }
 }
 
-function bcNavigate(targetStep) {
+function bcNavigate(idx) {
+  const targetStep = BC_STEPS[idx];
   // Only navigate to completed steps
-  if (targetStep >= S.step) return;
+  if (targetStep == null || targetStep >= S.step) return;
   if (targetStep === 0) { resetAll(); return; }
+  if (targetStep === 3.2 && !S.roteiro) return;
   S.step = targetStep;
   initSidebar();
-  if (targetStep === 1 && S.triagem) renderTriagem();
-  else if (targetStep === 2 && S.headlines.length) renderHeadlines();
-  else if (targetStep === 3 && S.espinha) renderEspinha();
-  else if (targetStep === 4 && S.cards.length) renderFinal();
+  renderStepCanvas();
 }
 
 // ── IMAGE DRAG & DROP (full mode + box mode) ──
