@@ -2711,32 +2711,40 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
           <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;">
             <input type="color" id="brand-primary" value="#0071e3" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
             <div style="flex:1;min-width:0">
-              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Primária</div>
+              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Cor principal</div>
               <input type="text" id="brand-primary-hex" value="#0071e3" class="modal-input hex-input" placeholder="#0071e3" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;">
             <input type="color" id="brand-accent" value="#2de300" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
             <div style="flex:1;min-width:0">
-              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Destaque</div>
+              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Cor de destaque</div>
               <input type="text" id="brand-accent-hex" value="#2de300" class="modal-input hex-input" placeholder="#2de300" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;">
             <input type="color" id="brand-dark" value="#2f2d2d" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
             <div style="flex:1;min-width:0">
-              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Escura</div>
+              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Fundo escuro · neutro</div>
               <input type="text" id="brand-dark-hex" value="#2f2d2d" class="modal-input hex-input" placeholder="#2f2d2d" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;">
             <input type="color" id="brand-light" value="#eaeaec" class="color-pick" style="width:32px;height:32px;flex-shrink:0;"/>
             <div style="flex:1;min-width:0">
-              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Clara</div>
+              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Fundo claro · neutro</div>
               <input type="text" id="brand-light-hex" value="#eaeaec" class="modal-input hex-input" placeholder="#eaeaec" style="margin-bottom:0;padding:4px 6px;font-size:0.72rem;"/>
             </div>
           </div>
+          <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;grid-column:1 / -1;">
+            <input type="color" id="brand-support" value="#ffb400" class="color-pick" style="width:32px;height:32px;flex-shrink:0;" oninput="document.getElementById('brand-support-on').checked=true"/>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:0.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Cor de apoio · opcional</div>
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.7rem;color:var(--ink2);cursor:pointer;"><input type="checkbox" id="brand-support-on" style="accent-color:var(--accent);"/> usar uma terceira cor da marca</label>
+            </div>
+          </div>
         </div>
+        <div style="font-size:0.68rem;color:var(--muted);line-height:1.5;margin-top:8px;">Títulos e textos ficam sempre em <strong>preto ou branco</strong> — o que tiver mais contraste com o fundo. As cores da marca entram nos fundos de impacto, nas palavras destacadas, nos números e nos botões. Os fundos escuro e claro devem ser neutros (quase preto e quase branco).</div>
       </div>
 
 
@@ -3553,6 +3561,7 @@ function openBrand() {
   document.getElementById('brand-font-display').value = b.fontDisplay;
   document.getElementById('brand-font-body').value = b.fontBody;
   if (document.getElementById('brand-font-impact')) document.getElementById('brand-font-impact').value = b.fontImpact || '';
+  if (document.getElementById('brand-support')) { document.getElementById('brand-support').value = b.support || '#ffb400'; document.getElementById('brand-support-on').checked = !!b.support; }
   if (document.getElementById('brand-type-level')) document.getElementById('brand-type-level').value = b.typeLevel || 'editorial';
   document.getElementById('brand-handle').value = b.handle || '';
   document.getElementById('brand-tagline').value = b.tagline || '';
@@ -3851,6 +3860,7 @@ function saveBrand() {
     fontDisplay: document.getElementById('brand-font-display').value,
     fontBody:    document.getElementById('brand-font-body').value,
     fontImpact:  document.getElementById('brand-font-impact')?.value || '',
+    support:     document.getElementById('brand-support-on')?.checked ? document.getElementById('brand-support').value : '',
     typeLevel:   document.getElementById('brand-type-level')?.value || 'editorial',
     handle:   document.getElementById('brand-handle').value.trim(),
     tagline:  document.getElementById('brand-tagline').value.trim(),
@@ -3876,8 +3886,10 @@ function saveBrand() {
   document.getElementById('brand-modal').style.display = 'none';
   // Re-apply brand to existing cards if on step 4
   if (S.step === 4 && S.cards.length) {
-    applyBrandToNewCards();
-    renderFinal();
+    const v2id = S.cards.find(c => c.templateId)?.templateId;
+    const v2 = v2id ? getTemplates().find(t => t.id === v2id) : null;
+    if (v2) applyTemplateV2(v2);          // template v2: refaz o visual com a nova identidade
+    else { applyBrandToNewCards(); renderFinal(); }
   }
 }
 
@@ -5025,11 +5037,12 @@ A Direção da espinha indica a ORDEM da história: agrupe os movimentos dela ne
 
 ${ROTEIRO_REGRAS}
 - "conclusao": fechamento em 1 a 2 frases que amarra a tese (não é CTA).
-- "cta": chamada curta para ação (salvar, compartilhar ou comentar), coerente com o funil.
+- "fechamento": 1 frase curta que complementa a conclusão SEM pedir ação (ou string vazia).
+- "cta": UMA única ação, curta (máx. 9 palavras) e específica do tema, coerente com o funil — ex.: "Comente **GUIA** e receba o passo a passo no direct", "Salve para revisar antes da próxima consulta". Marque a palavra-chave com **.
 - "credito": ${fonte ? `"Produzido com ajuda de IA a partir de: ${fonteTitulo}${fonteVeiculo ? ' — ' + fonteVeiculo : ''}"` : 'deixe vazio'}
 
 Responda SOMENTE com JSON válido:
-{"objetivo":"objetivo do post em até 8 palavras","razao_viral":"por que esse conteúdo prende, em 1 frase","blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":""}]}],"conclusao":"","cta":"","credito":""}`;
+{"objetivo":"objetivo do post em até 8 palavras","razao_viral":"por que esse conteúdo prende, em 1 frase","blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":""}]}],"conclusao":"","fechamento":"","cta":"","credito":""}`;
   try {
     const data = extractJSON(await callClaude(prompt, 4000, 4, 150000));
     if (!data.blocos?.length) throw new Error('O roteiro veio vazio. Tente novamente.');
@@ -5076,7 +5089,10 @@ function paginarRoteiro(r, wanted) {
       bi: g.bi,
     });
   });
-  cards.push({ role: 'fechamento', title: r?.conclusao || '', body: r?.cta || '' });
+  // Fechamento: conclusão + complemento; a chamada curta vai no botão (sem repetir no texto)
+  const ctaShort = r?.cta && _words(r.cta) <= 12 ? r.cta : '';
+  const fechBody = r?.fechamento != null ? r.fechamento : (ctaShort ? '' : (r?.cta || ''));
+  cards.push({ role: 'fechamento', title: r?.conclusao || '', body: fechBody, ctaText: ctaShort });
   return {
     cards,
     total: cards.length,
@@ -5092,7 +5108,7 @@ async function condensarRoteiro(nBlocos) {
 ${ROTEIRO_REGRAS}
 
 ROTEIRO COMPLETO (JSON):
-${JSON.stringify({ blocos: base.blocos, conclusao: base.conclusao, cta: base.cta, credito: base.credito })}
+${JSON.stringify({ blocos: base.blocos, conclusao: base.conclusao, fechamento: base.fechamento, cta: base.cta, credito: base.credito })}
 
 Responda SOMENTE com JSON no mesmo formato:
 {"blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":""}]}],"conclusao":"","cta":"","credito":""}`;
@@ -5321,7 +5337,17 @@ function _layoutBoxText(card) {
 }
 
 // Ajusta título/corpo para caber na área de texto do card (prévia 320×400)
+function _fitCta(card) {
+  if (!card.cta?.visible || !card.cta.text) return;
+  const ctx = (_fitCta._c || (_fitCta._c = document.createElement('canvas'))).getContext('2d');
+  const plain = _plainText(card.cta.text), maxW = 320 - 2 * _padX(card) - 32 - 3;
+  let fs = 12.5;
+  while (fs > 9) { ctx.font = `700 ${fs}px 'Poppins', sans-serif`; if (ctx.measureText(plain).width <= maxW) break; fs -= 0.5; }
+  card.cta.fontSize = fs;
+}
+
 function fitCardText(card) {
+  _fitCta(card);
   const { top, bottom } = _textBand(card);
   let avail = 400 - top - bottom - 8;
   if (card.bg.boxMode) avail -= 400 * ((card.bg.boxH != null ? card.bg.boxH : 42) / 100);
@@ -5485,6 +5511,60 @@ function _numToken(text) {
   return tok.length <= 10 ? tok : null;
 }
 
+// ── Cores automáticas: texto neutro (preto/branco) e cor da marca só onde tem contraste ──
+function _inkFor(bgHex) {
+  const bg = _hexRgb(bgHex) || [20, 20, 20];
+  return _contrastRatio([20, 18, 16], bg) >= _contrastRatio([255, 255, 255], bg) ? '#141210' : '#ffffff';
+}
+// Fundo que fica atrás do título / do corpo
+function _titleBg(card) {
+  if ((card.bg.type === 'image' || card.bg.type === 'video') && !card.bg.boxMode) return '#111111';
+  if (card.bg.boxMode && card.bg.boxTextLayout === 'over') return '#2a2a2a';
+  if (card.bg.type === 'gradient') return card.bg.gradColors?.[0] || card.bg.color;
+  return card.bg.color;
+}
+function _bodyBg(card) {
+  if ((card.bg.type === 'image' || card.bg.type === 'video') && !card.bg.boxMode) return '#111111';
+  if (card.bg.type === 'gradient') return card.bg.gradColors?.[1] || card.bg.color;
+  return card.bg.color;
+}
+// Primeira cor da marca com contraste suficiente sobre o fundo (na ordem de preferência)
+function _brandColorOn(bgHex, prefer, b, min = 3) {
+  const bg = _hexRgb(bgHex); if (!bg) return prefer;
+  const opts = [prefer, b.accent, b.primary, b.support].filter(c => _hexRgb(c));
+  return opts.find(c => _contrastRatio(_hexRgb(c), bg) >= min) || null;
+}
+function _applyAutoColors(card, b) {
+  const tBg = _titleBg(card), bBg = _bodyBg(card);
+  const tInk = _inkFor(tBg), bInk = _inkFor(bBg);
+  // Título e corpo: neutros, a não ser que o template use uma cor da marca de propósito
+  if (card.title.color === '$auto') card.title.color = tInk;
+  else card.title.color = _brandColorOn(tBg, card.title.color, b) || tInk;
+  if (card.body.color === '$auto') card.body.color = bInk === '#ffffff' ? 'rgba(255,255,255,0.9)' : '#2b2926';
+  // Destaque das palavras-chave
+  if (card.emphasis === 'color') {
+    const c = _brandColorOn(tBg, card.emphasisColor, b);
+    if (c) card.emphasisColor = c; else card.emphasis = 'bold';
+  } else if (card.emphasis === 'highlight') {
+    // marca-texto: a cor fica atrás do texto → precisa contrastar com o texto (não com o fundo)
+    const ink = _hexRgb(tInk);
+    const ok = c => { const x = _hexRgb(c); return x && _contrastRatio(x, ink) >= 3; };
+    if (!/^rgba/.test(card.emphasisColor || '') && !ok(card.emphasisColor)) {
+      const alt = [b.accent, b.primary, b.support].find(ok);
+      if (alt) card.emphasisColor = alt; else card.emphasis = 'bold';
+    }
+  }
+  // Número grande (kicker)
+  if (card.kicker) card.kicker.color = card.kicker.color && card.kicker.color !== '$auto' ? (_brandColorOn(tBg, card.kicker.color, b) || tInk) : tInk;
+  // Botão: sólido = texto contrasta com o botão; só borda = texto contrasta com o card
+  if (card.cta) {
+    const outline = card.cta.variant === 'outline';
+    if (outline) card.cta.borderColor = _brandColorOn(bBg, card.cta.bgColor, b) || bInk;
+    card.cta.emphasisColor = _brandColorOn(outline ? bBg : (card.cta.bgColor || bBg), b.accent, b) || (outline ? bInk : _inkFor(card.cta.bgColor));
+    if (card.cta.textColor === '$auto' || !card.cta.textColor) card.cta.textColor = outline ? bInk : _inkFor(card.cta.bgColor);
+  }
+}
+
 // items: [{ role, bi, title, body, imageSrc?, imageMime?, imgNaturalW?, imgNaturalH? }]
 function _buildCardsV2(items, tpl, b) {
   const provas = (S.espinha?.provasFontes || []).filter(p => p && p.fonte_titulo);
@@ -5534,6 +5614,7 @@ function _buildCardsV2(items, tpl, b) {
     base.kicker = { visible: false, text: '', size: 64, weight: 900, fontRole: 'impact', color: null };
     let card = _deepMerge(_deepMerge(base, tpl.common || {}), style || {});
     card = _resolveCardTokens(card, b);
+    _applyAutoColors(card, b);
     card.idx = i; card.tipo = it.role; card.bi = it.bi;
     card.layout = it.role === 'capa' ? 'cover' : it.role === 'fechamento' ? 'cta' : 'text';
     card.title.text = it.title || ''; card.body.text = it.body || '';
@@ -5556,6 +5637,11 @@ function _buildCardsV2(items, tpl, b) {
       const pv = evProva[i] || provas[evK++];
       card.evidence = { visible: true, style: card.evidence?.style || 'news', color: card.evidence?.color, veiculo: pv.fonte_veiculo || '', manchete: pv.fonte_titulo, data: pv.fonte_data || '' };
     } else if (card.evidence) card.evidence.visible = false;
+    if (it.role === 'fechamento' && it.ctaText) {
+      // Com botão: a chamada vai no botão. Sem botão (família de post): entra no fim do texto
+      if (card.cta.visible) card.cta.text = it.ctaText;
+      else card.body.text = [card.body.text, it.ctaText].filter(Boolean).join(' ');
+    }
     // Foto do usuário (ao trocar o template de um carrossel pronto)
     if (it.imageSrc) {
       card.bg.imageSrc = it.imageSrc; card.bg.imageMime = it.imageMime || 'image/jpeg';
@@ -5577,7 +5663,7 @@ function renderTemplateSelector() {
   const fams = getBuiltInTemplates().filter(t => t.v2);
   const user = getUserTemplates();
   const pag = S.roteiro ? paginarRoteiro(S.roteiro, S.cardCount || 'auto') : null;
-  const items = pag ? pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body })) : [];
+  const items = pag ? pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body, ctaText: c.ctaText })) : [];
   const total = items.length;
 
   // Mini prévia real: mesmo motor do carrossel, em escala reduzida e sem interação
@@ -5808,28 +5894,29 @@ function seedBuiltInTemplates() {
   // Famílias v2: o template define a ESTRUTURA de cada função do card; a marca define cor, fonte e assinatura.
   // Medidas em px do card de prévia (320×400). Cores em tokens ($primary, $accent, $dark, $light).
   const D = (o) => o;
-  const light = '$light', dark = '$dark';
-  const white90 = 'rgba(255,255,255,0.88)';
+  // Fundos neutros; texto '$auto' = preto ou branco conforme o contraste (cor da marca só nos destaques)
+  const light = '$bgLight', dark = '$bgDark';
+  const white90 = '$auto';
 
   const EDITORIAL = {
     id: 'v2_editorial', v2: true, name: 'Editorial', ref: 'BrandsDecoded',
     description: 'Revista digital: manchete condensada na capa, título no alto + foto ou prova no meio + texto embaixo. Fundos alternam para dar ritmo.',
     impactFont: "'Archivo Black', sans-serif",
-    common: D({ header: { visible: true, template: 'editorial3', colorMode: 'auto' }, footer: { visible: true, template: 'dots', colorMode: 'auto' }, emphasis: 'color', emphasisColor: '$accent' }),
+    common: D({ header: { visible: true, template: 'editorial3', colorMode: 'auto' }, footer: { visible: false, template: 'dots', colorMode: 'auto' }, emphasis: 'color', emphasisColor: '$accent' }),
     roles: {
       capa: D({ bg: { type: 'image', color: dark, boxMode: false }, overlay: { visible: true, color: '#000000', direction: 'bottom-up', opacityStart: 0.88, opacityEnd: 0, reach: 66 },
-        textAnchor: 'bottom', padX: 24, title: { size: 30, weight: 900, fontRole: 'impact', color: '#ffffff', align: 'center', uppercase: true },
-        body: { visible: true, size: 12, color: white90, align: 'center', fontRole: 'body' }, header: { colorMode: 'light' }, footer: { colorMode: 'light' } }),
+        textAnchor: 'bottom', padX: 24, title: { size: 30, weight: 900, fontRole: 'impact', color: '$auto', align: 'center', uppercase: true },
+        body: { visible: true, size: 12, color: '$auto', align: 'center', fontRole: 'body' }, header: { colorMode: 'light' }, footer: { colorMode: 'light' } }),
       virada: [
-        D({ bg: { type: 'solid', color: light, boxMode: true, boxTextLayout: 'middle', boxY: 31, boxH: 40, boxW: 88 }, title: { size: 18, weight: 800, fontRole: 'display', color: dark }, body: { size: 11.5, color: dark } }),
-        D({ bg: { type: 'solid', color: dark, boxMode: true, boxTextLayout: 'middle', boxY: 31, boxH: 40, boxW: 88 }, title: { size: 18, weight: 800, fontRole: 'display', color: '#ffffff' }, body: { size: 11.5, color: white90 } }),
+        D({ bg: { type: 'image', color: light, boxMode: true, boxTextLayout: 'middle', boxY: 31, boxH: 40, boxW: 88 }, title: { size: 18, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 11.5, color: '$auto' } }),
+        D({ bg: { type: 'image', color: dark, boxMode: true, boxTextLayout: 'middle', boxY: 31, boxH: 40, boxW: 88 }, title: { size: 18, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 11.5, color: '$auto' } }),
       ],
       desenvolvimento: [
-        D({ bg: { type: 'solid', color: light }, textAnchor: 'top', title: { size: 17, weight: 800, fontRole: 'display', color: dark }, body: { size: 12.5, color: dark } }),
-        D({ bg: { type: 'solid', color: dark }, textAnchor: 'top', title: { size: 17, weight: 800, fontRole: 'display', color: '#ffffff' }, body: { size: 12.5, color: white90 } }),
+        D({ bg: { type: 'solid', color: light }, textAnchor: 'top', title: { size: 17, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
+        D({ bg: { type: 'solid', color: dark }, textAnchor: 'top', title: { size: 17, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
       ],
-      evidencia: D({ bg: { type: 'solid', color: dark, boxMode: true, boxTextLayout: 'middle', boxY: 30, boxH: 38, boxW: 88 }, evidence: { style: 'news' }, title: { size: 16, weight: 800, fontRole: 'display', color: '#ffffff' }, body: { size: 11.5, color: white90 } }),
-      fechamento: D({ bg: { type: 'solid', color: dark }, textAnchor: 'top', title: { size: 22, weight: 900, fontRole: 'impact', color: '#ffffff' }, body: { size: 12.5, color: white90 }, cta: { visible: true, bgColor: '$accent', textColor: '#ffffff', radius: 100 } }),
+      evidencia: D({ bg: { type: 'solid', color: dark, boxMode: true, boxTextLayout: 'middle', boxY: 30, boxH: 38, boxW: 88 }, evidence: { style: 'news' }, title: { size: 16, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 11.5, color: '$auto' } }),
+      fechamento: D({ bg: { type: 'solid', color: dark }, textAnchor: 'top', title: { size: 22, weight: 900, fontRole: 'impact', color: '$auto' }, body: { size: 12.5, color: '$auto' }, cta: { visible: true, variant: 'outline', bgColor: '$accent', textColor: '$auto', radius: 100 } }),
     },
   };
 
@@ -5840,14 +5927,14 @@ function seedBuiltInTemplates() {
     common: D({ bg: { type: 'solid', color: '#ffffff' }, header: { visible: false }, avatar: { visible: true, placement: 'top', style: 'profile', colorMode: 'auto' },
       footer: { visible: true, template: 'swipe', swipeVariant: 'arrow', colorMode: 'auto' }, emphasis: 'bold', textAnchor: 'top' }),
     roles: {
-      capa: D({ textAnchor: 'center', padX: 24, title: { size: 24, weight: 800, fontRole: 'display', color: '#141210', uppercase: true }, body: { visible: true, size: 13, color: 'rgba(20,18,16,0.7)', fontRole: 'body' } }),
-      virada: D({ title: { size: 18, weight: 600, fontRole: 'body', color: '#141210' }, body: { size: 13, color: '#141210', fontRole: 'body' } }),
+      capa: D({ textAnchor: 'center', padX: 24, title: { size: 24, weight: 800, fontRole: 'display', color: '$auto', uppercase: true }, body: { visible: true, size: 13, color: '$auto', fontRole: 'body' } }),
+      virada: D({ title: { size: 18, weight: 600, fontRole: 'body', color: '$auto' }, body: { size: 13, color: '$auto', fontRole: 'body' } }),
       desenvolvimento: [
-        D({ title: { size: 16, weight: 600, fontRole: 'body', color: '#141210' }, body: { size: 13, color: '#141210', fontRole: 'body' } }),
-        D({ bg: { boxMode: true, boxTextLayout: 'bottom', boxY: 56, boxH: 32, boxW: 88 }, title: { size: 15, weight: 600, fontRole: 'body', color: '#141210' }, body: { size: 12, color: '#141210', fontRole: 'body' } }),
+        D({ title: { size: 16, weight: 600, fontRole: 'body', color: '$auto' }, body: { size: 13, color: '$auto', fontRole: 'body' } }),
+        D({ bg: { type: 'image', color: '#ffffff', boxMode: true, boxTextLayout: 'bottom', boxY: 56, boxH: 32, boxW: 88 }, title: { size: 15, weight: 600, fontRole: 'body', color: '$auto' }, body: { size: 12, color: '$auto', fontRole: 'body' } }),
       ],
-      evidencia: D({ bg: { boxMode: true, boxTextLayout: 'bottom', boxY: 50, boxH: 38, boxW: 88 }, evidence: { style: 'marker', color: '#2563eb' }, title: { size: 15, weight: 600, fontRole: 'body', color: '#141210' }, body: { size: 12, color: '#141210', fontRole: 'body' } }),
-      fechamento: D({ footer: { visible: false }, title: { size: 17, weight: 600, fontRole: 'body', color: '#141210' }, body: { size: 14, color: '#141210', fontRole: 'body' } }),
+      evidencia: D({ bg: { boxMode: true, boxTextLayout: 'bottom', boxY: 50, boxH: 38, boxW: 88 }, evidence: { style: 'marker', color: '#2563eb' }, title: { size: 15, weight: 600, fontRole: 'body', color: '$auto' }, body: { size: 12, color: '$auto', fontRole: 'body' } }),
+      fechamento: D({ footer: { visible: false }, title: { size: 17, weight: 600, fontRole: 'body', color: '$auto' }, body: { size: 14, color: '$auto', fontRole: 'body' } }),
     },
   };
 
@@ -5858,14 +5945,14 @@ function seedBuiltInTemplates() {
     common: D({ bg: { type: 'solid', color: light }, header: { visible: true, template: 'corners', colorMode: 'auto' }, footer: { visible: true, template: 'corners', colorMode: 'auto' },
       emphasis: 'highlight', emphasisColor: '$accent', textAnchor: 'center' }),
     roles: {
-      capa: D({ padX: 24, title: { size: 30, weight: 900, fontRole: 'impact', color: dark, align: 'center', uppercase: true }, body: { visible: true, size: 11.5, color: dark, align: 'center' } }),
-      virada: D({ title: { size: 18, weight: 800, fontRole: 'display', color: dark }, body: { size: 12.5, color: dark } }),
+      capa: D({ padX: 24, title: { size: 30, weight: 900, fontRole: 'impact', color: '$auto', align: 'center', uppercase: true }, body: { visible: true, size: 11.5, color: '$auto', align: 'center' } }),
+      virada: D({ title: { size: 18, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
       desenvolvimento: [
-        D({ title: { size: 16, weight: 800, fontRole: 'display', color: dark }, body: { size: 12.5, color: dark } }),
-        D({ bg: { type: 'solid', color: '$accent' }, emphasisColor: 'rgba(255,255,255,0.45)', title: { size: 19, weight: 900, fontRole: 'impact', color: dark, align: 'center' }, body: { size: 12.5, color: dark, align: 'center' } }),
+        D({ title: { size: 16, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
+        D({ bg: { type: 'solid', color: '$accent' }, emphasisColor: 'rgba(255,255,255,0.45)', title: { size: 19, weight: 900, fontRole: 'impact', color: '$auto', align: 'center' }, body: { size: 12.5, color: '$auto', align: 'center' } }),
       ],
-      fechamento: D({ bg: { type: 'solid', color: '$accent' }, emphasisColor: 'rgba(255,255,255,0.45)', title: { size: 21, weight: 900, fontRole: 'impact', color: dark, align: 'center' }, body: { size: 12.5, color: dark, align: 'center' },
-        cta: { visible: true, bgColor: dark, textColor: '#ffffff', radius: 100 } }),
+      fechamento: D({ bg: { type: 'solid', color: '$accent' }, emphasisColor: 'rgba(255,255,255,0.45)', title: { size: 21, weight: 900, fontRole: 'impact', color: '$auto', align: 'center' }, body: { size: 12.5, color: '$auto', align: 'center' },
+        cta: { visible: true, bgColor: dark, textColor: '$auto', radius: 100 } }),
     },
   };
 
@@ -5876,19 +5963,19 @@ function seedBuiltInTemplates() {
     common: D({ header: { visible: true, template: 'corners', colorMode: 'light' }, footer: { visible: false }, emphasis: 'color', emphasisColor: '$accent' }),
     roles: {
       capa: D({ bg: { type: 'image', color: dark }, overlay: { visible: true, color: '#000000', direction: 'bottom-up', opacityStart: 0.82, opacityEnd: 0, reach: 70 },
-        textAnchor: 'bottom', padX: 24, title: { size: 26, weight: 900, fontRole: 'impact', color: '#ffffff', align: 'center' }, body: { visible: true, size: 11.5, color: white90, align: 'center' } }),
+        textAnchor: 'bottom', padX: 24, title: { size: 26, weight: 900, fontRole: 'impact', color: '$auto', align: 'center' }, body: { visible: true, size: 11.5, color: '$auto', align: 'center' } }),
       virada: D({ bg: { type: 'image', color: dark, boxMode: true, boxTextLayout: 'over', boxY: 0, boxH: 46, boxW: 100 },
         overlay: { visible: true, color: '#000000', direction: 'bottom-up', opacityStart: 0.45, opacityEnd: 0.45, reach: 100 },
-        title: { size: 17, weight: 800, fontRole: 'display', color: '$accent', align: 'center' }, body: { size: 12.5, color: '#ffffff', align: 'center' } }),
+        title: { size: 17, weight: 800, fontRole: 'display', color: '$accent', align: 'center' }, body: { size: 12.5, color: '$auto', align: 'center' } }),
       desenvolvimento: [
         D({ bg: { type: 'image', color: dark, boxMode: true, boxTextLayout: 'over', boxY: 0, boxH: 46, boxW: 100 },
           overlay: { visible: true, color: '#000000', direction: 'bottom-up', opacityStart: 0.45, opacityEnd: 0.45, reach: 100 },
-          title: { size: 16, weight: 800, fontRole: 'display', color: '$accent', align: 'center' }, body: { size: 12.5, color: '#ffffff', align: 'center' } }),
+          title: { size: 16, weight: 800, fontRole: 'display', color: '$accent', align: 'center' }, body: { size: 12.5, color: '$auto', align: 'center' } }),
         D({ bg: { type: 'solid', color: '$accent' }, header: { colorMode: 'dark' }, textAnchor: 'center', emphasisColor: dark,
-          title: { size: 19, weight: 900, fontRole: 'impact', color: dark, align: 'center' }, body: { size: 12.5, color: dark, align: 'center' } }),
+          title: { size: 19, weight: 900, fontRole: 'impact', color: '$auto', align: 'center' }, body: { size: 12.5, color: '$auto', align: 'center' } }),
       ],
       fechamento: D({ bg: { type: 'image', color: dark }, overlay: { visible: true, color: '#000000', direction: 'bottom-up', opacityStart: 0.86, opacityEnd: 0, reach: 76 },
-        textAnchor: 'bottom', title: { size: 20, weight: 900, fontRole: 'impact', color: '#ffffff', align: 'center' }, body: { size: 12, color: '#ffffff', align: 'center' } }),
+        textAnchor: 'bottom', title: { size: 20, weight: 900, fontRole: 'impact', color: '$auto', align: 'center' }, body: { size: 12, color: '$auto', align: 'center' } }),
     },
   };
 
@@ -5896,19 +5983,19 @@ function seedBuiltInTemplates() {
     id: 'v2_dados', v2: true, name: 'Dados em destaque', ref: 'sugestão Storycards',
     description: 'Número gigante tirado do próprio texto, com a fonte logo abaixo. Para temas com dado forte: finanças, saúde, mercado.',
     impactFont: "'Archivo Black', sans-serif",
-    common: D({ header: { visible: true, template: 'simple', colorMode: 'auto' }, footer: { visible: true, template: 'numeric', colorMode: 'auto' }, emphasis: 'color', emphasisColor: '$accent', kickerFrom: 'number' }),
+    common: D({ header: { visible: true, template: 'simple', colorMode: 'auto' }, footer: { visible: false, template: 'numeric', colorMode: 'auto' }, emphasis: 'color', emphasisColor: '$accent', kickerFrom: 'number' }),
     roles: {
       capa: D({ bg: { type: 'solid', color: '$primary' }, textAnchor: 'center', padX: 24, kicker: { size: 72, weight: 900, fontRole: 'impact', color: '#ffffff' },
-        title: { size: 20, weight: 800, fontRole: 'display', color: '#ffffff' }, body: { visible: true, size: 11.5, color: white90 } }),
-      virada: D({ bg: { type: 'solid', color: light }, textAnchor: 'top', kicker: { size: 64, weight: 900, fontRole: 'impact', color: '$primary' }, title: { size: 16, weight: 800, fontRole: 'display', color: dark }, body: { size: 12.5, color: dark } }),
+        title: { size: 20, weight: 800, fontRole: 'display', color: '$auto' }, body: { visible: true, size: 11.5, color: '$auto' } }),
+      virada: D({ bg: { type: 'solid', color: light }, textAnchor: 'top', kicker: { size: 64, weight: 900, fontRole: 'impact', color: '$primary' }, title: { size: 16, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
       desenvolvimento: [
-        D({ bg: { type: 'solid', color: dark }, textAnchor: 'top', kicker: { size: 56, weight: 900, fontRole: 'impact', color: '$accent' }, title: { size: 15, weight: 800, fontRole: 'display', color: '#ffffff' }, body: { size: 12.5, color: white90 } }),
-        D({ bg: { type: 'solid', color: light }, textAnchor: 'top', kicker: { size: 56, weight: 900, fontRole: 'impact', color: '$primary' }, title: { size: 15, weight: 800, fontRole: 'display', color: dark }, body: { size: 12.5, color: dark } }),
+        D({ bg: { type: 'solid', color: dark }, textAnchor: 'top', kicker: { size: 56, weight: 900, fontRole: 'impact', color: '$accent' }, title: { size: 15, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
+        D({ bg: { type: 'solid', color: light }, textAnchor: 'top', kicker: { size: 56, weight: 900, fontRole: 'impact', color: '$primary' }, title: { size: 15, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
       ],
       evidencia: D({ bg: { type: 'solid', color: light, boxMode: true, boxTextLayout: 'middle', boxY: 30, boxH: 38, boxW: 88 }, kickerFrom: 'none', evidence: { style: 'news' },
-        title: { size: 16, weight: 800, fontRole: 'display', color: dark }, body: { size: 11.5, color: dark } }),
-      fechamento: D({ bg: { type: 'solid', color: '$primary' }, textAnchor: 'top', kickerFrom: 'none', title: { size: 21, weight: 900, fontRole: 'impact', color: '#ffffff' }, body: { size: 12.5, color: white90 },
-        cta: { visible: true, bgColor: '$accent', textColor: '#ffffff', radius: 100 } }),
+        title: { size: 16, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 11.5, color: '$auto' } }),
+      fechamento: D({ bg: { type: 'solid', color: '$primary' }, textAnchor: 'top', kickerFrom: 'none', title: { size: 21, weight: 900, fontRole: 'impact', color: '$auto' }, body: { size: 12.5, color: '$auto' },
+        cta: { visible: true, bgColor: '$accent', textColor: '$auto', radius: 100 } }),
     },
   };
 
@@ -5919,12 +6006,12 @@ function seedBuiltInTemplates() {
     common: D({ header: { visible: false }, footer: { visible: false }, emphasis: 'bold', progressTop: true }),
     roles: {
       capa: D({ progressTop: false, bg: { type: 'solid', color: '$accent' }, textAnchor: 'center', padX: 24, kickerFrom: 'guide', kicker: { size: 10, weight: 800, fontRole: 'body', color: dark },
-        title: { size: 28, weight: 900, fontRole: 'impact', color: dark }, body: { visible: true, size: 12, color: dark } }),
+        title: { size: 28, weight: 900, fontRole: 'impact', color: '$auto' }, body: { visible: true, size: 12, color: '$auto' } }),
       virada: D({ bg: { type: 'solid', color: light }, textAnchor: 'top', kickerFrom: 'step', kicker: { size: 96, weight: 900, fontRole: 'impact', color: '$primary' },
-        title: { size: 17, weight: 800, fontRole: 'display', color: dark }, body: { size: 12.5, color: dark } }),
-      desenvolvimento: D({ bg: { type: 'solid', color: light }, textAnchor: 'top', title: { size: 15, weight: 800, fontRole: 'display', color: dark }, body: { size: 12.5, color: dark } }),
-      fechamento: D({ bg: { type: 'solid', color: light }, textAnchor: 'top', title: { size: 20, weight: 900, fontRole: 'impact', color: dark }, body: { size: 12.5, color: dark },
-        cta: { visible: true, bgColor: '$primary', textColor: '#ffffff', radius: 100 } }),
+        title: { size: 17, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
+      desenvolvimento: D({ bg: { type: 'solid', color: light }, textAnchor: 'top', title: { size: 15, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
+      fechamento: D({ bg: { type: 'solid', color: light }, textAnchor: 'top', title: { size: 20, weight: 900, fontRole: 'impact', color: '$auto' }, body: { size: 12.5, color: '$auto' },
+        cta: { visible: true, bgColor: '$primary', textColor: '$auto', radius: 100 } }),
     },
   };
 
@@ -6156,7 +6243,7 @@ async function runRender() {
     const tplV2 = S.selectedTemplate ? getTemplates().find(tp => tp.id === S.selectedTemplate && tp.v2) : null;
     if (tplV2) {
       await _preloadTemplateFonts(tplV2, getBrand());
-      S.cards = _buildCardsV2(pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body })), tplV2, getBrand());
+      S.cards = _buildCardsV2(pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body, ctaText: c.ctaText })), tplV2, getBrand());
       localStorage.setItem('storylab_active_template', S.selectedTemplate);
     }
     // Apply selected template immediately after generation (templates salvos no formato antigo)
@@ -6656,6 +6743,9 @@ function renderCardHtml(card, idx, total) {
     bgStyle = card.bg.boxMode
       ? `background:${card.bg.color||'#141210'};`
       : `background:#000;`;
+  } else if (card.bg.type === 'image') {
+    // Espera foto: em box usa a cor da paleta; cheio fica escuro (o marcador "Sua foto aqui" aparece)
+    bgStyle = card.bg.boxMode ? `background:${card.bg.color||'#141210'};` : `background:#111;`;
   }
 
   // Build layers HTML
@@ -6897,12 +6987,14 @@ function renderCardHtml(card, idx, total) {
 
   // Layer: CTA button
   if (card.cta.visible) {
-    layers += `<div style="position:absolute;bottom:20px;left:20px;right:20px;z-index:6;">
+    const outline = card.cta.variant === 'outline';
+    const ctaHtml = inlineTreeToHtml(parseInlineTree(card.cta.text || ''), { mode: 'color', color: card.cta.emphasisColor || card.cta.textColor });
+    layers += `<div style="position:absolute;bottom:20px;left:${_padX(card)}px;right:${_padX(card)}px;z-index:6;">
       <div contenteditable="true" spellcheck="false"
         data-field="cta" data-idx="${idx}"
         onblur="updateCardText(${idx},'cta',this.innerText)"
-        style="background:${card.cta.bgColor};color:${card.cta.textColor};border-radius:${card.cta.radius}px;padding:12px 20px;font-family:'Poppins',sans-serif;font-size:0.78rem;font-weight:700;text-align:center;cursor:text;outline:none;"
-      >${card.cta.text}</div>
+        style="background:${outline ? 'transparent' : card.cta.bgColor};color:${card.cta.textColor};border:1.5px solid ${outline ? (card.cta.borderColor || card.cta.bgColor) : 'transparent'};border-radius:${card.cta.radius}px;height:38px;box-sizing:border-box;padding:0 16px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-family:'Poppins',sans-serif;font-size:${card.cta.fontSize || 12.5}px;line-height:1;font-weight:700;text-align:center;cursor:text;outline:none;"
+      >${ctaHtml}</div>
     </div>`;
   }
 
@@ -9309,6 +9401,9 @@ function _resolveCardTokens(card, b) {
     '$cta':        b.cta        || '#e3fe03',
     '$dark80':     _hexToRgba(b.dark  || '#2f2d2d', 0.80),
     '$light80':    _hexToRgba(b.light || '#eaeaec', 0.80),
+    '$bgDark':     _neutralDark(b),
+    '$bgLight':    _neutralLight(b),
+    '$support':    b.support || b.primary || '#0071e3',
     '$fontDisplay': b.fontDisplay || "'Fraunces', serif",
     '$fontBody':    b.fontBody    || "'Syne', sans-serif",
   };
@@ -9328,6 +9423,15 @@ function _resolveCardTokens(card, b) {
   }
   return walk(c);
 }
+
+// Fundos neutros: se a cor cadastrada não for escura/clara de verdade, usa um neutro seguro
+function _lum(hex) {
+  const c = _hexRgb(hex); if (!c) return null;
+  const [r, g, b] = c.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function _neutralDark(b)  { const l = _lum(b.dark);  return (l != null && l <= 0.06) ? b.dark  : '#151515'; }
+function _neutralLight(b) { const l = _lum(b.light); return (l != null && l >= 0.72) ? b.light : '#f5f3ee'; }
 
 function _hexToRgba(hex, alpha) {
   if (!hex || !hex.startsWith('#')) return `rgba(0,0,0,${alpha})`;
@@ -9419,7 +9523,7 @@ async function applyTemplateV2(tpl) {
   const b = getBrand(), n = S.cards.length;
   const items = S.cards.map((c, i) => ({
     role: c.tipo || (i === 0 ? 'capa' : i === n - 1 ? 'fechamento' : 'desenvolvimento'),
-    bi: c.bi, title: c.title.text, body: c.body.text,
+    bi: c.bi, title: c.title.text, body: c.body.text, ctaText: c.cta?.visible ? c.cta.text : '',
     imageSrc: c.bg.imageSrc || null, imageMime: c.bg.imageMime || null, imgNaturalW: c.bg.imgNaturalW, imgNaturalH: c.bg.imgNaturalH,
   }));
   await _preloadTemplateFonts(tpl, b);
@@ -10076,7 +10180,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
         _drawImgPlaceholder(ctx, card, EXW, EXH, SC);
       }
     } else {
-      ctx.fillStyle = '#000000';
+      ctx.fillStyle = '#111111';
       ctx.fillRect(0, 0, EXW, EXH);
       if (card.bg.type === 'image' && !card.bg.imageSrc) {
         _drawImgPlaceholder(ctx, card, EXW, EXH, SC);
@@ -10740,24 +10844,31 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   // ── Layer 7: CTA button ──
   // Preview: 38px tall button, 20px from bottom, padX=20px, font 12px
   if (card.cta.visible && card.cta.text) {
-    const btnH   = Math.round(38 * SC); // 128px
-    const btnPad = Math.round(20 * SC); // 68px
-    const btnY   = EXH - btnPad - btnH;
-    const btnW   = EXW - btnPad * 2;
+    const btnH   = 38 * SC;
+    const btnY   = EXH - 20 * SC - btnH;
+    const btnX   = _padX(card) * SC;
+    const btnW   = EXW - btnX * 2;
     const btnR   = Math.min(card.cta.radius * SC, btnH / 2);
-    const ctaFS  = Math.round(12 * SC); // 40px
-
+    const ctaFS  = (card.cta.fontSize || 12.5) * SC;
+    const outline = card.cta.variant === 'outline';
     ctx.save();
-    ctx.fillStyle = card.cta.bgColor;
-    roundedRect(ctx, btnPad, btnY, btnW, btnH, btnR);
-    ctx.fill();
-    ctx.font = `700 ${ctaFS}px 'Poppins', sans-serif`;
-    ctx.fillStyle = card.cta.textColor;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(card.cta.text, EXW / 2, btnY + btnH / 2);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
+    if (outline) {
+      ctx.strokeStyle = card.cta.borderColor || card.cta.bgColor;
+      ctx.lineWidth = 1.5 * SC;
+      roundedRect(ctx, btnX + 0.75 * SC, btnY + 0.75 * SC, btnW - 1.5 * SC, btnH - 1.5 * SC, btnR);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = card.cta.bgColor;
+      roundedRect(ctx, btnX, btnY, btnW, btnH, btnR);
+      ctx.fill();
+    }
+    // Texto com a palavra-chave destacada, centralizado como na prévia (flex + line-height 1)
+    const ctaStyle = { weight: '700', italic: false, color: card.cta.textColor, family: "'Poppins', sans-serif",
+                       emph: { mode: 'color', color: card.cta.emphasisColor || card.cta.textColor } };
+    const segs = parseSegments(card.cta.text, ctaStyle);
+    const w = measureSegments(ctx, segs, ctaFS);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    drawSegments(ctx, segs, EXW / 2 - w / 2, btnY + (btnH - ctaFS) / 2 + baselineIn(ctaStyle, ctaFS, 1.0), ctaFS);
     ctx.restore();
   }
 
