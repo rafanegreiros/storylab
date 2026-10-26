@@ -2525,6 +2525,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 .rt-prova-meta { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; margin-top:6px; font-size:0.66rem; color:var(--muted); }
 .rt-prova-meta a { color:var(--accent); text-decoration:none; }
 .rt-warn { font-size:0.66rem; color:#b45309; margin-top:4px; }
+.pv-usos { display:inline-flex; gap:4px; flex-wrap:wrap; }
+.pv-usos button { font-family:'Poppins',sans-serif; font-size:0.62rem; padding:3px 9px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; }
+.pv-usos button.on.card { background:var(--accent); border-color:var(--accent); color:#fff; }
+.pv-usos button.on.texto { border-color:var(--ink2); color:var(--ink); }
+.pv-usos button.on.fora { border-color:var(--border); color:var(--muted); text-decoration:line-through; }
+.pv-off { opacity:0.45; }
 @media (max-width: 768px) {
   .rt-acts button { padding:5px 9px; } .rt-mc { flex-basis:78px; }
   /* No celular a barra lateral rola com a página (fixa, cobria metade da tela) */
@@ -3661,6 +3667,7 @@ function renderBrandSwitcher() {
 function switchBrand(id) {
   setActiveBrandId(id);
   applyBrandToCards();
+  _reapplyBrandToCards();
   openBrand(); // re-render modal with new brand
 }
 
@@ -3671,6 +3678,7 @@ function confirmDeleteBrand(id) {
   if (!confirm(`Remover a identidade "${br?.name || id}"? Esta ação não pode ser desfeita.`)) return;
   deleteBrand(id);
   applyBrandToCards();
+  _reapplyBrandToCards();
   openBrand();
 }
 
@@ -3889,13 +3897,17 @@ function saveBrand() {
   setActiveBrandId(b.id);
   applyBrandToCards();
   document.getElementById('brand-modal').style.display = 'none';
-  // Re-apply brand to existing cards if on step 4
+  _reapplyBrandToCards();
+}
+
+// Carrossel pronto acompanha a identidade ativa (ao salvar, trocar ou remover uma identidade)
+function _reapplyBrandToCards() {
   if (S.step === 4 && S.cards.length) {
     const v2id = S.cards.find(c => c.templateId)?.templateId;
     const v2 = v2id ? getTemplates().find(t => t.id === v2id) : null;
     if (v2) applyTemplateV2(v2);          // template v2: refaz o visual com a nova identidade
     else { applyBrandToNewCards(); renderFinal(); }
-  }
+  } else if (S.step === 3.5) renderTemplateSelector();
 }
 
 function getColorRolesFromUI() {
@@ -4910,11 +4922,14 @@ CADA PROVA PRECISA SER FUNCIONAL PARA A DISCUSSÃO
 - "manchete_pt": o título da matéria ou do estudo traduzido FIELMENTE para o português, sem exagerar o que a fonte diz. Pode ser pergunta ou afirmação.
 - "dado": a resposta concreta que fecha a manchete, em 1 frase curta em português (máx. 22 palavras), com número, percentual ou fato verificável. Se a manchete é uma pergunta, o dado responde a ela.
 - O dado precisa reforçar (ou matizar com honestidade) o argumento central. Descarte a prova se o dado não responder à manchete ou não tiver relação direta com o argumento.
-- "origem": quem afirma, em português, curto: instituição ou estudo + veículo. Ex.: "Universidade de Harvard, via Psychology Today".
+- "origem": quem afirma, em português, NO MÁXIMO 6 palavras: instituição ou estudo + veículo. Ex.: "Universidade de Harvard, via Psychology Today".
 - "sustenta": qual ponto do argumento a prova reforça, em até 12 palavras.
+- "ponto": o mesmo ponto em 2 a 4 palavras (ex.: "visão periférica", "coordenação olho-mão").
+- VARIEDADE: cada prova cobre um ponto DIFERENTE do argumento. Nunca traga duas provas que digam a mesma coisa com fontes diferentes; prefira o dado mais surpreendente de cada ponto.
+- "card": true nas até 2 provas mais fortes para virar card de destaque (sempre de pontos diferentes); false nas demais.
 
 Retorne APENAS este JSON (sem markdown):
-{"provas":[{"manchete_pt":"","dado":"","origem":"","sustenta":"","fonte_titulo":"título original, no idioma da fonte","fonte_veiculo":"nome do veículo ou da instituição","fonte_url":"url real retornada pela busca","fonte_data":"mês e ano da publicação, se houver","idioma":"pt, en..."}]}`;
+{"provas":[{"manchete_pt":"","dado":"","origem":"","sustenta":"","ponto":"","card":false,"fonte_titulo":"título original, no idioma da fonte","fonte_veiculo":"nome do veículo ou da instituição","fonte_url":"url real retornada pela busca","fonte_data":"mês e ano da publicação, se houver","idioma":"pt, en..."}]}`;
 }
 
 // Garante o formato atual (sessões antigas só tinham dado + fonte_titulo) e dá uma letra fixa a cada prova
@@ -4927,14 +4942,42 @@ function _normProvas(list, used) {
     if (!q.manchete_pt) q.manchete_pt = q.fonte_titulo || '';
     q.dado = q.dado || '';
     q.origem = q.origem || q.fonte_veiculo || '';
+    if (q.origem.length > 60) q.origem = q.fonte_veiculo || q.origem.split(/[—(]/)[0].trim();
     return q;
   });
+}
+// Uso de cada prova: 'card' (vira box de evidência), 'texto' (só na narrativa) ou 'fora' (descartada).
+// Sem escolha do usuário: segue a sugestão da IA (até 2, de pontos diferentes); sessões antigas: só a 1ª vira card.
+function _initProvaUsos(lista) {
+  if (!lista.length || lista.some(p => p.uso)) return lista;
+  const pontos = new Set();
+  let n = 0;
+  const sugeridas = lista.filter(p => p.card === true);
+  lista.forEach((p, i) => {
+    const ponto = (p.ponto || p.sustenta || '').toLowerCase().trim();
+    const quer = sugeridas.length ? p.card === true : i === 0;
+    if (quer && n < 2 && !(ponto && pontos.has(ponto))) { p.uso = 'card'; n++; if (ponto) pontos.add(ponto); }
+    else p.uso = 'texto';
+  });
+  return lista;
+}
+const PROVA_USOS = [['card', 'Card de prova', 'Vira o box com manchete e dado'], ['texto', 'Só no texto', 'O dado entra na narrativa, sem box'], ['fora', 'Não usar', 'Fica de fora do carrossel']];
+function _provaUsoChips(p, rerender) {
+  return `<div class="pv-usos">${PROVA_USOS.map(([k, l, d]) =>
+    `<button class="${(p.uso || 'texto') === k ? 'on ' + k : ''}" title="${d}" onclick="setProvaUso('${p.id}','${k}','${rerender}')">${l}</button>`).join('')}</div>`;
+}
+function setProvaUso(id, uso, rerender) {
+  const p = _provasList().find(x => x.id === id);
+  if (!p) return;
+  p.uso = uso;
+  _syncProofSources(); autoSave();
+  if (rerender === 'espinha') renderEspinha(); else renderRoteiro();
 }
 function _provasList() {
   const e = S.espinha;
   if (!e) return [];
   if (e.provasFontes && e.provasFontes.some(p => !p.id)) e.provasFontes = _normProvas(e.provasFontes);
-  return e.provasFontes || [];
+  return _initProvaUsos(e.provasFontes || []);
 }
 // Fontes das provas entram na lista geral (com o título original)
 function _syncProofSources() {
@@ -4950,8 +4993,9 @@ function renderEspinha() {
   // Build provas with inline source citations
   const provasList = _provasList();
   const provasHtml = provasList.length > 0
-    ? provasList.map(p => `
-        <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);last-child:border:none">
+    ? `<div style="font-size:0.7rem;color:var(--muted);margin-bottom:10px;line-height:1.5">Escolha como cada prova entra no carrossel. Sugestão: até 2 cards de prova, cada um sobre um ponto diferente.</div>` + provasList.map(p => `
+        <div class="${p.uso === 'fora' ? 'pv-off' : ''}" style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);last-child:border:none">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${_provaUsoChips(p, 'espinha')}${p.ponto ? `<span style="font-size:0.62rem;color:var(--muted)">${_escHtml(p.ponto)}</span>` : ''}</div>
           ${p.manchete_pt ? `<div style="font-family:Georgia,serif;font-weight:700;margin-bottom:3px">${_escHtml(p.manchete_pt)}</div>` : ''}
           <span style="font-weight:600">${p.id})</span> ${_escHtml(p.dado)}
           ${p.fonte_url
@@ -5021,9 +5065,9 @@ function setProfundidade(val) { S.profundidade = val; initSidebar(); autoSave();
 // Todo o material das etapas anteriores, para o roteiro não perder profundidade
 function _roteiroContext() {
   const t = S.triagem || {}, d = S.triagemDeep || {}, e = S.espinha || {}, h = S.selectedHeadline || {};
-  const lista = _provasList();
+  const lista = _provasList().filter(p => p.uso !== 'fora');
   const provas = lista.length
-    ? lista.map(p => `${p.id}) ${p.manchete_pt ? p.manchete_pt + ' → ' : ''}${p.dado} (Fonte: ${p.origem || p.fonte_veiculo || 'sem fonte'})`).join('\n')
+    ? lista.map(p => `${p.id}) ${p.uso === 'card' ? '[CARD] ' : ''}${p.manchete_pt ? p.manchete_pt + ' → ' : ''}${p.dado} (Fonte: ${p.origem || p.fonte_veiculo || 'sem fonte'})`).join('\n')
     : (e.prova || []).join('\n');
   return `HEADLINE (capa já definida, não repetir): "${h.l1} / ${h.l2}"
 Tom: ${S.tom} | Funil: ${t.funil_detectado || S.funil}
@@ -5056,7 +5100,8 @@ const ROTEIRO_REGRAS = `REGRAS DE ESCRITA:
 - "destaque": título curto do parágrafo (máx. 8 palavras), usado se o parágrafo virar um card próprio.
 - Cada bloco avança a história, sem repetir ideias de outros blocos. Siga a Direção da espinha.
 - Marque com **negrito** 1 a 3 palavras-chave por parágrafo e 1 palavra-chave (ou expressão curta) em cada virada — é o que recebe o destaque visual do template.
-- Quando um parágrafo usar o dado de uma das PROVAS, preencha "prova" com a letra dela (ex.: "A"); senão, deixe "prova" vazio. Use cada prova em no máximo um parágrafo.`;
+- Quando um parágrafo usar o dado de uma das PROVAS, preencha "prova" com a letra dela (ex.: "A"); senão, deixe "prova" vazio. Use cada prova em no máximo um parágrafo.
+- Provas marcadas [CARD] aparecem num box (manchete + dado) ao lado do parágrafo: cada uma precisa de um parágrafo próprio com "prova" preenchido, e esse parágrafo INTERPRETA o dado (o que ele muda na prática, para quem lê), sem repetir o número nem a manchete.`;
 
 async function runRoteiro() {
   document.getElementById('primary-btn').disabled = true;
@@ -5073,7 +5118,7 @@ PROFUNDIDADE: ${pf.label} → EXATAMENTE ${pf.blocos} blocos; cada bloco com ${p
 A Direção da espinha indica a ORDEM da história: agrupe os movimentos dela nesses ${pf.blocos} blocos (não crie um bloco por movimento).
 
 ${ROTEIRO_REGRAS}
-- "conclusao": fechamento em 1 a 2 frases que amarra a tese (não é CTA).
+- "conclusao": fechamento em 1 a 2 frases que amarra a tese (não é CTA), no máximo 25 palavras.
 - "fechamento": 1 frase curta que complementa a conclusão SEM pedir ação (ou string vazia).
 - "cta": UMA única ação, curta (máx. 9 palavras) e específica do tema, coerente com o funil — ex.: "Comente **GUIA** e receba o passo a passo no direct", "Salve para revisar antes da próxima consulta". Marque a palavra-chave com **.
 - "credito": ${fonte ? `"Produzido com ajuda de IA a partir de: ${fonteTitulo}${fonteVeiculo ? ' — ' + fonteVeiculo : ''}"` : 'deixe vazio'}
@@ -5292,7 +5337,7 @@ function _roteiroProvasHtml(ed) {
   const usos = {};
   (S.roteiro?.blocos || []).forEach((b, bi) => (b.paragrafos || []).forEach(p => { if (p.prova) usos[p.prova] = bi + 1; }));
   const itens = lista.map(p => `
-    <div class="rt-blk">
+    <div class="rt-blk ${p.uso === 'fora' ? 'pv-off' : ''}">
       <div class="rt-blk-head">
         <span class="rt-tag" style="background:var(--surface2);color:var(--ink2)">Prova ${p.id}</span>
         <span style="font-size:0.66rem;color:var(--muted)">${usos[p.id] ? `usada no bloco ${usos[p.id]}` : 'sem parágrafo ligado'}</span>
@@ -5301,6 +5346,7 @@ function _roteiroProvasHtml(ed) {
           <button onclick="removerProva('${p.id}')" title="Remover prova">✕</button>
         </div>
       </div>
+      <div style="margin-top:8px">${_provaUsoChips(p, 'roteiro')}</div>
       ${ed(`pv.${p.id}.manchete_pt`, p.manchete_pt, "font-family:Georgia,serif;font-weight:700;font-size:0.92rem;color:var(--ink);margin:8px 0 4px")}
       <div class="rt-par" style="border-left-color:var(--accent)">${ed(`pv.${p.id}.dado`, p.dado, "font-size:0.84rem;line-height:1.55;font-weight:600;color:var(--ink)")}</div>
       ${p.editado ? `<div class="rt-warn">Dado alterado: confira se continua batendo com a fonte.</div>` : ''}
@@ -5311,7 +5357,7 @@ function _roteiroProvasHtml(ed) {
       </div>
     </div>`).join('');
   return `<div class="rt-list rt-provas">
-    <div class="rt-provas-head">Provas · viram o card de evidência</div>
+    <div class="rt-provas-head">Provas · as marcadas como card viram o box de evidência</div>
     ${itens || '<div class="rt-blk" style="font-size:0.78rem;color:var(--muted)">Nenhuma prova pesquisada ainda.</div>'}
     <div class="rt-blk"><div class="rt-acts" style="margin-left:0;justify-content:flex-start">
       <button onclick="buscarOutraProva(null)" ${lista.length >= 5 ? 'disabled' : ''}>+ Buscar mais uma prova</button>
@@ -5351,6 +5397,7 @@ Já usadas (não repetir fonte nem dado): ${lista.map(p => `${p.dado} [${p.fonte
     const data = extractJSON(await callClaudeWithSearch(_promptProvas(t.tema_central, e.mecanismo, 1, extra), 1600));
     const nova = _normProvas((data.provas || []).slice(0, 1), lista.map(p => p.id))[0];
     if (!nova) throw new Error('nenhuma prova nova com dado verificável foi encontrada');
+    nova.uso = atual ? atual.uso : 'texto';
     if (atual) {
       lista.splice(lista.indexOf(atual), 1, nova);
       (S.roteiro?.blocos || []).forEach(b => (b.paragrafos || []).forEach(p => { if (p.prova === id) p.prova = nova.id; }));
@@ -5689,14 +5736,14 @@ function _evidenceFromProva(pv, prev) {
 
 // items: [{ role, bi, title, body, provas?, imageSrc?, imageMime?, imgNaturalW?, imgNaturalH? }]
 function _buildCardsV2(items, tpl, b) {
-  const provas = _provasList().filter(p => p.manchete_pt || p.dado);
+  const provas = _provasList().filter(p => (p.manchete_pt || p.dado) && p.uso === 'card');
   const n = items.length;
   // Cards de evidência: cada fonte vai para o card que fala dela (veículo, números e palavras em comum);
   // sem correspondência, distribui no meio do carrossel. 1 evidência (ou 2 com 9+ cards).
   const evIdx = [], evProva = {};
   if (tpl.roles.evidencia && provas.length) {
     let pool = items.map((it, i) => ({ it, i })).filter(x => x.it.role === 'desenvolvimento' || (x.it.role === 'virada' && (x.i > 1 || (x.it.provas || []).length)));
-    const want = Math.min(provas.length, n >= 9 ? 2 : 1);
+    const want = Math.min(provas.length, 3, Math.max(1, n - 3));
     const norm = t => _plainText(t || '').toLowerCase();
     const nums = t => (norm(t).match(/\d[\d.,]*/g) || []).filter(x => x.length > 1 || /[1-9]/.test(x));
     const words = t => new Set(norm(t).split(/[^a-zà-ú0-9]+/).filter(w => w.length > 5));
@@ -5777,9 +5824,25 @@ function _buildCardsV2(items, tpl, b) {
         if (!card.bg.boxMode && !_evidenceOn(card)) { card.bg.boxMode = true; card.bg.boxTextLayout = 'middle'; card.bg.boxY = 31; card.bg.boxH = 40; card.bg.boxW = 88; }
       }
     }
-    _ensureContrast(card); fitCardText(card); _layoutBoxText(card);
+    _ensureContrast(card); fitCardText(card); _limitTitleLines(card); _balanceTextCard(card); _layoutBoxText(card);
     return card;
   });
+}
+
+// Título longo não ocupa o card inteiro: no máximo 6 linhas
+function _limitTitleLines(card) {
+  const lines = () => _countTextLines(card.title.text, card.title.size, card.title.weight || 700, card.title.fontFamily, card.title.uppercase, _textW(card));
+  let g = 40;
+  while (g-- > 0 && card.title.size > 16 && lines() > 6) card.title.size -= 1;
+}
+// Card só de texto ancorado no topo com pouco conteúdo: centraliza em vez de deixar o vazio embaixo
+function _balanceTextCard(card) {
+  if (card.bg.boxMode || card.bg.type === 'image' || card.textAnchor !== 'top' || card.cta?.visible) return;
+  const { top, bottom } = _textBand(card);
+  const avail = 400 - top - bottom;
+  const kick = _kickerOn(card) ? card.kicker.size + 6 : 0;
+  const h = kick + _titleH(card) + ((card.body.visible && card.body.text) ? 6 + _bodyH(card) : 0);
+  if (h < avail * 0.5) card.textAnchor = 'center';
 }
 
 // ── ETAPA 3.5 — SELETOR VISUAL DE TEMPLATES ──
@@ -6595,7 +6658,7 @@ function inlineTreeToHtml(nodes, emph) {
     if (n.bold) {
       // Estilo de destaque do template para as palavras marcadas
       if (emph?.mode === 'color')     return `<span style="color:${emph.color};">${inner}</span>`;
-      if (emph?.mode === 'highlight') return `<mark style="background:${emph.color};color:inherit;padding:0 3px;box-decoration-break:clone;-webkit-box-decoration-break:clone;">${inner}</mark>`;
+      if (emph?.mode === 'highlight') return `<mark style="background:${emph.color};color:inherit;padding:0 0.08em;margin:0 -0.08em;box-decoration-break:clone;-webkit-box-decoration-break:clone;">${inner}</mark>`;
       return `<strong>${inner}</strong>`;
     }
     if (n.underline) return `<u>${inner}</u>`;
@@ -7905,6 +7968,13 @@ function renderCardSidebar() {
         <div style="flex:1">${evField('Data', 'data', 1)}</div>
       </div>
       ${ev.editado ? `<div class="rt-warn">Dado alterado: confira se continua batendo com a fonte.</div>` : ''}
+      ${_provasList().length > 1 ? `<div>
+        <div class="field-label" style="margin-bottom:5px;">Trocar prova</div>
+        <select onchange="trocarProvaCard(${idx}, this.value)" style="width:100%;padding:7px 9px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);font-size:0.78rem;">
+          ${_provasList().filter(p => p.uso !== 'fora').map(p => `<option value="${p.id}" ${p.id === ev.provaId ? 'selected' : ''}>${p.id}) ${_escHtml((p.ponto ? p.ponto + ' · ' : '') + (p.manchete_pt || p.dado).slice(0, 60))}</option>`).join('')}
+        </select></div>` : ''}
+      <button onclick="ajustarTextoCardProva(${idx})" title="A IA reescreve só o texto deste card para conversar com a prova do box"
+        style="padding:8px;border-radius:6px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:0.75rem;color:var(--ink2);">✎ Ajustar o texto do card à prova</button>
       ${pvEv?.fonte_url ? `<a href="${_escHtml(pvEv.fonte_url)}" target="_blank" rel="noopener" style="font-size:0.7rem;color:var(--accent);text-decoration:none;">↗ Ver fonte original</a>` : ''}
     </div>`) : '';
 
@@ -8531,6 +8601,61 @@ document.addEventListener('keydown', (e) => {
     undoLastChange();
   }
 });
+
+// Troca a prova do box; a antiga volta a ser "só no texto"
+function trocarProvaCard(idx, id) {
+  const card = S.cards[idx], pv = _provasList().find(p => p.id === id);
+  if (!card?.evidence || !pv || card.evidence.provaId === id) return;
+  pushUndoSnapshot();
+  const old = _provasList().find(p => p.id === card.evidence.provaId);
+  if (old) old.uso = 'texto';
+  pv.uso = 'card';
+  // Se a nova prova estava em outro card, aquele card perde o box
+  S.cards.forEach((c, i) => { if (i !== idx && c.evidence?.visible && c.evidence.provaId === id) { c.evidence.visible = false; c.provas = []; } });
+  (S.roteiro?.blocos || []).forEach(b => (b.paragrafos || []).forEach(p => { if (old && p.prova === old.id) p.prova = id; else if (p.prova === id && old) p.prova = ''; }));
+  card.evidence = _evidenceFromProva(pv, card.evidence);
+  card.provas = [id];
+  _syncProofSources();
+  fitCardText(card); _layoutBoxText(card);
+  renderFinal(); selectCard(idx); autoSave();
+}
+
+// IA reescreve só o texto do card para interpretar a prova do box (sem repetir o dado)
+async function ajustarTextoCardProva(idx) {
+  const card = S.cards[idx], ev = card?.evidence;
+  if (!ev?.visible) return;
+  const btn = event?.target; if (btn) { btn.disabled = true; btn.textContent = 'Ajustando o texto...'; }
+  const vizinhos = [S.cards[idx - 1], S.cards[idx + 1]].filter(Boolean).map(c => _plainText(c.title.text) + ' — ' + _plainText(c.body.text).slice(0, 220)).join('\n');
+  const palavras = _words(card.body.text) || 35;
+  const prompt = `Você edita um card de carrossel editorial no Instagram. O card mostra um box de prova (manchete + dado) e, abaixo, um texto. Reescreva o TÍTULO e o TEXTO do card para conversarem com a prova.
+
+PROVA NO BOX: "${ev.manchete}" → ${ev.dado} (Fonte: ${ev.origem || ev.veiculo})
+TÍTULO ATUAL: ${card.title.text}
+TEXTO ATUAL: ${card.body.text}
+CARDS VIZINHOS (manter a sequência, não repetir):
+${vizinhos}
+Tema: ${S.triagem?.tema_central || ''} | Tom: ${S.tom || ''}
+
+REGRAS:
+- O texto INTERPRETA o dado (o que muda na prática para quem lê). Não repita o número nem a manchete, que já estão no box.
+- Título: frase curta de impacto (máx. 12 palavras). Texto: cerca de ${palavras} palavras, terceira pessoa.
+- Marque com **negrito** 1 palavra-chave no título e 1 a 2 no texto.
+- Não invente dados além da prova.
+
+Responda SOMENTE com JSON: {"titulo":"","texto":""}`;
+  try {
+    const r = extractJSON(await callClaude(prompt, 800, 3, 60000));
+    if (!r.texto) throw new Error('resposta vazia');
+    pushUndoSnapshot();
+    if (r.titulo) card.title.text = r.titulo;
+    card.body.text = r.texto;
+    fitCardText(card); _layoutBoxText(card);
+    renderFinal(); selectCard(idx); autoSave();
+  } catch (e) {
+    alert('Não foi possível ajustar o texto: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '✎ Ajustar o texto do card à prova'; }
+  }
+}
 
 // Edição da evidência no card; vale também para a prova (trocar o template mantém a edição)
 const _EV_TO_PROVA = { manchete: 'manchete_pt', dado: 'dado', origem: 'origem', veiculo: 'fonte_veiculo', data: 'fonte_data' };
@@ -11432,7 +11557,9 @@ function brandHeaderHtml(isDark, num, total, card) {
 
 // Colunas de cabeçalho espalhado (3 colunas / cantos)
 function _headerColumns(b, template) {
-  const left = b.tagline || b.nicho || b.name || '';
+  // Assinatura longa não cabe na coluna (vira "CARROSSÉIS COM POSICIONA…"): usa o nome da marca
+  const tag = b.tagline && b.tagline.length > 24 ? '' : b.tagline;
+  const left = tag || b.name || b.nicho || '';
   const handle = b.handle || '';
   const right = b.year ? `${b.year} //` : '';
   return template === 'editorial3' ? [left, handle, right] : [left, handle];
