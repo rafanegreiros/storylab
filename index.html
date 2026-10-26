@@ -2520,6 +2520,11 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 .rt-acts button:disabled { opacity:0.35; cursor:default; }
 .rt-par { margin-top:8px; padding-left:10px; border-left:2px solid var(--border); }
 .rt-wrap [contenteditable]:focus { background:var(--surface2); border-radius:4px; }
+.rt-provas { margin-top:14px; }
+.rt-provas-head { font-family:'Poppins',sans-serif; font-size:0.62rem; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); padding:12px 0 2px; }
+.rt-prova-meta { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; margin-top:6px; font-size:0.66rem; color:var(--muted); }
+.rt-prova-meta a { color:var(--accent); text-decoration:none; }
+.rt-warn { font-size:0.66rem; color:#b45309; margin-top:4px; }
 @media (max-width: 768px) {
   .rt-acts button { padding:5px 9px; } .rt-mc { flex-basis:78px; }
   /* No celular a barra lateral rola com a página (fixa, cobria metade da tela) */
@@ -4870,44 +4875,72 @@ IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
 
     // ── Etapa 2: Provas reais via web_search ──
     showLoading('Buscando dados e evidências reais...');
-    const promptProvas = `Pesquisador de dados para conteúdo de Instagram. Preciso de 3 a 5 provas com dados reais e verificáveis para o seguinte contexto:
-
-Tema: ${t.tema_central}
-Argumento central: ${estrutura.mecanismo}
-
-Use web_search para encontrar 3 a 5 dados/estudos/estatísticas REAIS que suportem este argumento (com nomes, datas e números).
-
-REGRAS CRÍTICAS:
-- Cada prova deve ter um número ou dado concreto verificável (%, R$, número de usuários, etc.)
-- Use APENAS dados encontrados via web_search — não invente estatísticas
-- A URL de cada fonte deve ser a URL real retornada pela busca
-- Se não encontrar dados reais suficientes, use menos provas (melhor 2 reais do que 3 inventadas)
-- As provas devem ser diretamente relevantes ao tema: "${t.tema_central}"
-
-Retorne APENAS este JSON (sem markdown):
-{"provas":[{"dado":"estatística ou dado concreto em 1 frase","fonte_titulo":"nome do estudo ou publicação","fonte_url":"url_real_da_busca","fonte_veiculo":"nome do site"}]}`;
-
-    const provasData = extractJSON(await callClaudeWithSearch(promptProvas, 1800));
+    const provasData = extractJSON(await callClaudeWithSearch(_promptProvas(t.tema_central, estrutura.mecanismo, 4), 2600));
+    const provas = _normProvas(provasData.provas || []);
 
     // Merge estrutura + provas
     S.espinha = {
       hook: estrutura.hook,
       mecanismo: estrutura.mecanismo,
-      prova: (provasData.provas || []).map(p => p.dado),
-      provasFontes: provasData.provas || [],
+      prova: provas.map(p => p.dado),
+      provasFontes: provas,
       aplicacao: estrutura.aplicacao,
       direcao: estrutura.direcao
     };
-
-    // Add proof sources to global sources list (keep original source too)
-    const proofSources = (provasData.provas || [])
-      .filter(p => p.fonte_url)
-      .map(p => ({ titulo: p.fonte_titulo, veiculo: p.fonte_veiculo, url: p.fonte_url, relevancia: 'Alta' }));
-    S.espinhaSources = proofSources;
+    _syncProofSources();
 
     S.step = 3; initSidebar(); renderEspinha(); autoSave();
   } catch(e) { showError(e.message, handlePrimary); }
   document.getElementById('primary-btn').disabled = false;
+}
+
+// ── Provas: busca global, citação em português, dado que fecha a manchete ──
+function _promptProvas(tema, argumento, qtd, extra) {
+  return `Pesquisador de dados para um carrossel editorial no Instagram (público brasileiro). Encontre ${qtd > 1 ? `até ${qtd} provas reais e verificáveis` : '1 prova real e verificável'} que sustentem o argumento abaixo.
+
+Tema: ${tema}
+Argumento central: ${argumento}
+${extra || ''}
+COMO PESQUISAR
+- Use web_search em português E em inglês (e em outros idiomas se o tema pedir): estudos de universidades, revistas científicas, órgãos oficiais, institutos de pesquisa e veículos de referência do mundo todo.
+- Prefira a fonte primária (o estudo, a instituição, o órgão) à matéria que só a comenta. Se achar só a matéria, informe o estudo citado nela.
+- Use APENAS dados encontrados na busca. Não invente números, nomes ou datas. Melhor 2 provas fortes do que 4 fracas.
+
+CADA PROVA PRECISA SER FUNCIONAL PARA A DISCUSSÃO
+- "manchete_pt": o título da matéria ou do estudo traduzido FIELMENTE para o português, sem exagerar o que a fonte diz. Pode ser pergunta ou afirmação.
+- "dado": a resposta concreta que fecha a manchete, em 1 frase curta em português (máx. 22 palavras), com número, percentual ou fato verificável. Se a manchete é uma pergunta, o dado responde a ela.
+- O dado precisa reforçar (ou matizar com honestidade) o argumento central. Descarte a prova se o dado não responder à manchete ou não tiver relação direta com o argumento.
+- "origem": quem afirma, em português, curto: instituição ou estudo + veículo. Ex.: "Universidade de Harvard, via Psychology Today".
+- "sustenta": qual ponto do argumento a prova reforça, em até 12 palavras.
+
+Retorne APENAS este JSON (sem markdown):
+{"provas":[{"manchete_pt":"","dado":"","origem":"","sustenta":"","fonte_titulo":"título original, no idioma da fonte","fonte_veiculo":"nome do veículo ou da instituição","fonte_url":"url real retornada pela busca","fonte_data":"mês e ano da publicação, se houver","idioma":"pt, en..."}]}`;
+}
+
+// Garante o formato atual (sessões antigas só tinham dado + fonte_titulo) e dá uma letra fixa a cada prova
+function _normProvas(list, used) {
+  const taken = new Set(used || []);
+  const nextId = () => { for (let i = 0; i < 26; i++) { const l = String.fromCharCode(65 + i); if (!taken.has(l)) { taken.add(l); return l; } } return 'Z' + taken.size; };
+  return (list || []).filter(p => p && (p.dado || p.manchete_pt || p.fonte_titulo)).map(p => {
+    const q = { ...p };
+    if (!q.id || (used && used.includes(q.id))) q.id = nextId(); else taken.add(q.id);
+    if (!q.manchete_pt) q.manchete_pt = q.fonte_titulo || '';
+    q.dado = q.dado || '';
+    q.origem = q.origem || q.fonte_veiculo || '';
+    return q;
+  });
+}
+function _provasList() {
+  const e = S.espinha;
+  if (!e) return [];
+  if (e.provasFontes && e.provasFontes.some(p => !p.id)) e.provasFontes = _normProvas(e.provasFontes);
+  return e.provasFontes || [];
+}
+// Fontes das provas entram na lista geral (com o título original)
+function _syncProofSources() {
+  S.espinhaSources = _provasList().filter(p => p.fonte_url)
+    .map(p => ({ titulo: p.fonte_titulo || p.manchete_pt, veiculo: p.fonte_veiculo, url: p.fonte_url, relevancia: 'Alta' }));
+  if (S.espinha) S.espinha.prova = _provasList().map(p => p.dado);
 }
 
 function renderEspinha() {
@@ -4915,13 +4948,15 @@ function renderEspinha() {
   const tdStyle = "font-family:'Poppins',sans-serif;font-weight:700;font-size:0.6rem;letter-spacing:1.5px;text-transform:uppercase";
 
   // Build provas with inline source citations
-  const provasHtml = (e.provasFontes && e.provasFontes.length > 0)
-    ? e.provasFontes.map((p,i) => `
+  const provasList = _provasList();
+  const provasHtml = provasList.length > 0
+    ? provasList.map(p => `
         <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);last-child:border:none">
-          <span style="font-weight:600">${String.fromCharCode(65+i)})</span> ${p.dado}
+          ${p.manchete_pt ? `<div style="font-family:Georgia,serif;font-weight:700;margin-bottom:3px">${_escHtml(p.manchete_pt)}</div>` : ''}
+          <span style="font-weight:600">${p.id})</span> ${_escHtml(p.dado)}
           ${p.fonte_url
             ? `<div style="margin-top:4px;display:flex;align-items:center;gap:6px">
-                <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;font-weight:300;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">${p.fonte_veiculo || p.fonte_titulo || 'Fonte'}</span>
+                <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;font-weight:300;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">${_escHtml(p.origem || p.fonte_veiculo || 'Fonte')}</span>
                 <a href="${p.fonte_url}" target="_blank" style="font-size:0.65rem;color:var(--accent);text-decoration:none">↗ Ver fonte</a>
               </div>`
             : `<span style="font-size:0.65rem;color:var(--muted);margin-left:6px">· ${p.fonte_veiculo || p.fonte_titulo || ''}</span>`
@@ -4986,8 +5021,9 @@ function setProfundidade(val) { S.profundidade = val; initSidebar(); autoSave();
 // Todo o material das etapas anteriores, para o roteiro não perder profundidade
 function _roteiroContext() {
   const t = S.triagem || {}, d = S.triagemDeep || {}, e = S.espinha || {}, h = S.selectedHeadline || {};
-  const provas = (e.provasFontes || []).length
-    ? e.provasFontes.map((p, i) => `${String.fromCharCode(65 + i)}) ${p.dado} (Fonte: ${p.fonte_veiculo || p.fonte_titulo || 'sem fonte'})`).join('\n')
+  const lista = _provasList();
+  const provas = lista.length
+    ? lista.map(p => `${p.id}) ${p.manchete_pt ? p.manchete_pt + ' → ' : ''}${p.dado} (Fonte: ${p.origem || p.fonte_veiculo || 'sem fonte'})`).join('\n')
     : (e.prova || []).join('\n');
   return `HEADLINE (capa já definida, não repetir): "${h.l1} / ${h.l2}"
 Tom: ${S.tom} | Funil: ${t.funil_detectado || S.funil}
@@ -5019,7 +5055,8 @@ const ROTEIRO_REGRAS = `REGRAS DE ESCRITA:
 - "virada": frase curta de impacto que abre o bloco (máx. 14 palavras) e funciona sozinha como título de card.
 - "destaque": título curto do parágrafo (máx. 8 palavras), usado se o parágrafo virar um card próprio.
 - Cada bloco avança a história, sem repetir ideias de outros blocos. Siga a Direção da espinha.
-- Marque com **negrito** 1 a 3 palavras-chave por parágrafo e 1 palavra-chave (ou expressão curta) em cada virada — é o que recebe o destaque visual do template.`;
+- Marque com **negrito** 1 a 3 palavras-chave por parágrafo e 1 palavra-chave (ou expressão curta) em cada virada — é o que recebe o destaque visual do template.
+- Quando um parágrafo usar o dado de uma das PROVAS, preencha "prova" com a letra dela (ex.: "A"); senão, deixe "prova" vazio. Use cada prova em no máximo um parágrafo.`;
 
 async function runRoteiro() {
   document.getElementById('primary-btn').disabled = true;
@@ -5042,7 +5079,7 @@ ${ROTEIRO_REGRAS}
 - "credito": ${fonte ? `"Produzido com ajuda de IA a partir de: ${fonteTitulo}${fonteVeiculo ? ' — ' + fonteVeiculo : ''}"` : 'deixe vazio'}
 
 Responda SOMENTE com JSON válido:
-{"objetivo":"objetivo do post em até 8 palavras","razao_viral":"por que esse conteúdo prende, em 1 frase","blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":""}]}],"conclusao":"","fechamento":"","cta":"","credito":""}`;
+{"objetivo":"objetivo do post em até 8 palavras","razao_viral":"por que esse conteúdo prende, em 1 frase","blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":"","prova":""}]}],"conclusao":"","fechamento":"","cta":"","credito":""}`;
   try {
     const data = extractJSON(await callClaude(prompt, 4000, 4, 150000));
     if (!data.blocos?.length) throw new Error('O roteiro veio vazio. Tente novamente.');
@@ -5087,6 +5124,7 @@ function paginarRoteiro(r, wanted) {
       title: first ? (g.b.virada || ps[0]?.destaque || '') : (ps[0]?.destaque || ''),
       body: ps.map(p => p.texto).join(' '),
       bi: g.bi,
+      provas: ps.map(p => p.prova).filter(Boolean),
     });
   });
   // Fechamento: conclusão + complemento; a chamada curta vai no botão (sem repetir no texto)
@@ -5111,7 +5149,7 @@ ROTEIRO COMPLETO (JSON):
 ${JSON.stringify({ blocos: base.blocos, conclusao: base.conclusao, fechamento: base.fechamento, cta: base.cta, credito: base.credito })}
 
 Responda SOMENTE com JSON no mesmo formato:
-{"blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":""}]}],"conclusao":"","cta":"","credito":""}`;
+{"blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":"","prova":""}]}],"conclusao":"","cta":"","credito":""}`;
   const data = extractJSON(await callClaude(prompt, 2500, 4, 150000));
   if (!data.blocos?.length) throw new Error('Não foi possível condensar o roteiro.');
   S.roteiro = { ...base, ...data };
@@ -5154,7 +5192,7 @@ ${ROTEIRO_REGRAS}
 OUTROS BLOCOS (não repetir): ${S.roteiro.blocos.filter((_, i) => i !== bi).map(x => x.virada).join(' | ')}
 BLOCO ATUAL: ${JSON.stringify(b)}
 
-Responda SOMENTE com JSON: {"virada":"","paragrafos":[{"destaque":"","texto":""}]}`;
+Responda SOMENTE com JSON: {"virada":"","paragrafos":[{"destaque":"","texto":"","prova":""}]}`;
   try {
     const nb = extractJSON(await callClaude(prompt, 1500, 4, 120000));
     if (nb.paragrafos?.length) { S.roteiro.blocos[bi] = nb; S.roteiroCompleto = null; }
@@ -5182,6 +5220,7 @@ function removerBloco(bi) {
 function editRoteiro(path, el) {
   const v = el.innerText.replace(/\n+/g, ' ').trim();
   const k = path.split('.');
+  if (k[0] === 'pv') { editProva(k[1], k[2], v); if (k[2] === 'dado') renderRoteiro(); return; }
   if (k[0] === 'b') {
     const b = S.roteiro.blocos[+k[1]];
     if (k[2] === 'virada') b.virada = v; else b.paragrafos[+k[3]][k[4]] = v;
@@ -5242,8 +5281,84 @@ function renderRoteiro() {
           ${r.credito ? ed('credito', r.credito, "font-size:0.7rem;color:var(--muted);margin-top:8px") : ''}
         </div>
       </div>
+      ${_roteiroProvasHtml(ed)}
     </div>${buildSourcesHtml()}`;
   _renderRoteiroStrip();
+}
+
+// Provas que viram card de evidência: o usuário confere antes do visual
+function _roteiroProvasHtml(ed) {
+  const lista = _provasList();
+  const usos = {};
+  (S.roteiro?.blocos || []).forEach((b, bi) => (b.paragrafos || []).forEach(p => { if (p.prova) usos[p.prova] = bi + 1; }));
+  const itens = lista.map(p => `
+    <div class="rt-blk">
+      <div class="rt-blk-head">
+        <span class="rt-tag" style="background:var(--surface2);color:var(--ink2)">Prova ${p.id}</span>
+        <span style="font-size:0.66rem;color:var(--muted)">${usos[p.id] ? `usada no bloco ${usos[p.id]}` : 'sem parágrafo ligado'}</span>
+        <div class="rt-acts">
+          <button onclick="buscarOutraProva('${p.id}')" title="Pesquisar uma prova diferente para este ponto">Buscar outra</button>
+          <button onclick="removerProva('${p.id}')" title="Remover prova">✕</button>
+        </div>
+      </div>
+      ${ed(`pv.${p.id}.manchete_pt`, p.manchete_pt, "font-family:Georgia,serif;font-weight:700;font-size:0.92rem;color:var(--ink);margin:8px 0 4px")}
+      <div class="rt-par" style="border-left-color:var(--accent)">${ed(`pv.${p.id}.dado`, p.dado, "font-size:0.84rem;line-height:1.55;font-weight:600;color:var(--ink)")}</div>
+      ${p.editado ? `<div class="rt-warn">Dado alterado: confira se continua batendo com a fonte.</div>` : ''}
+      <div class="rt-prova-meta">
+        ${ed(`pv.${p.id}.origem`, p.origem || '', "display:inline-block;min-width:40px")}
+        ${p.fonte_data ? `<span>· ${_escHtml(p.fonte_data)}</span>` : ''}
+        ${p.fonte_url ? `<a href="${_escHtml(p.fonte_url)}" target="_blank" rel="noopener" title="${_escHtml(p.fonte_titulo || '')}">↗ Ver fonte${p.idioma && !/^pt/i.test(p.idioma) ? ` (${_escHtml(p.idioma)})` : ''}</a>` : ''}
+      </div>
+    </div>`).join('');
+  return `<div class="rt-list rt-provas">
+    <div class="rt-provas-head">Provas · viram o card de evidência</div>
+    ${itens || '<div class="rt-blk" style="font-size:0.78rem;color:var(--muted)">Nenhuma prova pesquisada ainda.</div>'}
+    <div class="rt-blk"><div class="rt-acts" style="margin-left:0;justify-content:flex-start">
+      <button onclick="buscarOutraProva(null)" ${lista.length >= 5 ? 'disabled' : ''}>+ Buscar mais uma prova</button>
+    </div></div>
+  </div>`;
+}
+
+function editProva(id, field, v) {
+  const p = _provasList().find(x => x.id === id);
+  if (!p || (p[field] || '') === v) return;
+  p[field] = v;
+  if (field === 'dado') p.editado = true;
+  _syncProofSources(); autoSave();
+}
+
+function removerProva(id) {
+  if (!confirm('Remover esta prova? O card de evidência dela deixa de existir.')) return;
+  S.espinha.provasFontes = _provasList().filter(p => p.id !== id);
+  (S.roteiro?.blocos || []).forEach(b => (b.paragrafos || []).forEach(p => { if (p.prova === id) p.prova = ''; }));
+  _syncProofSources(); renderRoteiro(); autoSave();
+}
+
+// id: troca essa prova por outra; null: acrescenta uma nova
+async function buscarOutraProva(id) {
+  const lista = _provasList(), t = S.triagem || {}, e = S.espinha || {};
+  const atual = id ? lista.find(p => p.id === id) : null;
+  let trecho = '';
+  (S.roteiro?.blocos || []).forEach(b => (b.paragrafos || []).forEach(p => { if (id && p.prova === id) trecho = p.texto; }));
+  const extra = `
+${atual ? `PROVA A SUBSTITUIR (o usuário achou fraca ou pouco útil): "${atual.manchete_pt}" → ${atual.dado}
+Encontre UMA prova diferente e mais forte para o mesmo ponto.` : 'Encontre UMA prova nova que complemente as já usadas.'}
+${trecho ? `Trecho do roteiro que a prova deve sustentar: "${trecho}"` : ''}
+Já usadas (não repetir fonte nem dado): ${lista.map(p => `${p.dado} [${p.fonte_url || p.fonte_veiculo || ''}]`).join(' | ') || 'nenhuma'}
+`;
+  showLoading(atual ? 'Buscando outra prova...' : 'Buscando mais uma prova...');
+  try {
+    const data = extractJSON(await callClaudeWithSearch(_promptProvas(t.tema_central, e.mecanismo, 1, extra), 1600));
+    const nova = _normProvas((data.provas || []).slice(0, 1), lista.map(p => p.id))[0];
+    if (!nova) throw new Error('nenhuma prova nova com dado verificável foi encontrada');
+    if (atual) {
+      lista.splice(lista.indexOf(atual), 1, nova);
+      (S.roteiro?.blocos || []).forEach(b => (b.paragrafos || []).forEach(p => { if (p.prova === id) p.prova = nova.id; }));
+    } else lista.push(nova);
+    S.espinha.provasFontes = lista;
+    _syncProofSources();
+  } catch (err) { alert('Não foi possível buscar a prova: ' + err.message); }
+  renderRoteiro(); autoSave();
 }
 
 function _renderRoteiroStrip() {
@@ -5565,30 +5680,39 @@ function _applyAutoColors(card, b) {
   }
 }
 
-// items: [{ role, bi, title, body, imageSrc?, imageMime?, imgNaturalW?, imgNaturalH? }]
+// Evidência do card a partir de uma prova (manchete em português + dado que responde + origem)
+function _evidenceFromProva(pv, prev) {
+  return { visible: true, style: prev?.style || 'news', color: prev?.color, provaId: pv.id,
+    veiculo: pv.fonte_veiculo || '', manchete: pv.manchete_pt || pv.fonte_titulo || '', dado: pv.dado || '',
+    origem: pv.origem && pv.origem !== pv.fonte_veiculo ? pv.origem : '', data: pv.fonte_data || '', editado: !!pv.editado };
+}
+
+// items: [{ role, bi, title, body, provas?, imageSrc?, imageMime?, imgNaturalW?, imgNaturalH? }]
 function _buildCardsV2(items, tpl, b) {
-  const provas = (S.espinha?.provasFontes || []).filter(p => p && p.fonte_titulo);
+  const provas = _provasList().filter(p => p.manchete_pt || p.dado);
   const n = items.length;
   // Cards de evidência: cada fonte vai para o card que fala dela (veículo, números e palavras em comum);
   // sem correspondência, distribui no meio do carrossel. 1 evidência (ou 2 com 9+ cards).
   const evIdx = [], evProva = {};
   if (tpl.roles.evidencia && provas.length) {
-    let pool = items.map((it, i) => ({ it, i })).filter(x => x.it.role === 'desenvolvimento' || (x.it.role === 'virada' && x.i > 1));
+    let pool = items.map((it, i) => ({ it, i })).filter(x => x.it.role === 'desenvolvimento' || (x.it.role === 'virada' && (x.i > 1 || (x.it.provas || []).length)));
     const want = Math.min(provas.length, n >= 9 ? 2 : 1);
     const norm = t => _plainText(t || '').toLowerCase();
     const nums = t => (norm(t).match(/\d[\d.,]*/g) || []).filter(x => x.length > 1 || /[1-9]/.test(x));
     const words = t => new Set(norm(t).split(/[^a-zà-ú0-9]+/).filter(w => w.length > 5));
     const score = (it, pv) => {
       const txt = norm(it.title + ' ' + it.body);
-      let sc = 0;
+      let sc = (it.provas || []).includes(pv.id) ? 20 : 0;
       if (pv.fonte_veiculo && txt.includes(pv.fonte_veiculo.toLowerCase())) sc += 4;
-      const pn = new Set([...nums(pv.dado), ...nums(pv.fonte_titulo)]);
+      const pn = new Set([...nums(pv.dado), ...nums(pv.manchete_pt)]);
       nums(it.title + ' ' + it.body).forEach(x => { if (pn.has(x)) sc += 3; });
-      const pw = words(pv.fonte_titulo + ' ' + pv.dado);
+      const pw = words(pv.manchete_pt + ' ' + pv.dado + ' ' + (pv.sustenta || ''));
       words(it.title + ' ' + it.body).forEach(w => { if (pw.has(w)) sc += 1; });
       return sc;
     };
-    provas.slice(0, want).forEach((pv, k) => {
+    const tagged = new Set(items.flatMap(it => it.provas || []));
+    const ordered = [...provas.filter(p => tagged.has(p.id)), ...provas.filter(p => !tagged.has(p.id))];
+    ordered.slice(0, want).forEach((pv, k) => {
       const free = pool.filter(x => !evIdx.includes(x.i));
       if (!free.length) return;
       const best = free.map(x => ({ x, sc: score(x.it, pv) })).sort((a, b) => b.sc - a.sc)[0];
@@ -5635,8 +5759,10 @@ function _buildCardsV2(items, tpl, b) {
     // Evidência real (print de matéria)
     if (evIdx.includes(i)) {
       const pv = evProva[i] || provas[evK++];
-      card.evidence = { visible: true, style: card.evidence?.style || 'news', color: card.evidence?.color, veiculo: pv.fonte_veiculo || '', manchete: pv.fonte_titulo, data: pv.fonte_data || '' };
+      card.evidence = _evidenceFromProva(pv, card.evidence);
     } else if (card.evidence) card.evidence.visible = false;
+    card.ctaSrc = it.ctaText || '';
+    card.provas = it.provas || [];
     if (it.role === 'fechamento' && it.ctaText) {
       // Com botão: a chamada vai no botão. Sem botão (família de post): entra no fim do texto
       if (card.cta.visible) card.cta.text = it.ctaText;
@@ -5663,7 +5789,7 @@ function renderTemplateSelector() {
   const fams = getBuiltInTemplates().filter(t => t.v2);
   const user = getUserTemplates();
   const pag = S.roteiro ? paginarRoteiro(S.roteiro, S.cardCount || 'auto') : null;
-  const items = pag ? pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body, ctaText: c.ctaText })) : [];
+  const items = pag ? pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body, ctaText: c.ctaText, provas: c.provas })) : [];
   const total = items.length;
 
   // Mini prévia real: mesmo motor do carrossel, em escala reduzida e sem interação
@@ -6243,7 +6369,7 @@ async function runRender() {
     const tplV2 = S.selectedTemplate ? getTemplates().find(tp => tp.id === S.selectedTemplate && tp.v2) : null;
     if (tplV2) {
       await _preloadTemplateFonts(tplV2, getBrand());
-      S.cards = _buildCardsV2(pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body, ctaText: c.ctaText })), tplV2, getBrand());
+      S.cards = _buildCardsV2(pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body, ctaText: c.ctaText, provas: c.provas })), tplV2, getBrand());
       localStorage.setItem('storylab_active_template', S.selectedTemplate);
     }
     // Apply selected template immediately after generation (templates salvos no formato antigo)
@@ -6563,46 +6689,66 @@ function _boxRectPx(card) {
 function _evidenceOn(card) { return !!(card.bg.boxMode && card.evidence && card.evidence.visible && card.evidence.manchete); }
 const EVIDENCE_FONT = "'Georgia', 'Times New Roman', serif";
 
-// Altura do conteúdo da evidência e tamanho da manchete que cabe no box
+// Altura do conteúdo da evidência e tamanhos que cabem no box (manchete, dado e rodapé)
 function _evidenceLayout(card) {
-  const r = _boxRectPx(card);
+  const r = _boxRectPx(card), e = card.evidence;
   const pad = Math.max(10, Math.min(16, r.w * 0.05));
   const innerW = r.w - pad * 2;
-  const style = card.evidence.style || 'news';
+  const style = e.style || 'news';
   const fam = style === 'marker' ? (card.body.fontFamily || "'Roboto', sans-serif") : EVIDENCE_FONT;
   const weight = style === 'marker' ? 800 : 700;
-  let size = Math.min(17, r.h * 0.16);
+  const DFAM = "'Roboto', sans-serif";
   const ctx = (_evidenceLayout._c || (_evidenceLayout._c = document.createElement('canvas'))).getContext('2d');
-  const linesOf = sz => {
-    ctx.font = `${weight} ${sz}px ${fam}`;
-    const words = card.evidence.manchete.split(/\s+/); const out = []; let line = '';
-    for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > innerW && line) { out.push(line); line = w; } else line = t; }
+  const wrap = (text, font, w) => {
+    ctx.font = font;
+    const words = (text || '').split(/\s+/).filter(Boolean); const out = []; let line = '';
+    for (const wd of words) { const t = line ? line + ' ' + wd : wd; if (ctx.measureText(t).width > w && line) { out.push(line); line = wd; } else line = t; }
     if (line) out.push(line);
     return out;
   };
-  const headH = 7 + 6, footH = card.evidence.data ? 6 + 7 : 0;
-  let lines = linesOf(size);
-  while (size > 9 && (pad * 2 + headH + lines.length * size * 1.18 + footH > r.h || lines.length > 5)) { size -= 0.5; lines = linesOf(size); }
-  return { r, pad, innerW, size, lines, fam, weight, style, height: pad * 2 + headH + lines.length * size * 1.18 + footH };
+  const dado = _plainText(e.dado || '').trim();
+  const DBAR = 8;   // barra + recuo do dado
+  // Rodapé numa linha: origem · data (corta com reticências)
+  let foot = [e.origem, e.data].filter(Boolean).join(' · ');
+  if (foot) {
+    ctx.font = `400 6px ${DFAM}`;
+    if (ctx.measureText(foot).width > innerW) {
+      while (foot.length > 1 && ctx.measureText(foot + '…').width > innerW) foot = foot.slice(0, -1);
+      foot = foot.trimEnd() + '…';
+    }
+  }
+  const headH = 7 + 6, footH = foot ? 6 + 7 : 0;
+  let size = Math.min(17, r.h * 0.16);
+  const dSizeOf = sz => Math.max(8, Math.min(11.5, sz * 0.7));
+  let lines, dLines, dSize, height;
+  const calc = () => {
+    lines = wrap(e.manchete, `${weight} ${size}px ${fam}`, innerW);
+    dSize = dSizeOf(size);
+    dLines = dado ? wrap(dado, `700 ${dSize}px ${DFAM}`, innerW - DBAR) : [];
+    height = pad * 2 + headH + lines.length * size * 1.18 + (dLines.length ? 7 + dLines.length * dSize * 1.3 : 0) + footH;
+  };
+  calc();
+  while (size > 9 && (height > r.h || lines.length > 5 || dLines.length > 4)) { size -= 0.5; calc(); }
+  return { r, pad, innerW, size, lines, fam, weight, style, dLines, dSize, dFam: DFAM, dBar: DBAR, foot, height };
 }
 
 function _evidenceHtml(card) {
   const L = _evidenceLayout(card), e = card.evidence;
   const vColor = e.color || '#b3261e';
   const top = L.r.y + Math.max(0, (L.r.h - L.height) / 2);
-  const manchete = L.style === 'marker'
-    ? `<span style="background:#ffe45c;box-decoration-break:clone;-webkit-box-decoration-break:clone;padding:0 2px;">${_escHtml(e.manchete)}</span>`
-    : _escHtml(e.manchete);
+  const mHtml = L.lines.map(l => L.style === 'marker' ? `<span style="background:#ffe45c;padding:0 2px;">${_escHtml(l)}</span>` : _escHtml(l)).join('<br>');
   const border = isColorDark(card.bg.color || '#ffffff') ? 'none' : '1px solid rgba(20,18,16,0.14)';
   return `<div data-evidence style="position:absolute;left:${L.r.x}px;top:${top}px;width:${L.r.w}px;height:${L.height}px;z-index:2;background:#ffffff;border:${border};border-radius:6px;padding:${L.pad}px;box-sizing:border-box;color:#111;pointer-events:none;">
     <div style="font:700 6px/7px 'Roboto',sans-serif;letter-spacing:1px;text-transform:uppercase;color:${vColor};margin-bottom:6px;white-space:nowrap;overflow:hidden;">${_escHtml(e.veiculo || 'Fonte')}</div>
-    <div style="font-family:${L.fam};font-weight:${L.weight};font-size:${L.size}px;line-height:1.18;">${manchete}</div>
-    ${e.data ? `<div style="font:400 6px/7px 'Roboto',sans-serif;color:#777;margin-top:6px;">${_escHtml(e.data)}</div>` : ''}
+    <div style="font-family:${L.fam};font-weight:${L.weight};font-size:${L.size}px;line-height:1.18;white-space:nowrap;">${mHtml}</div>
+    ${L.dLines.length ? `<div style="margin-top:7px;border-left:2px solid ${vColor};padding-left:${L.dBar - 2}px;font:700 ${L.dSize}px/1.3 ${L.dFam};color:#111;white-space:nowrap;">${L.dLines.map(_escHtml).join('<br>')}</div>` : ''}
+    ${L.foot ? `<div style="font:400 6px/7px 'Roboto',sans-serif;color:#777;margin-top:6px;white-space:nowrap;">${_escHtml(L.foot)}</div>` : ''}
   </div>`;
 }
 
 function _drawEvidence(ctx, card, SC) {
   const L = _evidenceLayout(card), e = card.evidence;
+  const vColor = e.color || '#b3261e';
   const top = L.r.y + Math.max(0, (L.r.h - L.height) / 2);
   const X = L.r.x * SC, Y = top * SC, W = L.r.w * SC, H = L.height * SC, P = L.pad * SC;
   ctx.save();
@@ -6613,7 +6759,7 @@ function _drawEvidence(ctx, card, SC) {
     roundedRect(ctx, X + SC / 2, Y + SC / 2, W - SC, H - SC, 6 * SC); ctx.stroke();
   }
   ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  ctx.fillStyle = e.color || '#b3261e';
+  ctx.fillStyle = vColor;
   ctx.font = `700 ${6 * SC}px 'Roboto', sans-serif`;
   if (ctx.letterSpacing !== undefined) ctx.letterSpacing = `${1 * SC}px`;
   ctx.fillText((e.veiculo || 'Fonte').toUpperCase(), X + P, Y + P);
@@ -6630,10 +6776,19 @@ function _drawEvidence(ctx, card, SC) {
     ctx.fillText(line, X + P, y + L.size * SC * 0.06);
     y += L.size * SC * 1.18;
   }
-  if (e.data) {
+  if (L.dLines.length) {
+    y += 7 * SC;
+    const lh = L.dSize * 1.3 * SC;
+    ctx.fillStyle = vColor;
+    ctx.fillRect(X + P, y, 2 * SC, lh * L.dLines.length);
+    ctx.fillStyle = '#111111';
+    ctx.font = `700 ${L.dSize * SC}px ${L.dFam}`;
+    for (const line of L.dLines) { ctx.fillText(line, X + P + L.dBar * SC, y + L.dSize * SC * 0.12); y += lh; }
+  }
+  if (L.foot) {
     ctx.fillStyle = '#777777';
     ctx.font = `400 ${6 * SC}px 'Roboto', sans-serif`;
-    ctx.fillText(e.data, X + P, y + 6 * SC);
+    ctx.fillText(L.foot, X + P, y + 6 * SC);
   }
   ctx.restore();
 }
@@ -6994,7 +7149,7 @@ function renderCardHtml(card, idx, total) {
         data-field="cta" data-idx="${idx}"
         onblur="updateCardText(${idx},'cta',this.innerText)"
         style="background:${outline ? 'transparent' : card.cta.bgColor};color:${card.cta.textColor};border:1.5px solid ${outline ? (card.cta.borderColor || card.cta.bgColor) : 'transparent'};border-radius:${card.cta.radius}px;height:38px;box-sizing:border-box;padding:0 16px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-family:'Poppins',sans-serif;font-size:${card.cta.fontSize || 12.5}px;line-height:1;font-weight:700;text-align:center;cursor:text;outline:none;"
-      >${ctaHtml}</div>
+      ><span style="white-space:pre;">${ctaHtml}</span></div>
     </div>`;
   }
 
@@ -7733,6 +7888,26 @@ function renderCardSidebar() {
   const curFooterTmpl = card.footer?.template || 'numeric';
   const _bvSwap = getBrand();
 
+  const ev = card.evidence;
+  const evField = (label, field, rows) => `<div>
+      <div class="field-label" style="margin-bottom:5px;">${label}</div>
+      <textarea rows="${rows}" oninput="setEvidenceField(${idx},'${field}',this.value)"
+        style="min-height:0;height:auto;font-size:0.8rem;line-height:1.4;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;color:var(--ink);resize:vertical;padding:7px 9px;width:100%;font-family:'Roboto',sans-serif;"
+      >${_escHtml(ev?.[field] || '')}</textarea></div>`;
+  const pvEv = ev?.provaId ? _provasList().find(p => p.id === ev.provaId) : null;
+  const evidenceSection = (ev && ev.visible) ? section('evidence', '', 'Prova / Fonte', `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${evField('Manchete (em português)', 'manchete', 3)}
+      ${evField('Dado que responde', 'dado', 3)}
+      ${evField('Origem (estudo, instituição)', 'origem', 1)}
+      <div style="display:flex;gap:6px;">
+        <div style="flex:1">${evField('Veículo', 'veiculo', 1)}</div>
+        <div style="flex:1">${evField('Data', 'data', 1)}</div>
+      </div>
+      ${ev.editado ? `<div class="rt-warn">Dado alterado: confira se continua batendo com a fonte.</div>` : ''}
+      ${pvEv?.fonte_url ? `<a href="${_escHtml(pvEv.fonte_url)}" target="_blank" rel="noopener" style="font-size:0.7rem;color:var(--accent);text-decoration:none;">↗ Ver fonte original</a>` : ''}
+    </div>`) : '';
+
   const componentsSection = section('components', '', 'Componentes', `
     <div style="display:flex;flex-direction:column;gap:0;">
       <div style="display:flex;flex-direction:column;gap:6px;padding:12px 0 14px;border-bottom:1px solid var(--border);">
@@ -7869,6 +8044,7 @@ function renderCardSidebar() {
     ${overlaySection}
     ${titleSection}
     ${bodySection}
+    ${evidenceSection}
     ${componentsSection}
     ${addRemoveSection}
   </div>`;
@@ -8355,6 +8531,21 @@ document.addEventListener('keydown', (e) => {
     undoLastChange();
   }
 });
+
+// Edição da evidência no card; vale também para a prova (trocar o template mantém a edição)
+const _EV_TO_PROVA = { manchete: 'manchete_pt', dado: 'dado', origem: 'origem', veiculo: 'fonte_veiculo', data: 'fonte_data' };
+function setEvidenceField(idx, field, value) {
+  const ev = S.cards[idx]?.evidence;
+  if (!ev) return;
+  ev[field] = value;
+  const pv = ev.provaId ? _provasList().find(p => p.id === ev.provaId) : null;
+  if (field === 'dado' && !ev.editado) {
+    ev.editado = true;
+    if (pv) pv.editado = true;
+  }
+  if (pv) { pv[_EV_TO_PROVA[field]] = value; _syncProofSources(); }
+  refreshCard(idx);
+}
 
 function refreshCard(idx) {
   pushUndoSnapshot();
@@ -9523,7 +9714,11 @@ async function applyTemplateV2(tpl) {
   const b = getBrand(), n = S.cards.length;
   const items = S.cards.map((c, i) => ({
     role: c.tipo || (i === 0 ? 'capa' : i === n - 1 ? 'fechamento' : 'desenvolvimento'),
-    bi: c.bi, title: c.title.text, body: c.body.text, ctaText: c.cta?.visible ? c.cta.text : '',
+    // A chamada que foi para o fim do texto (família sem botão) volta para o botão ao trocar de família
+    bi: c.bi, title: c.title.text,
+    body: (!c.cta?.visible && c.ctaSrc && c.body.text.endsWith(c.ctaSrc)) ? c.body.text.slice(0, -c.ctaSrc.length).trim() : c.body.text,
+    ctaText: c.cta?.visible ? c.cta.text : (c.ctaSrc || ''),
+    provas: (c.evidence?.visible && c.evidence.provaId) ? [c.evidence.provaId] : (c.provas || []),
     imageSrc: c.bg.imageSrc || null, imageMime: c.bg.imageMime || null, imgNaturalW: c.bg.imgNaturalW, imgNaturalH: c.bg.imgNaturalH,
   }));
   await _preloadTemplateFonts(tpl, b);
