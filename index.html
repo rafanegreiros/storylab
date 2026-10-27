@@ -5098,6 +5098,8 @@ const ROTEIRO_REGRAS = `REGRAS DE ESCRITA:
 - Terceira pessoa (sem "você"), exceto no CTA.
 - "virada": frase curta de impacto que abre o bloco (máx. 14 palavras) e funciona sozinha como título de card.
 - "destaque": título curto do parágrafo (máx. 8 palavras), usado se o parágrafo virar um card próprio.
+- "manchete": versão detalhada do destaque, frase completa e concreta de 10 a 18 palavras (quem, o quê, onde, quanto), usada como título no layout editorial dividido. Ex.: "Na loja de rodovia de São Mateus do Sul, a AmPm montou um espaço só para tomar chimarrão."
+- Cada "texto" começa com uma frase-tese curta (até 10 palavras) que resume o parágrafo; depois vem a explicação.
 - Cada bloco avança a história, sem repetir ideias de outros blocos. Siga a Direção da espinha.
 - Marque com **negrito** 1 a 3 palavras-chave por parágrafo e 1 palavra-chave (ou expressão curta) em cada virada — é o que recebe o destaque visual do template.
 - Quando um parágrafo usar o dado de uma das PROVAS, preencha "prova" com a letra dela (ex.: "A"); senão, deixe "prova" vazio. Use cada prova em no máximo um parágrafo.
@@ -5124,7 +5126,7 @@ ${ROTEIRO_REGRAS}
 - "credito": ${fonte ? `"Produzido com ajuda de IA a partir de: ${fonteTitulo}${fonteVeiculo ? ' — ' + fonteVeiculo : ''}"` : 'deixe vazio'}
 
 Responda SOMENTE com JSON válido:
-{"objetivo":"objetivo do post em até 8 palavras","razao_viral":"por que esse conteúdo prende, em 1 frase","blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":"","prova":""}]}],"conclusao":"","fechamento":"","cta":"","credito":""}`;
+{"objetivo":"objetivo do post em até 8 palavras","razao_viral":"por que esse conteúdo prende, em 1 frase","blocos":[{"virada":"","paragrafos":[{"destaque":"","manchete":"","texto":"","prova":""}]}],"conclusao":"","fechamento":"","cta":"","credito":""}`;
   try {
     const data = extractJSON(await callClaude(prompt, 4000, 4, 150000));
     if (!data.blocos?.length) throw new Error('O roteiro veio vazio. Tente novamente.');
@@ -5167,6 +5169,7 @@ function paginarRoteiro(r, wanted) {
     cards.push({
       role: first ? 'virada' : 'desenvolvimento',
       title: first ? (g.b.virada || ps[0]?.destaque || '') : (ps[0]?.destaque || ''),
+      titleLong: first ? '' : (ps[0]?.manchete || ''),
       body: ps.map(p => p.texto).join(' '),
       bi: g.bi,
       provas: ps.map(p => p.prova).filter(Boolean),
@@ -5194,7 +5197,7 @@ ROTEIRO COMPLETO (JSON):
 ${JSON.stringify({ blocos: base.blocos, conclusao: base.conclusao, fechamento: base.fechamento, cta: base.cta, credito: base.credito })}
 
 Responda SOMENTE com JSON no mesmo formato:
-{"blocos":[{"virada":"","paragrafos":[{"destaque":"","texto":"","prova":""}]}],"conclusao":"","cta":"","credito":""}`;
+{"blocos":[{"virada":"","paragrafos":[{"destaque":"","manchete":"","texto":"","prova":""}]}],"conclusao":"","cta":"","credito":""}`;
   const data = extractJSON(await callClaude(prompt, 2500, 4, 150000));
   if (!data.blocos?.length) throw new Error('Não foi possível condensar o roteiro.');
   S.roteiro = { ...base, ...data };
@@ -5237,7 +5240,7 @@ ${ROTEIRO_REGRAS}
 OUTROS BLOCOS (não repetir): ${S.roteiro.blocos.filter((_, i) => i !== bi).map(x => x.virada).join(' | ')}
 BLOCO ATUAL: ${JSON.stringify(b)}
 
-Responda SOMENTE com JSON: {"virada":"","paragrafos":[{"destaque":"","texto":"","prova":""}]}`;
+Responda SOMENTE com JSON: {"virada":"","paragrafos":[{"destaque":"","manchete":"","texto":"","prova":""}]}`;
   try {
     const nb = extractJSON(await callClaude(prompt, 1500, 4, 120000));
     if (nb.paragrafos?.length) { S.roteiro.blocos[bi] = nb; S.roteiroCompleto = null; }
@@ -5790,6 +5793,8 @@ function _buildCardsV2(items, tpl, b) {
     card.layout = it.role === 'capa' ? 'cover' : it.role === 'fechamento' ? 'cta' : 'text';
     card.title.text = it.title || ''; card.body.text = it.body || '';
     card.templateId = tpl.id;
+    if (card.textAnchor === 'split' && it.titleLong) card.title.text = it.titleLong;
+    card.titleSrc = { short: it.title || '', long: it.titleLong || '', used: card.title.text };
     // Fontes por papel
     card.title.fontFamily = _fontForRole(card.title.fontRole || 'display', b, tpl, it.role);
     card.body.fontFamily  = _fontForRole(card.body.fontRole || 'body', b, tpl, it.role);
@@ -5824,7 +5829,11 @@ function _buildCardsV2(items, tpl, b) {
         if (!card.bg.boxMode && !_evidenceOn(card)) { card.bg.boxMode = true; card.bg.boxTextLayout = 'middle'; card.bg.boxY = 31; card.bg.boxH = 40; card.bg.boxW = 88; }
       }
     }
-    _ensureContrast(card); fitCardText(card); _limitTitleLines(card); _balanceTextCard(card); _layoutBoxText(card);
+    _ensureContrast(card); _balanceTextCard(card, tpl);
+    if (card.textAnchor === 'split') _splitLead(card);
+    fitCardText(card); _limitTitleLines(card);
+    if (card.textAnchor === 'split') _growSplitTitle(card);
+    _layoutBoxText(card);
     return card;
   });
 }
@@ -5835,14 +5844,40 @@ function _limitTitleLines(card) {
   let g = 40;
   while (g-- > 0 && card.title.size > 16 && lines() > 6) card.title.size -= 1;
 }
-// Card só de texto ancorado no topo com pouco conteúdo: centraliza em vez de deixar o vazio embaixo
-function _balanceTextCard(card) {
-  if (card.bg.boxMode || card.bg.type === 'image' || card.textAnchor !== 'top' || card.cta?.visible) return;
+// Card só de texto ancorado no topo com pouco conteúdo: vira o layout dividido (manchete no alto, texto na base)
+// tpl.shortText: 'split' (Editorial) | 'center'; famílias com perfil no alto (post) mantêm o topo
+function _balanceTextCard(card, tpl) {
+  const mode = tpl?.shortText || (card.avatar?.visible ? null : 'center');
+  if (!mode || card.bg.boxMode || card.bg.type === 'image' || card.textAnchor !== 'top' || card.cta?.visible) return;
   const { top, bottom } = _textBand(card);
   const avail = 400 - top - bottom;
   const kick = _kickerOn(card) ? card.kicker.size + 6 : 0;
-  const h = kick + _titleH(card) + ((card.body.visible && card.body.text) ? 6 + _bodyH(card) : 0);
-  if (h < avail * 0.5) card.textAnchor = 'center';
+  const hasBody = card.body.visible && card.body.text;
+  const h = kick + _titleH(card) + (hasBody ? 6 + _bodyH(card) : 0);
+  if (h < avail * 0.5) card.textAnchor = (mode === 'split' && hasBody) ? 'split' : 'center';
+}
+// Layout dividido: a 1ª frase do texto vira a frase-tese em negrito
+function _splitLead(card) {
+  const t = card.body.text || '';
+  if (!t || /^\{w\d{3}\|/.test(t)) return;
+  const m = t.match(/^(.{12,160}?[.!?:])(\s+)(?=\S)/);
+  if (!m) return;
+  card.body.text = `{w700|${m[1]}}${m[2]}${t.slice(m[0].length)}`;
+  card.leadSrc = { orig: t, used: card.body.text };
+}
+// Layout dividido com pouco texto: a manchete cresce (até +50%) para ocupar a parte de cima
+function _growSplitTitle(card) {
+  const { top, bottom } = _textBand(card);
+  const avail = 400 - top - bottom - 8;
+  const kick = _kickerOn(card) ? card.kicker.size + 6 : 0;
+  const total = () => kick + _titleH(card) + ((card.body.visible && card.body.text) ? 24 + _bodyH(card) : 0);
+  const max = Math.round(card.title.size * 1.5), W = _textW(card);
+  let g = 40;
+  while (g-- > 0 && card.title.size < max) {
+    card.title.size += 1;
+    const lines = _countTextLines(card.title.text, card.title.size, card.title.weight || 700, card.title.fontFamily, card.title.uppercase, W);
+    if (total() > avail * 0.82 || lines > 6 || _widestWord(card.title.text, card.title.size, card.title.weight || 700, card.title.fontFamily, card.title.uppercase) > W) { card.title.size -= 1; break; }
+  }
 }
 
 // ── ETAPA 3.5 — SELETOR VISUAL DE TEMPLATES ──
@@ -5852,7 +5887,7 @@ function renderTemplateSelector() {
   const fams = getBuiltInTemplates().filter(t => t.v2);
   const user = getUserTemplates();
   const pag = S.roteiro ? paginarRoteiro(S.roteiro, S.cardCount || 'auto') : null;
-  const items = pag ? pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body, ctaText: c.ctaText, provas: c.provas })) : [];
+  const items = pag ? pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, titleLong: c.titleLong, body: c.body, ctaText: c.ctaText, provas: c.provas })) : [];
   const total = items.length;
 
   // Mini prévia real: mesmo motor do carrossel, em escala reduzida e sem interação
@@ -6090,7 +6125,7 @@ function seedBuiltInTemplates() {
   const EDITORIAL = {
     id: 'v2_editorial', v2: true, name: 'Editorial', ref: 'BrandsDecoded',
     description: 'Revista digital: manchete condensada na capa, título no alto + foto ou prova no meio + texto embaixo. Fundos alternam para dar ritmo.',
-    impactFont: "'Archivo Black', sans-serif",
+    impactFont: "'Archivo Black', sans-serif", shortText: 'split',
     common: D({ header: { visible: true, template: 'editorial3', colorMode: 'auto' }, footer: { visible: false, template: 'dots', colorMode: 'auto' }, emphasis: 'color', emphasisColor: '$accent' }),
     roles: {
       capa: D({ bg: { type: 'image', color: dark, boxMode: false }, overlay: { visible: true, color: '#000000', direction: 'bottom-up', opacityStart: 0.88, opacityEnd: 0, reach: 66 },
@@ -6101,8 +6136,8 @@ function seedBuiltInTemplates() {
         D({ bg: { type: 'image', color: dark, boxMode: true, boxTextLayout: 'middle', boxY: 31, boxH: 40, boxW: 88 }, title: { size: 18, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 11.5, color: '$auto' } }),
       ],
       desenvolvimento: [
-        D({ bg: { type: 'solid', color: light }, textAnchor: 'top', title: { size: 17, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
-        D({ bg: { type: 'solid', color: dark }, textAnchor: 'top', title: { size: 17, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
+        D({ bg: { type: 'solid', color: light }, textAnchor: 'split', title: { size: 19, weight: 700, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
+        D({ bg: { type: 'solid', color: dark }, textAnchor: 'split', title: { size: 19, weight: 700, fontRole: 'display', color: '$auto' }, body: { size: 12.5, color: '$auto' } }),
       ],
       evidencia: D({ bg: { type: 'solid', color: dark, boxMode: true, boxTextLayout: 'middle', boxY: 30, boxH: 38, boxW: 88 }, evidence: { style: 'news' }, title: { size: 16, weight: 800, fontRole: 'display', color: '$auto' }, body: { size: 11.5, color: '$auto' } }),
       fechamento: D({ bg: { type: 'solid', color: dark }, textAnchor: 'top', title: { size: 22, weight: 900, fontRole: 'impact', color: '$auto' }, body: { size: 12.5, color: '$auto' }, cta: { visible: true, variant: 'outline', bgColor: '$accent', textColor: '$auto', radius: 100 } }),
@@ -6432,7 +6467,7 @@ async function runRender() {
     const tplV2 = S.selectedTemplate ? getTemplates().find(tp => tp.id === S.selectedTemplate && tp.v2) : null;
     if (tplV2) {
       await _preloadTemplateFonts(tplV2, getBrand());
-      S.cards = _buildCardsV2(pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, body: c.body, ctaText: c.ctaText, provas: c.provas })), tplV2, getBrand());
+      S.cards = _buildCardsV2(pag.cards.map(c => ({ role: c.role, bi: c.bi, title: c.title, titleLong: c.titleLong, body: c.body, ctaText: c.ctaText, provas: c.provas })), tplV2, getBrand());
       localStorage.setItem('storylab_active_template', S.selectedTemplate);
     }
     // Apply selected template immediately after generation (templates salvos no formato antigo)
@@ -7062,8 +7097,10 @@ function renderCardHtml(card, idx, total) {
     layers += _imgPlaceholderHtml(card, idx);
   } else if (card.bg.type !== 'image') {
     // Show image upload button when no image
-    layers += `<div onclick="triggerBgImageUpload(${idx})" style="position:absolute;top:8px;right:8px;z-index:20;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);border:1px dashed rgba(255,255,255,0.25);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;" title="Adicionar imagem de fundo">
-      <svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='opacity:0.7'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
+    // Opção de foto (só no editor; não sai no export): em card de texto a foto entra num box
+    layers += `<div onclick="event.stopPropagation();triggerBgImageUpload(${idx})" style="position:absolute;top:8px;right:8px;z-index:20;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);border:1px dashed rgba(255,255,255,0.45);border-radius:8px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;" title="${card.templateId ? 'Adicionar uma foto a este card' : 'Adicionar imagem de fundo'}">
+      <svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='opacity:0.85'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>
+      <span style="font-family:'Poppins',sans-serif;font-size:0.5rem;color:#fff;letter-spacing:0.8px;text-transform:uppercase;">+ Foto</span>
     </div>`;
   }
 
@@ -7161,12 +7198,13 @@ function renderCardHtml(card, idx, total) {
   const padX = _padX(card);
   // No modo box a posição vem do layout (calculada a partir do centro) — igual ao export
   const anchorV = card.bg.boxMode ? 'center' : (card.textAnchor || 'center');
-  const justify = anchorV === 'top' ? 'flex-start' : anchorV === 'bottom' ? 'flex-end' : 'center';
+  const justify = (anchorV === 'top' || anchorV === 'split') ? 'flex-start' : anchorV === 'bottom' ? 'flex-end' : 'center';
   const emph = _emphasisOf(card);
   const titleOffX = card.title.offsetX || 0;
   const titleOffY = card.title.offsetY || 0;
   const bodyOffX = card.body.offsetX || 0;
   const bodyOffY = card.body.offsetY || 0;
+  const bodyPush = anchorV === 'split' ? 'auto' : `${bodyOffY}px`;
 
   // Parse inline markers: **bold**, _italic_, __underline__, ~~strike~~, {#color|text}, {w700|text}, {bg#color|text}
   function parseInlineMarkers(text) {
@@ -7187,7 +7225,7 @@ function renderCardHtml(card, idx, total) {
     ${(!card.bg.boxMode && card.body.visible && card.body.text) ? `<div contenteditable="true" spellcheck="false"
       data-field="body" data-idx="${idx}"
       onblur="updateCardText(${idx},'body',this.innerText)"
-      style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyOffY}px;margin-left:${bodyOffX}px;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
+      style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyPush};margin-left:${bodyOffX}px;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
     >${bodyHtml}</div>` : ''}
   </div>`;
 
@@ -7818,7 +7856,12 @@ function renderCardSidebar() {
     </div>`;
   }
 
-  const titleSection = section('title', '', 'Headline / Título', `
+  const anchorRow = card.bg.boxMode ? '' : `<div style="margin-bottom:10px;">
+      <div class="field-label" style="margin-bottom:5px;">Posição do texto</div>
+      <div style="display:flex;gap:4px;">${[['top', 'Topo'], ['center', 'Centro'], ['bottom', 'Base'], ['split', 'Dividido']].map(([k, l]) =>
+        `<button onclick="setTextAnchor(${idx},'${k}')" style="flex:1;padding:6px 4px;border-radius:6px;font-size:0.68rem;cursor:pointer;border:1.5px solid ${(card.textAnchor || 'center') === k ? 'var(--accent)' : 'var(--border)'};background:${(card.textAnchor || 'center') === k ? 'var(--accent)' : 'transparent'};color:${(card.textAnchor || 'center') === k ? '#fff' : 'var(--ink2)'};">${l}</button>`).join('')}</div>
+    </div>`;
+  const titleSection = section('title', '', 'Headline / Título', anchorRow + `
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div>
         <div class="field-label" style="margin-bottom:5px;">Texto</div>
@@ -9016,10 +9059,38 @@ function _applyBoxTextLayout(idx, layout) {
   _layoutBoxText(card);
 }
 
+// Card de texto de um template v2 que recebe foto: manchete no alto, foto no meio, texto embaixo
+function _photoIntoBox(card) {
+  if (!card.templateId || card.bg.boxMode || card.layout === 'cover' || card.tipo === 'capa' || card.cta?.visible) return;
+  card.bg.photoBox = { anchor: card.textAnchor || null, titleSize: card.title.size, bodySize: card.body.size };
+  Object.assign(card.bg, { boxMode: true, boxTextLayout: 'middle', boxY: 31, boxH: 40, boxW: 88 });
+  if (card.leadSrc && card.body.text === card.leadSrc.used) card.body.text = card.leadSrc.orig;
+  fitCardText(card); _layoutBoxText(card);
+}
+
+function setTextAnchor(idx, a) {
+  const c = S.cards[idx];
+  if (!c) return;
+  pushUndoSnapshot();
+  c.textAnchor = a;
+  if (a === 'split') _splitLead(c);
+  else if (c.leadSrc && c.body.text === c.leadSrc.used) c.body.text = c.leadSrc.orig;
+  fitCardText(c);
+  refreshCard(idx); renderCardSidebar(); autoSave();
+}
+
 function clearBgImage(idx) {
+  const pb = S.cards[idx].bg.photoBox;
   S.cards[idx].bg.imageSrc = null;
   S.cards[idx].bg.imageMime = null;
   S.cards[idx].bg.type = 'solid';
+  if (pb) {
+    // Volta a ser card de texto, como antes da foto
+    const c = S.cards[idx];
+    c.bg.boxMode = false; c.bg.photoBox = null; c.textAnchor = pb.anchor;
+    c.title.size = pb.titleSize; c.body.size = pb.bodySize; c.title.offsetY = 0; c.body.offsetY = 0;
+    if (c.textAnchor === 'split') _splitLead(c);
+  }
   refreshCard(idx); renderCardSidebar();
   if (activeSessionId) saveImagesToStorage(activeSessionId);
   else saveImagesToStorage('current');
@@ -9064,6 +9135,7 @@ function applyImageFileToCardBg(idx, file) {
           S.cards[idx].bg.imageY      = 0;
           S.cards[idx].bg.boxImgX     = 0;
           S.cards[idx].bg.boxImgY     = 0;
+          _photoIntoBox(S.cards[idx]);
           refreshCard(idx);
           saveImagesToStorage(activeSessionId || 'current');
         } catch(e) {
@@ -9840,8 +9912,10 @@ async function applyTemplateV2(tpl) {
   const items = S.cards.map((c, i) => ({
     role: c.tipo || (i === 0 ? 'capa' : i === n - 1 ? 'fechamento' : 'desenvolvimento'),
     // A chamada que foi para o fim do texto (família sem botão) volta para o botão ao trocar de família
-    bi: c.bi, title: c.title.text,
-    body: (!c.cta?.visible && c.ctaSrc && c.body.text.endsWith(c.ctaSrc)) ? c.body.text.slice(0, -c.ctaSrc.length).trim() : c.body.text,
+    bi: c.bi,
+    title: (c.titleSrc && c.title.text === c.titleSrc.used) ? c.titleSrc.short : c.title.text,
+    titleLong: (c.titleSrc && c.title.text === c.titleSrc.used) ? c.titleSrc.long : '',
+    body: (c.leadSrc && c.body.text === c.leadSrc.used) ? c.leadSrc.orig : (!c.cta?.visible && c.ctaSrc && c.body.text.endsWith(c.ctaSrc)) ? c.body.text.slice(0, -c.ctaSrc.length).trim() : c.body.text,
     ctaText: c.cta?.visible ? c.cta.text : (c.ctaSrc || ''),
     provas: (c.evidence?.visible && c.evidence.provaId) ? [c.evidence.provaId] : (c.provas || []),
     imageSrc: c.bg.imageSrc || null, imageMime: c.bg.imageMime || null, imgNaturalW: c.bg.imgNaturalW, imgNaturalH: c.bg.imgNaturalH,
@@ -11042,7 +11116,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     const totalBlockH = kickerBlockH + effectiveTitleH + totalBodyH;
     // Ancoragem do bloco na faixa do texto (no modo box o layout calcula a posição → centro)
     const anchor = card.bg.boxMode ? 'center' : (card.textAnchor || 'center');
-    const blockTop = anchor === 'top' ? _textTopSC
+    const blockTop = (anchor === 'top' || anchor === 'split') ? _textTopSC
                    : anchor === 'bottom' ? EXH - _textBotSC - totalBlockH
                    : CARD_CENTER_Y - totalBlockH / 2;
     if (kOn) {
@@ -11093,7 +11167,11 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     if (bodyWrapped2.length) {
       const bBase2 = baselineIn({ weight: '400', italic: card.body.italic, family: card.body.fontFamily || "'Syne', sans-serif" }, bFS2, 1.42);
       // fim do título + gap + margin-top do corpo + linha de base do corpo
-      y = y - tBase + GAP_SC + bOffYsc + bBase2;
+      if (anchor === 'split') {
+        // Dividido: o corpo encosta na base da faixa de texto (sem subir sobre o título)
+        const bodyH = bodyWrapped2.length * bFS2 * 1.42;
+        y = Math.max(EXH - _textBotSC - bodyH + tOffY, y - tBase + GAP_SC) + bBase2;
+      } else y = y - tBase + GAP_SC + bOffYsc + bBase2;
       const bShiftX = tOffX + (card.body.offsetX || 0) * SC; // corpo acompanha o translate do bloco
       const bAlign = card.body.align || 'left';
       for (const { segs: bSegs } of bodyWrapped2) {
