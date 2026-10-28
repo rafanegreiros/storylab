@@ -2021,6 +2021,55 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 }
 .deep-analysis-card tr:last-child td { border-bottom: none; }
 
+/* ── EDITOR DO CARROSSEL NO CELULAR ── */
+#mob-editor { position:fixed; left:0; right:0; top:0; height:100%; z-index:90; background:var(--bg); display:flex; flex-direction:column; }
+body.mob-ed-open { overflow:hidden; }
+.me-top { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.me-btn { background:none; border:none; color:var(--ink); font-family:'Poppins',sans-serif; font-size:0.8rem; padding:6px 4px; cursor:pointer; }
+.me-export { color:#fff; background:var(--accent); border-radius:8px; padding:8px 14px; font-weight:600; }
+.me-count { font-family:'Poppins',sans-serif; font-size:0.8rem; font-weight:600; color:var(--ink); }
+.me-stage { flex:1; min-height:0; display:flex; align-items:center; overflow:hidden; background:var(--surface2); }
+#mob-editor #carousel-scroll { width:100%; gap:22px; padding-top:0; padding-bottom:0; scroll-snap-type:x mandatory; scrollbar-width:none; animation:none; overscroll-behavior-x:contain; }
+#mob-editor #carousel-scroll::-webkit-scrollbar { display:none; }
+#mob-editor .c-card-wrap { scroll-snap-align:center; }
+#mob-editor .c-card { outline:none !important; box-shadow:0 6px 24px rgba(0,0,0,0.18); transform:none !important; animation:none; }
+#mob-editor .card-resize-handle, #mob-editor .box-edge { display:none; }
+.me-dots { display:flex; justify-content:center; gap:5px; padding:8px 0 10px; background:var(--surface2); flex-shrink:0; }
+.me-dots span { width:6px; height:6px; border-radius:3px; background:var(--border); transition:width 0.2s; cursor:pointer; }
+.me-dots span.on { width:16px; background:var(--accent); }
+.me-sheet { display:none; flex-shrink:0; max-height:46%; overflow-y:auto; border-top:1px solid var(--border); background:var(--bg); -webkit-overflow-scrolling:touch; }
+.me-sheet.open { display:block; }
+.me-sheet-head { position:sticky; top:0; z-index:2; background:var(--bg); display:flex; justify-content:space-between; align-items:center; padding:10px 16px 6px; font-family:'Poppins',sans-serif; font-weight:600; font-size:0.85rem; color:var(--ink); }
+.me-sheet-head button { background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--ink); font-size:0.75rem; padding:5px 12px; cursor:pointer; }
+.me-sheet-body { padding:4px 16px 16px; display:flex; flex-direction:column; gap:14px; }
+.me-lbl { display:block; font-size:0.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+.me-ta { width:100%; min-height:64px; box-sizing:border-box; line-height:1.4; background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; color:var(--ink); padding:8px 10px; font-family:'Roboto',sans-serif; resize:vertical; }
+#mob-editor textarea, #mob-editor input[type="text"], #mob-editor input[type="number"], #mob-editor select { font-size:16px !important; }
+.me-sw { display:flex; gap:10px; flex-wrap:wrap; }
+.me-sw button { width:34px; height:34px; border-radius:50%; border:2px solid var(--border); cursor:pointer; padding:0; }
+.me-sw button.on { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--bg); }
+.me-seg { display:flex; gap:6px; flex-wrap:wrap; }
+.me-seg button { flex:1; min-width:64px; padding:9px 4px; border-radius:8px; border:1.5px solid var(--border); background:transparent; color:var(--ink2); font-size:0.75rem; cursor:pointer; }
+.me-seg button.on { border-color:var(--accent); background:var(--accent); color:#fff; }
+.me-seg button.danger { color:#dc3c3c; border-color:rgba(220,60,60,0.35); }
+.me-more summary { font-size:0.8rem; color:var(--accent); cursor:pointer; padding:6px 0; font-family:'Poppins',sans-serif; }
+.me-more-body { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.me-tools { display:flex; justify-content:space-around; border-top:1px solid var(--border); padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); background:var(--bg); flex-shrink:0; }
+.me-tools button { background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--muted); font-family:'Poppins',sans-serif; font-size:0.64rem; padding:4px 8px; cursor:pointer; }
+.me-tools button.on { color:var(--accent); }
+.me-tools svg { width:22px; height:22px; }
+.me-modal { position:absolute; inset:0; z-index:5; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; }
+.me-modal-box { background:var(--bg); border-radius:14px; padding:20px; width:min(320px, 86%); display:flex; flex-direction:column; gap:10px; text-align:center; color:var(--ink); font-size:0.85rem; }
+.me-hint { font-size:0.72rem; color:var(--muted); line-height:1.5; }
+#mob-page-bar { position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; gap:8px; padding:10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); background:var(--bg); border-top:1px solid var(--border); }
+#mob-page-bar .primary-btn { flex:1; padding:14px 10px; font-size:0.9rem; border-radius:8px; }
+#mob-page-bar .secondary-btn { width:auto; flex:0 0 auto; padding:0 16px; }
+@media (max-width: 768px) {
+  body.step-final .sidebar { display:none; }
+  body.step-final .app { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .carousel-hint { display:none; }
+}
+
 /* ── MOBILE RESPONSIVE ── */
 @media (max-width: 768px) {
   header {
@@ -4183,6 +4232,7 @@ function initSidebar() {
     renderCardSidebar();
   }
   document.body.classList.toggle('step-final', S.step === 4);
+  if (S.step !== 4) { window._mobEdClosed = false; _mobEdUnmount(); document.getElementById('mob-page-bar')?.remove(); }
   updateDots();
 }
 
@@ -6595,7 +6645,7 @@ function renderFinal() {
       <button onclick="scrollCarousel(-1)" style="position:absolute;left:-16px;top:50%;transform:translateY(-50%);background:var(--bg);border:1.5px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;z-index:10;color:var(--ink)">‹</button>
       <button onclick="scrollCarousel(1)" style="position:absolute;right:-16px;top:50%;transform:translateY(-50%);background:var(--bg);border:1.5px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;z-index:10;color:var(--ink)">›</button>
     </div>
-    <div style="font-size:0.72rem;color:var(--muted);margin-top:-12px">
+    <div class="carousel-hint" style="font-size:0.72rem;color:var(--muted);margin-top:-12px">
       Clique num texto para mover · duplo clique para editar · Option/Alt solta o ímã · setas ajustam 1px
     </div>
     <div class="analysis-box">
@@ -6652,6 +6702,7 @@ function renderFinal() {
   setTimeout(() => {
     attachCardClickHandlers();
     selectCard(0);
+    _mobEdMount();
     generatePostContent();
     // Init image guide — lazy load via IntersectionObserver
     initImageGuide();
@@ -7386,6 +7437,7 @@ function cardMouseDown(e, idx) {
 
 function cardTouchStart(e, idx) {
   if (e.target.hasAttribute('contenteditable')) return;
+  if (_mobEdActive()) return;
   const card = S.cards[idx];
   const hasDraggableT = (card.bg.type === 'image' && card.bg.imageSrc) || (card.bg.type === 'video' && card.bg.videoSrc);
   if (!card || !hasDraggableT) {
@@ -7421,7 +7473,7 @@ function _dragOff(card, k) { const d = card.drag && card.drag[k]; return { x: (d
 function _dragCss(card, k) { const d = _dragOff(card, k); return (d.x || d.y) ? `translate:${d.x}px ${d.y}px;` : ''; }
 // Celular continua editando com 1 toque até a etapa 2 (gestos de toque)
 function _isTouchUI() { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } }
-function _editAttr() { return _isTouchUI() ? 'true' : 'false'; }
+function _editAttr() { return (_isTouchUI() && !_mobEdActive()) ? 'true' : 'false'; }
 
 // Retângulo do elemento em px do card: texto pela área do conteúdo, caixas pelo contorno
 function _dragRect(el, cardEl, k) {
@@ -7668,6 +7720,313 @@ function _boxEdgeStart(e, edge) {
   };
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
+}
+
+// ── EDITOR DO CARROSSEL NO CELULAR ──
+// Card fixo em cima (deslizar troca de card), barra de ferramentas embaixo e gavetas com o essencial.
+// Usa o mesmo carrossel e os mesmos controles do painel do desktop; o painel completo fica em "Mais ajustes".
+const _MI = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const MOB_TOOLS = [
+  ['titulo', 'Título', _MI('<path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M9 19h6"/>')],
+  ['texto', 'Texto', _MI('<path d="M4 6h16"/><path d="M4 10h12"/><path d="M4 14h16"/><path d="M4 18h9"/>')],
+  ['foto', 'Foto', _MI('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>')],
+  ['fundo', 'Fundo', _MI('<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7H17a5 5 0 0 0 5-5C22 6 17.5 2 12 2z"/>')],
+  ['mais', 'Mais', _MI('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>')],
+];
+function _mobEdActive() { return S.step === 4 && window.innerWidth <= 768 && !window._mobEdClosed && S.cards.length > 0; }
+
+function _mobEdMount() {
+  if (!_mobEdActive()) { _mobEdUnmount(); _mobPageBar(); return; }
+  document.getElementById('mob-page-bar')?.remove();
+  let ed = document.getElementById('mob-editor');
+  if (!ed) {
+    ed = document.createElement('div');
+    ed.id = 'mob-editor';
+    ed.innerHTML = `<div class="me-top">
+        <button class="me-btn" onclick="_mobEdClose()">‹ Voltar</button>
+        <div class="me-count" id="me-count"></div>
+        <button class="me-btn me-export" onclick="_mobExport()">Exportar</button>
+      </div>
+      <div class="me-stage" id="me-stage"></div>
+      <div class="me-dots" id="me-dots"></div>
+      <div class="me-sheet" id="me-sheet"></div>
+      <div class="me-tools" id="me-tools"></div>`;
+    document.body.appendChild(ed);
+    document.body.classList.add('mob-ed-open');
+    ed.querySelector('#me-stage').addEventListener('click', _mobOnStageTap);
+    window._mobRO = new ResizeObserver(() => { _mobLayout(); _mobGoTo(S.activeCardIdx, false); });
+    window._mobRO.observe(ed.querySelector('#me-stage'));
+    _mobFitViewport();
+  }
+  const stage = ed.querySelector('#me-stage');
+  const sc = document.getElementById('carousel-scroll');   // o do canvas vem primeiro no documento
+  if (sc && sc.parentElement !== stage) {
+    stage.innerHTML = '';                                    // carrossel antigo (antes do renderFinal)
+    if (!document.getElementById('carousel-home')) {
+      const mark = document.createElement('div'); mark.id = 'carousel-home'; mark.style.display = 'none';
+      sc.parentElement.insertBefore(mark, sc);
+    }
+    stage.appendChild(sc);
+    sc.addEventListener('scroll', _mobOnScroll, { passive: true });
+    _mobLayout();
+    _mobRenderTools();
+    renderCardSidebar();
+    requestAnimationFrame(() => _mobGoTo(S.activeCardIdx, false));
+  } else _mobLayout();
+}
+
+function _mobEdUnmount() {
+  const ed = document.getElementById('mob-editor');
+  if (!ed) return;
+  const sc = ed.querySelector('#carousel-scroll'), home = document.getElementById('carousel-home');
+  if (sc) {
+    sc.removeEventListener('scroll', _mobOnScroll);
+    sc.style.zoom = ''; sc.style.paddingLeft = sc.style.paddingRight = '';
+    if (home && !document.querySelector('#canvas #carousel-scroll')) home.replaceWith(sc); else sc.remove();
+  }
+  window._mobRO?.disconnect();
+  ed.remove();
+  document.body.classList.remove('mob-ed-open');
+  if (S.step === 4) renderCardSidebar();
+}
+
+function _mobEdClose() { window._mobEdClosed = true; _mobEdUnmount(); _mobPageBar(); window.scrollTo(0, 0); }
+function _mobEdOpen() { window._mobEdClosed = false; _mobEdMount(); }
+
+// Fora do editor (legenda, descrição, fontes): barra fixa para voltar a editar
+function _mobPageBar() {
+  document.getElementById('mob-page-bar')?.remove();
+  if (S.step !== 4 || window.innerWidth > 768 || _mobEdActive()) return;
+  const bar = document.createElement('div');
+  bar.id = 'mob-page-bar';
+  bar.innerHTML = `<button class="secondary-btn" onclick="if (confirm('Começar um carrossel novo?')) resetAll()">Novo</button>
+    <button class="primary-btn" onclick="_mobEdOpen()">✎ Editar cards</button>`;
+  document.body.appendChild(bar);
+}
+
+// Card no maior tamanho que cabe; a gaveta aberta diminui o card, sem escondê-lo
+function _mobLayout() {
+  const stage = document.getElementById('me-stage'), sc = stage && stage.querySelector('#carousel-scroll');
+  if (!sc) return;
+  const W = stage.clientWidth, H = stage.clientHeight;
+  if (!W || !H) return;
+  const z = Math.max(0.3, Math.min((W - 48) / 320, (H - 12) / 400, 1.2));
+  sc.style.zoom = z;
+  sc.style.paddingLeft = sc.style.paddingRight = Math.max(0, (W / z - 320) / 2) + 'px';
+}
+
+function _mobFitViewport() {
+  const ed = document.getElementById('mob-editor'), vv = window.visualViewport;
+  if (!ed || !vv) return;
+  ed.style.height = vv.height + 'px';
+  ed.style.top = vv.offsetTop + 'px';
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', _mobFitViewport);
+  window.visualViewport.addEventListener('scroll', _mobFitViewport);
+}
+window.addEventListener('resize', () => {
+  clearTimeout(window._mobRT);
+  window._mobRT = setTimeout(() => {
+    if (S.step !== 4) return;
+    if (_mobEdActive()) _mobEdMount(); else { _mobEdUnmount(); _mobPageBar(); }
+  }, 150);
+});
+
+function _mobCenterIdx() {
+  const stage = document.getElementById('me-stage');
+  if (!stage) return -1;
+  const r = stage.getBoundingClientRect(), cx = r.left + r.width / 2;
+  let best = -1, bd = Infinity;
+  stage.querySelectorAll('.c-card-wrap').forEach((w, i) => {
+    const b = w.getBoundingClientRect(), d = Math.abs(b.left + b.width / 2 - cx);
+    if (d < bd) { bd = d; best = i; }
+  });
+  return best;
+}
+function _mobOnScroll() {
+  clearTimeout(window._mobST);
+  window._mobST = setTimeout(() => {
+    const i = _mobCenterIdx();
+    if (i >= 0 && i !== S.activeCardIdx) selectCard(i);
+  }, 120);
+}
+function _mobGoTo(i, smooth = true) {
+  const w = document.querySelectorAll('#me-stage .c-card-wrap')[i];
+  if (w) w.scrollIntoView({ inline: 'center', block: 'nearest', behavior: smooth ? 'smooth' : 'auto' });
+}
+
+function _mobRenderTools() {
+  const t = document.getElementById('me-tools');
+  if (t) t.innerHTML = MOB_TOOLS.map(([k, l, ic]) => `<button class="${window._mobTool === k ? 'on' : ''}" onclick="_mobSetTool('${k}')">${ic}<span>${l}</span></button>`).join('');
+}
+function _mobSetTool(k) {
+  window._mobTool = (k && window._mobTool !== k) ? k : null;
+  window._mobMoreOpen = false;
+  _mobRenderTools();
+  const sh = document.getElementById('me-sheet'); if (sh) sh.scrollTop = 0;
+  renderCardSidebar();
+}
+
+// Tocar num elemento do card abre a gaveta dele
+function _mobOnStageTap(e) {
+  if (!_mobEdActive()) return;
+  const cardEl = e.target.closest('#carousel-scroll .c-card');
+  if (!cardEl) return;
+  const idx = +cardEl.dataset.idx;
+  if (idx !== S.activeCardIdx) { selectCard(idx); return; }
+  if (e.target.closest('.img-upload-overlay') || e.target.closest('[onclick*="triggerBgImageUpload"]')) return;
+  const el = _dragHit(e), card = S.cards[idx];
+  let key = el ? el.dataset.drag : null;
+  if (!key && card && card.bg.type === 'image' && card.bg.imageSrc) key = 'photo';
+  const tool = { title: 'titulo', kicker: 'titulo', body: 'texto', evidence: 'mais', avatar: 'mais', photo: 'foto' }[key];
+  if (!tool || window._mobTool === tool) return;
+  window._mobTool = tool; window._mobMoreOpen = false;
+  _mobRenderTools(); renderCardSidebar();
+}
+
+function _mobRenderSheet(P) {
+  const ed = document.getElementById('mob-editor');
+  if (!ed) return;
+  const { idx, card } = P, total = S.cards.length;
+  ed.querySelector('#me-count').textContent = `Card ${idx + 1} de ${total}`;
+  ed.querySelector('#me-dots').innerHTML = total <= 20 ? S.cards.map((_, i) => `<span class="${i === idx ? 'on' : ''}" onclick="selectCard(${i})"></span>`).join('') : '';
+  if (_mobCenterIdx() !== idx) _mobGoTo(idx);
+  const sheet = ed.querySelector('#me-sheet'), tool = window._mobTool;
+  if (!tool) { sheet.classList.remove('open'); sheet.innerHTML = ''; return; }
+
+  const esc = t => (t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const lbl = t => `<span class="me-lbl">${t}</span>`;
+  const sw = (cur, call) => `<div class="me-sw">${P.palette.map(p => `<button aria-label="${p.label}" style="background:${p.val}" class="${(cur || '').toLowerCase() === p.val.toLowerCase() ? 'on' : ''}" onclick="${call}'${p.val}')"></button>`).join('')}</div>`;
+  const seg = items => `<div class="me-seg">${items.map(([on, txt, call, cls]) => `<button class="${on ? 'on' : ''} ${cls || ''}" onclick="${call}">${txt}</button>`).join('')}</div>`;
+  const hasImg = card.bg.type === 'image' && card.bg.imageSrc;
+  const X = P.sections;
+  let ess = '', more = '';
+
+  if (tool === 'titulo') {
+    ess = `<div>${lbl('Texto')}<textarea class="me-ta" oninput="S.cards[${idx}].title.text=this.value;refreshCard(${idx})">${esc(card.title.text)}</textarea></div>
+      ${P.slider('Tamanho', card.title.size, 14, 60, 1, `(v)=>setCardTitleSize(${idx},v)`)}
+      <div>${lbl('Cor')}${sw(card.title.color, `setCardTitleColor(${idx},`)}</div>
+      ${card.bg.boxMode ? '' : `<div>${lbl('Posição')}${seg([['top', 'Topo'], ['center', 'Centro'], ['bottom', 'Base'], ['split', 'Dividido']].map(([k, l]) => [(card.textAnchor || 'center') === k, l, `setTextAnchor(${idx},'${k}')`]))}</div>`}`;
+    more = X.title;
+  } else if (tool === 'texto') {
+    ess = `${P.toggle('Mostrar texto', card.body.visible, `toggleBodyVisible(${idx})`)}
+      ${card.body.visible ? `<div>${lbl('Texto')}<textarea class="me-ta" style="min-height:110px" oninput="S.cards[${idx}].body.text=this.value;refreshCard(${idx})">${esc(card.body.text)}</textarea></div>
+      ${P.slider('Tamanho', card.body.size, 10, 28, 1, `(v)=>setCardBodySize(${idx},v)`)}
+      <div>${lbl('Cor')}${sw(card.body.color, `setCardBodyColor(${idx},`)}</div>` : ''}`;
+    more = X.body;
+  } else if (tool === 'foto') {
+    ess = hasImg ? `${seg([[false, 'Trocar foto', `triggerBgImageUpload(${idx})`], [false, 'Remover', `clearBgImage(${idx});renderCardSidebar()`, 'danger']])}
+      <div>${lbl('Como a foto aparece')}${seg([[!card.bg.boxMode, 'Foto inteira', `setCardBgBoxMode(${idx},false)`], [!!card.bg.boxMode, 'Em box', `setCardBgBoxMode(${idx},true)`]])}</div>
+      ${card.bg.boxMode ? P.slider('Altura do box', card.bg.boxH != null ? card.bg.boxH : 42, 20, 80, 1, `(v)=>_mobSetBoxH(${idx},v)`) : ''}`
+      : `${seg([[true, '+ Adicionar foto', `triggerBgImageUpload(${idx})`]])}
+      <div class="me-hint">A foto entra no card sem apagar o texto. Dá para trocar ou remover depois.</div>`;
+    more = P.batchUploadBtn + X.bg;
+  } else if (tool === 'fundo') {
+    const ov = card.overlay || {};
+    const dark = ov.visible ? Math.round((ov.opacityEnd != null ? ov.opacityEnd : 0.6) * 100) : 0;
+    ess = `<div>${lbl('Cor de fundo')}${sw(card.bg.color, `_mobSetBg(${idx},`)}</div>
+      ${hasImg && !card.bg.boxMode ? P.slider('Escurecer a foto (%)', dark, 0, 100, 5, `(v)=>_mobSetDarken(${idx},v)`) : ''}`;
+    more = X.bg + X.overlay;
+  } else if (tool === 'mais') {
+    const comp = [['Cabeçalho', card.header?.visible, `toggleHeader(${idx})`], ['Rodapé', card.footer?.visible, `toggleFooter(${idx})`],
+      ['Avatar', card.avatar?.visible, `toggleAvatar(${idx})`], ['Botão', card.cta?.visible, `toggleCta(${idx})`]].filter(c => c[1] !== undefined);
+    ess = `${X.evidence || ''}
+      <div>${lbl('Componentes')}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">${comp.map(([l, on, call]) => P.toggle(l, !!on, call)).join('')}</div></div>
+      <div>${lbl('Card')}${seg([[false, '⊕ Duplicar', `duplicateCard(${idx})`], [false, '+ Novo', `addCardAfter(${idx})`], [false, '✕ Remover', `if (confirm('Remover este card?')) deleteCard(${idx})`, 'danger']])}
+        <div style="height:6px"></div>${seg([[false, '‹ Mover', `_mobMoveCard(${idx},-1)`], [false, 'Mover ›', `_mobMoveCard(${idx},1)`], [false, '↺ Desfazer', `undoLastChange()`]])}</div>
+      <div>${lbl('Carrossel')}${seg([[false, 'Trocar visual', `openTemplateManager()`], [false, 'Legenda e fontes', `_mobEdClose()`]])}</div>`;
+    more = X.components;
+  }
+  const label = (MOB_TOOLS.find(t => t[0] === tool) || [])[1] || '';
+  const prev = sheet.scrollTop;
+  sheet.innerHTML = `<div class="me-sheet-head"><span>${label}</span><button onclick="_mobSetTool(null)">Pronto</button></div>
+    <div class="me-sheet-body">${ess}
+      ${more ? `<details class="me-more" ${window._mobMoreOpen ? 'open' : ''} ontoggle="window._mobMoreOpen=this.open"><summary>Mais ajustes</summary><div class="me-more-body">${more}</div></details>` : ''}
+    </div>`;
+  sheet.classList.add('open');
+  sheet.scrollTop = prev;
+}
+
+function _mobSetBg(idx, c) {
+  if (S.cards[idx].bg.type === 'gradient') S.cards[idx].bg.type = 'solid';
+  setCardBgColor(idx, c); renderCardSidebar();
+}
+// Um controle só para o overlay: mantém a proporção início/fim do degradê do template
+function _mobSetDarken(idx, v) {
+  const o = S.cards[idx].overlay, end = Math.max(0, Math.min(100, +v)) / 100;
+  if (!end) o.visible = false;
+  else {
+    const ratio = o.opacityEnd ? (o.opacityStart || 0) / o.opacityEnd : 0.3;
+    o.visible = true; o.opacityEnd = end; o.opacityStart = Math.min(1, end * ratio);
+  }
+  refreshCard(idx);
+}
+function _mobSetBoxH(idx, v) {
+  const card = S.cards[idx], y = card.bg.boxY != null ? card.bg.boxY : 10;
+  const maxBot = 100 - (SAFE_MARGIN + 10) / 4;
+  card.bg.boxH = Math.max(20, Math.min(maxBot - y, +v));
+  card.bg.boxManual = { boxY: y, boxH: card.bg.boxH };
+  fitCardText(card); _layoutBoxText(card);
+  refreshCard(idx);
+  if (_dragReclamp(idx)) refreshCard(idx);
+  // o box não cresce além do que o texto deixa: a gaveta mostra o valor real ao soltar
+  clearTimeout(window._mobBoxT);
+  window._mobBoxT = setTimeout(renderCardSidebar, 600);
+}
+function _mobMoveCard(idx, d) {
+  const j = idx + d;
+  if (j < 0 || j >= S.cards.length) return;
+  pushUndoSnapshot();                                  // a pilha guarda o estado depois de cada mudança
+  [S.cards[idx], S.cards[j]] = [S.cards[j], S.cards[idx]];
+  S.cards.forEach((c, i) => c.idx = i);
+  pushUndoSnapshot();
+  renderFinal();
+  setTimeout(() => selectCard(j), 60);
+  autoSave();
+}
+
+// Exportar no celular: gera os PNGs e abre o menu de compartilhar (salvar na galeria, Instagram)
+async function _mobExport() {
+  if (!_confirmPhotoPlaceholders()) return;
+  const ed = document.getElementById('mob-editor');
+  if (!ed) return;
+  const modal = document.createElement('div');
+  modal.className = 'me-modal';
+  modal.innerHTML = `<div class="me-modal-box"><div id="me-exp-txt">Preparando as imagens...</div></div>`;
+  ed.appendChild(modal);
+  const box = modal.firstElementChild, txt = modal.querySelector('#me-exp-txt');
+  const files = [];
+  try {
+    for (let i = 0; i < S.cards.length; i++) {
+      txt.textContent = `Gerando imagem ${i + 1} de ${S.cards.length}...`;
+      const blob = await exportCardToCanvas(S.cards[i], i);
+      files.push(new File([blob], `card_${String(i + 1).padStart(2, '0')}.png`, { type: 'image/png' }));
+    }
+  } catch (err) {
+    box.innerHTML = `<div>Não foi possível gerar as imagens: ${_escHtml(err.message || '')}</div><button class="secondary-btn" onclick="this.closest('.me-modal').remove()">Fechar</button>`;
+    return;
+  }
+  let canShare = false;
+  try { canShare = !!(navigator.canShare && navigator.canShare({ files })); } catch (e) {}
+  box.innerHTML = `<div style="font-weight:600">${files.length} imagens prontas</div>
+    <button class="primary-btn" id="me-exp-go">${canShare ? 'Salvar ou compartilhar' : 'Baixar imagens'}</button>
+    <button class="secondary-btn" onclick="this.closest('.me-modal').remove()">Fechar</button>
+    <div class="me-hint">${canShare ? `No menu, toque em “Salvar ${files.length} imagens” para mandar direto para a galeria.` : 'As imagens vão para a pasta de downloads.'}</div>`;
+  const download = async () => {
+    for (const f of files) {
+      const url = URL.createObjectURL(f), a = document.createElement('a');
+      a.href = url; a.download = f.name; a.click();
+      URL.revokeObjectURL(url);
+      await new Promise(r => setTimeout(r, 400));
+    }
+  };
+  box.querySelector('#me-exp-go').onclick = async () => {
+    if (canShare) {
+      try { await navigator.share({ files }); }
+      catch (e) { if (e.name !== 'AbortError') await download(); }
+    } else await download();
+  };
 }
 
 // ── CARD TEXT EDITING ──
@@ -8447,6 +8806,12 @@ function renderCardSidebar() {
     </div>
   </div>`;
 
+  if (_mobEdActive()) {
+    sidebarBody.innerHTML = '';
+    _mobRenderSheet({ idx, card, palette, slider, toggle, batchUploadBtn,
+      sections: { bg: bgSection, overlay: overlaySection, title: titleSection, body: bodySection, evidence: evidenceSection, components: componentsSection } });
+    return;
+  }
   sidebarBody.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding-bottom:8px;">
     ${batchUploadBtn}
     ${bgSection}
@@ -9933,9 +10298,11 @@ function setAvatarOffsetY(idx, v) { if (!S.cards[idx]) return; S.cards[idx].avat
 function duplicateCard(idx) {
   const copy = JSON.parse(JSON.stringify(S.cards[idx]));
   copy.idx = idx + 1;
+  pushUndoSnapshot();
   S.cards.splice(idx + 1, 0, copy);
   // Re-index all
   S.cards.forEach((c,i) => c.idx = i);
+  pushUndoSnapshot();
   renderFinal();
   setTimeout(() => selectCard(idx + 1), 60);
   autoSave();
@@ -9943,8 +10310,10 @@ function duplicateCard(idx) {
 
 function deleteCard(idx) {
   if (S.cards.length <= 1) return;
+  pushUndoSnapshot();
   S.cards.splice(idx, 1);
   S.cards.forEach((c,i) => c.idx = i);
+  pushUndoSnapshot();
   const newIdx = Math.min(idx, S.cards.length - 1);
   renderFinal();
   setTimeout(() => selectCard(newIdx), 60);
@@ -9954,8 +10323,10 @@ function deleteCard(idx) {
 function addCardAfter(idx) {
   const b = getBrand();
   const newCard = defaultCardState(idx + 1, 'Novo card', 'Edite este card no painel lateral.');
+  pushUndoSnapshot();
   S.cards.splice(idx + 1, 0, newCard);
   S.cards.forEach((c,i) => c.idx = i);
+  pushUndoSnapshot();
   renderFinal();
   setTimeout(() => selectCard(idx + 1), 60);
   autoSave();
