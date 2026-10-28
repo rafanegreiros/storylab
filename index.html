@@ -2533,6 +2533,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 .pv-off { opacity:0.45; }
 /* Arrastar elementos no card (editor) */
 .c-card [data-drag] { cursor: move; }
+#carousel-scroll .c-card.drag-hover, #carousel-scroll .c-card.drag-hover * { cursor: move !important; }
 .c-card [data-drag][contenteditable="true"] { cursor: text; }
 .c-card .drag-guide { position:absolute; z-index:40; pointer-events:none; }
 .c-card .drag-guide.v { top:0; bottom:0; width:0; border-left:1px dashed var(--accent); }
@@ -5939,7 +5940,7 @@ function renderTemplateSelector() {
 
   const userHtml = user.length ? `
     <div style="font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:700;color:var(--ink);margin:22px 0 8px;">Seus templates</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">${user.map(t => `<button onclick="selectTemplateStep('${t.id}')" style="padding:7px 12px;border-radius:8px;border:${S.selectedTemplate === t.id ? '2px solid var(--accent)' : '1.5px solid var(--border)'};background:var(--surface);color:var(--ink);font-size:0.72rem;cursor:pointer;">${_escHtml(t.name || 'Sem nome')}</button>`).join('')}</div>` : '';
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">${user.map(t => `<span style="display:inline-flex;align-items:center;border-radius:8px;border:${S.selectedTemplate === t.id ? '2px solid var(--accent)' : '1.5px solid var(--border)'};background:var(--surface);"><button onclick="selectTemplateStep('${t.id}')" style="padding:7px 4px 7px 12px;border:none;background:none;color:var(--ink);font-size:0.72rem;cursor:pointer;">${_escHtml(t.name || 'Sem nome')}</button><button onclick="apagarTemplateUsuario('${t.id}')" title="Apagar template" style="padding:7px 10px 7px 6px;border:none;background:none;color:var(--muted);font-size:0.85rem;line-height:1;cursor:pointer;">×</button></span>`).join('')}</div>` : '';
 
   document.getElementById('canvas').innerHTML = `
     <div style="padding:20px;max-width:1040px;margin:0 auto;">
@@ -7490,16 +7491,45 @@ function _dragSnap(D, x, y, free) {
   return { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, guides };
 }
 
+// Qual elemento arrastável está sob o mouse. Pela posição, não pelo topo do DOM: a camada do texto
+// cobre o card inteiro e ficava por cima da prova; a moldura tracejada (fora do elemento) também conta
+function _dragHit(e) {
+  const cardEl = e.target.closest && e.target.closest('#carousel-scroll .c-card');
+  if (!cardEl) return null;
+  const ui = e.target.closest('.img-upload-overlay, button, a, input, select, textarea, [onclick]');
+  if (ui && ui !== cardEl) return null;                // botões do card (Trocar, + Foto) continuam funcionando
+  for (const n of document.elementsFromPoint(e.clientX, e.clientY)) {
+    const d = n.closest('[data-drag]');
+    if (d && cardEl.contains(d)) return d;
+    if (n === cardEl) break;
+  }
+  const near = (el, pad) => { const r = el.getBoundingClientRect(); return e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad; };
+  const sel = window._dragSel && +cardEl.dataset.idx === window._dragSel.idx && cardEl.querySelector(`[data-drag="${window._dragSel.key}"]`);
+  if (sel && near(sel, 8)) return sel;
+  return [...cardEl.querySelectorAll('[data-drag]')].reverse().find(n => near(n, 4)) || null;
+}
+
+// Cursor de mover sobre o que dá para arrastar (o texto só mostra o cursor de texto em edição)
+document.addEventListener('mousemove', e => {
+  if (e.buttons || _isTouchUI()) return;
+  const cardEl = e.target.closest && e.target.closest('#carousel-scroll .c-card');
+  document.querySelectorAll('#carousel-scroll .c-card.drag-hover').forEach(n => { if (n !== cardEl) n.classList.remove('drag-hover'); });
+  if (!cardEl) return;
+  const el = _dragHit(e);
+  cardEl.classList.toggle('drag-hover', !!el && !el.isContentEditable);
+}, { passive: true });
+
 document.addEventListener('mousedown', e => {
   if (_isTouchUI() || e.button !== 0) return;
   const edge = e.target.closest('[data-box-edge]');
   if (edge) { _boxEdgeStart(e, edge); return; }
   if (e.target.closest('.drag-reset')) return;
-  const el = e.target.closest('#carousel-scroll .c-card [data-drag]');
+  const el = _dragHit(e);
   // Clique fora do texto em edição encerra a edição
   document.querySelectorAll('#carousel-scroll .c-card [data-drag][contenteditable="true"]').forEach(n => { if (n !== el) { n.blur(); n.contentEditable = 'false'; } });
   if (!el) { if (window._dragSel && !e.target.closest('#sidebar-body')) _dragDeselect(); return; }
   if (el.isContentEditable) return;               // editando: o mouse seleciona texto
+  if (e.detail > 1) { e.preventDefault(); e.stopPropagation(); return; }   // 2º clique: o dblclick decide
   e.preventDefault(); e.stopPropagation();
   const cardEl = el.closest('.c-card'), idx = +cardEl.dataset.idx, key = el.dataset.drag, card = S.cards[idx];
   if (!card) return;
@@ -7526,6 +7556,7 @@ document.addEventListener('mousedown', e => {
     document.removeEventListener('mouseup', onUp);
     _dragClearUi(cardEl);
     if (!D.moved) { _dragPaintSel(); return; }
+    window._dragJustMoved = Date.now();
     card.drag = card.drag || {};
     if (!D.cur.x && !D.cur.y) delete card.drag[key]; else card.drag[key] = { x: D.cur.x, y: D.cur.y };
     refreshCard(idx);
@@ -7537,8 +7568,9 @@ document.addEventListener('mousedown', e => {
 // Duplo clique: edita o texto no lugar
 document.addEventListener('dblclick', e => {
   if (_isTouchUI()) return;
-  const el = e.target.closest('#carousel-scroll .c-card [data-drag][data-field]');
-  if (!el || el.isContentEditable || el.dataset.field === 'kicker') return;
+  if (Date.now() - (window._dragJustMoved || 0) < 400) return;   // foi arrasto, não pedido de edição
+  const el = _dragHit(e);
+  if (!el || !el.dataset.field || el.isContentEditable || el.dataset.field === 'kicker') return;
   el.contentEditable = 'true';
   el.style.outline = 'none';
   el.focus();
@@ -7549,6 +7581,8 @@ document.addEventListener('dblclick', e => {
 
 // Setas: ajuste fino de 1px (Shift = 10px) no elemento selecionado; Esc solta a seleção
 document.addEventListener('keydown', e => {
+  const a0 = document.activeElement;
+  if (e.key === 'Escape' && a0 && a0.isContentEditable && a0.closest('#carousel-scroll .c-card')) { a0.blur(); return; }
   const sel = window._dragSel;
   if (!sel || S.step !== 4) return;
   const a = document.activeElement;
@@ -10178,6 +10212,15 @@ function hexToRgb(hex) {
   const g = parseInt(hex.slice(3,5),16);
   const b = parseInt(hex.slice(5,7),16);
   return `${r},${g},${b}`;
+}
+
+// Apagar na etapa Visual (Seus templates)
+function apagarTemplateUsuario(tplId) {
+  const t = getUserTemplates().find(x => x.id === tplId);
+  if (!t || !confirm(`Apagar o template "${t.name || 'Sem nome'}"? Não dá para desfazer.`)) return;
+  saveTemplates(getUserTemplates().filter(x => x.id !== tplId));
+  if (S.selectedTemplate === tplId) S.selectedTemplate = null;
+  renderTemplateSelector();
 }
 
 function deleteTemplate(tplId) {
