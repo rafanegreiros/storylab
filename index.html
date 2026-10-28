@@ -12016,6 +12016,10 @@ async function fetchWithTimeout(url, options, timeoutMs = 60000) {
   }
 }
 
+// Conexão que cai no meio (Wi-Fi, proxy, servidor reiniciando): o navegador só diz "Failed to fetch"
+const NET_ERR_MSG = 'A conexão com o servidor caiu. Confira sua internet e clique em Refazer.';
+function _isNetErr(e) { return e instanceof TypeError || /failed to fetch|networkerror|load failed|network connection/i.test(e?.message || ''); }
+
 async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000) {
   const token = getAuthToken();
   if (!token) { showLoginScreen(); throw new Error('Faça login para continuar.'); }
@@ -12035,14 +12039,16 @@ async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000) {
         })
       }, timeoutMs);
     } catch(e) {
-      if (e.message === 'timeout' && attempt < retries) {
-        showLoading(`Resposta demorou, tentando novamente (${attempt}/${retries})...`);
+      const net = _isNetErr(e);
+      if ((e.message === 'timeout' || net) && attempt < retries) {
+        showLoading(net ? `Conexão caiu, tentando novamente (${attempt}/${retries})...` : `Resposta demorou, tentando novamente (${attempt}/${retries})...`);
         await new Promise(r => setTimeout(r, 3000));
         continue;
       }
-      throw new Error(e.message === 'timeout' ? 'A requisição excedeu o tempo limite. Tente novamente.' : e.message);
+      throw new Error(e.message === 'timeout' ? 'A requisição excedeu o tempo limite. Tente novamente.' : net ? NET_ERR_MSG : e.message);
     }
-    const data = await res.json();
+    const data = await res.json().catch(() => ({ error: res.status >= 500 ? 'server_down' : 'bad_json' }));
+    if (data.error === 'server_down' && attempt < retries) { showLoading(`Servidor instável, tentando novamente (${attempt}/${retries})...`); await sleep(4000); continue; }
     if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
     if (data.error === 'quota_exceeded') throw new Error(data.message);
     if (res.status === 429 || data.error === 'rate_limit') {
@@ -12081,14 +12087,16 @@ async function callClaudeWithSearch(prompt, maxTokens, retries = 4) {
         })
       }, 120000); // 120s timeout — web search can be slow
     } catch(e) {
-      if (e.message === 'timeout' && attempt < retries) {
-        showLoading(`Busca demorou, tentando novamente (${attempt}/${retries})...`);
+      const net = _isNetErr(e);
+      if ((e.message === 'timeout' || net) && attempt < retries) {
+        showLoading(net ? `Conexão caiu, tentando novamente (${attempt}/${retries})...` : `Busca demorou, tentando novamente (${attempt}/${retries})...`);
         await new Promise(r => setTimeout(r, 3000));
         continue;
       }
-      throw new Error(e.message === 'timeout' ? 'A busca excedeu o tempo limite. Tente novamente.' : e.message);
+      throw new Error(e.message === 'timeout' ? 'A busca excedeu o tempo limite. Tente novamente.' : net ? NET_ERR_MSG : e.message);
     }
-    const data = await res.json();
+    const data = await res.json().catch(() => ({ error: res.status >= 500 ? 'server_down' : 'bad_json' }));
+    if (data.error === 'server_down' && attempt < retries) { showLoading(`Servidor instável, tentando novamente (${attempt}/${retries})...`); await sleep(4000); continue; }
     if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
     if (data.error === 'quota_exceeded') throw new Error(data.message);
     if (res.status === 429 || data.error === 'rate_limit') {
