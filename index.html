@@ -6785,16 +6785,16 @@ function inlineTreeToHtml(nodes, emph) {
     const inner = inlineTreeToHtml(n.children, emph);
     if (n.bold) {
       // Estilo de destaque do template para as palavras marcadas
-      if (emph?.mode === 'color')     return `<span style="color:${emph.color};">${inner}</span>`;
-      if (emph?.mode === 'highlight') return `<mark style="background:${emph.color};color:inherit;padding:0 0.08em;margin:0 -0.08em;box-decoration-break:clone;-webkit-box-decoration-break:clone;">${inner}</mark>`;
-      return `<strong>${inner}</strong>`;
+      if (emph?.mode === 'color')     return `<span data-mk="b" style="color:${emph.color};">${inner}</span>`;
+      if (emph?.mode === 'highlight') return `<mark data-mk="b" style="background:${emph.color};color:inherit;padding:0 0.08em;margin:0 -0.08em;box-decoration-break:clone;-webkit-box-decoration-break:clone;">${inner}</mark>`;
+      return `<strong data-mk="b">${inner}</strong>`;
     }
-    if (n.underline) return `<u>${inner}</u>`;
-    if (n.italic)    return `<em>${inner}</em>`;
-    if (n.strike)    return `<s>${inner}</s>`;
-    if (n.bg)        return `<mark style="background:${n.bg};color:inherit;padding:0 2px;border-radius:2px;">${inner}</mark>`;
-    if (n.color)     return `<span style="color:${n.color};">${inner}</span>`;
-    if (n.weight)    return `<span style="font-weight:${n.weight};">${inner}</span>`;
+    if (n.underline) return `<u data-mk="u">${inner}</u>`;
+    if (n.italic)    return `<em data-mk="i">${inner}</em>`;
+    if (n.strike)    return `<s data-mk="s">${inner}</s>`;
+    if (n.bg)        return `<mark data-mk="bg${n.bg}" style="background:${n.bg};color:inherit;padding:0 2px;border-radius:2px;">${inner}</mark>`;
+    if (n.color)     return `<span data-mk="c${n.color}" style="color:${n.color};">${inner}</span>`;
+    if (n.weight)    return `<span data-mk="w${n.weight}" style="font-weight:${n.weight};">${inner}</span>`;
     return inner;
   }).join('');
 }
@@ -7313,12 +7313,12 @@ function renderCardHtml(card, idx, total) {
     ${kickerHtml}
     <div contenteditable="${_editAttr()}" spellcheck="false"
       data-field="title" data-idx="${idx}" data-drag="title"
-      onblur="updateCardText(${idx},'title',this.innerText)"
+      onblur="updateCardText(${idx},'title',this)"
       style="${_dragCss(card, 'title')}font-family:${card.title.fontFamily};font-weight:${card.title.weight};font-size:${card.title.size}px;line-height:1.1;color:${card.title.color};text-align:${card.title.align};outline:none;cursor:text;font-style:${card.title.italic?'italic':'normal'};text-decoration:${card.title.underline?'underline':'none'};text-transform:${card.title.uppercase?'uppercase':'none'};"
     >${titleHtml}</div>
     ${(!card.bg.boxMode && card.body.visible && card.body.text) ? `<div contenteditable="${_editAttr()}" spellcheck="false"
       data-field="body" data-idx="${idx}" data-drag="body"
-      onblur="updateCardText(${idx},'body',this.innerText)"
+      onblur="updateCardText(${idx},'body',this)"
       style="${_dragCss(card, 'body')}font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyPush};margin-left:${bodyOffX}px;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
     >${bodyHtml}</div>` : ''}
   </div>`;
@@ -7329,7 +7329,7 @@ function renderCardHtml(card, idx, total) {
     layers += `<div style="position:absolute;top:0;left:${padX}px;right:${padX}px;z-index:6;transform:translateY(${bodyAbsY}px);">
       <div contenteditable="${_editAttr()}" spellcheck="false"
         data-field="body" data-idx="${idx}" data-drag="body"
-        onblur="updateCardText(${idx},'body',this.innerText)"
+        onblur="updateCardText(${idx},'body',this)"
         style="${_dragCss(card, 'body')}font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
       >${bodyHtml}</div>
     </div>`;
@@ -7342,7 +7342,7 @@ function renderCardHtml(card, idx, total) {
     layers += `<div style="position:absolute;bottom:20px;left:${_padX(card)}px;right:${_padX(card)}px;z-index:6;">
       <div contenteditable="true" spellcheck="false"
         data-field="cta" data-idx="${idx}"
-        onblur="updateCardText(${idx},'cta',this.innerText)"
+        onblur="updateCardText(${idx},'cta',this)"
         style="background:${outline ? 'transparent' : card.cta.bgColor};color:${card.cta.textColor};border:1.5px solid ${outline ? (card.cta.borderColor || card.cta.bgColor) : 'transparent'};border-radius:${card.cta.radius}px;height:38px;box-sizing:border-box;padding:0 16px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-family:'Poppins',sans-serif;font-size:${card.cta.fontSize || 12.5}px;line-height:1;font-weight:700;text-align:center;cursor:text;outline:none;"
       ><span style="white-space:pre;">${ctaHtml}</span></div>
     </div>`;
@@ -7610,6 +7610,11 @@ document.addEventListener('mousedown', e => {
   if (el.isContentEditable) return;               // editando: o mouse seleciona texto
   if (e.detail > 1) { e.preventDefault(); e.stopPropagation(); return; }   // 2º clique: o dblclick decide
   e.preventDefault(); e.stopPropagation();
+  _dragBegin(el, e.clientX, e.clientY, false);
+}, true);
+
+// Arrasta o elemento (mouse no desktop; dedo no editor do celular)
+function _dragBegin(el, sx, sy, touch) {
   const cardEl = el.closest('.c-card'), idx = +cardEl.dataset.idx, key = el.dataset.drag, card = S.cards[idx];
   if (!card) return;
   if (S.activeCardIdx !== idx) selectCard(idx);
@@ -7617,22 +7622,26 @@ document.addEventListener('mousedown', e => {
   const k = 320 / cardEl.getBoundingClientRect().width;
   const d0 = _dragOff(card, key), now = _dragRect(el, cardEl, k);
   const others = [...cardEl.querySelectorAll('[data-drag], [data-box-img]')].filter(n => n !== el).map(n => _dragRect(n, cardEl, k));
-  const D = { idx, key, el, cardEl, k, sx: e.clientX, sy: e.clientY, d0, moved: false, padX: _padX(card),
+  const D = { idx, key, el, cardEl, k, sx, sy, d0, moved: false, padX: _padX(card),
     base: { l: now.l - d0.x, r: now.r - d0.x, t: now.t - d0.y, b: now.b - d0.y }, others, cur: d0 };
   document.querySelectorAll('.drag-reset').forEach(n => n.remove());
-  const onMove = mv => {
+  const onMove = ev => {
+    const mv = touch ? ev.touches[0] : ev;
+    if (!mv) return;
+    if (touch) ev.preventDefault();                    // o dedo move o elemento, não a página
     const dx = (mv.clientX - D.sx) * k, dy = (mv.clientY - D.sy) * k;
-    if (!D.moved && Math.hypot(dx, dy) < 3) return;
+    if (!D.moved && Math.hypot(dx, dy) < (touch ? 4 : 3)) return;
     D.moved = true;
-    const sn = _dragSnap(D, D.d0.x + dx, D.d0.y + dy, mv.altKey);
+    const sn = _dragSnap(D, D.d0.x + dx, D.d0.y + dy, !touch && ev.altKey);
     D.cur = sn;
     el.style.translate = `${sn.x}px ${sn.y}px`;
     _dragClearUi(cardEl);
     sn.guides.forEach(([dir, pos, lim]) => _dragGuide(cardEl, k, dir, pos, lim));
   };
+  const MOVE = touch ? 'touchmove' : 'mousemove', UPS = touch ? ['touchend', 'touchcancel'] : ['mouseup'];
   const onUp = () => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener(MOVE, onMove);
+    UPS.forEach(u => document.removeEventListener(u, onUp));
     _dragClearUi(cardEl);
     if (!D.moved) { _dragPaintSel(); return; }
     window._dragJustMoved = Date.now();
@@ -7640,9 +7649,20 @@ document.addEventListener('mousedown', e => {
     if (!D.cur.x && !D.cur.y) delete card.drag[key]; else card.drag[key] = { x: D.cur.x, y: D.cur.y };
     refreshCard(idx);
   };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-}, true);
+  document.addEventListener(MOVE, onMove, { passive: false });
+  UPS.forEach(u => document.addEventListener(u, onUp));
+}
+
+// Celular (editor): o dedo sobre o elemento selecionado arrasta; fora dele, o dedo troca de card
+document.addEventListener('touchstart', e => {
+  if (!_mobEdActive() || e.touches.length !== 1 || !window._dragSel) return;
+  if (e.target.closest && e.target.closest('.drag-reset')) return;
+  const t = e.touches[0], el = _dragHit({ target: e.target, clientX: t.clientX, clientY: t.clientY });
+  const sel = window._dragSel;
+  if (!el || el.dataset.drag !== sel.key || +el.closest('.c-card').dataset.idx !== sel.idx) return;
+  e.preventDefault();
+  _dragBegin(el, t.clientX, t.clientY, true);
+}, { passive: false, capture: true });
 
 // Duplo clique: edita o texto no lugar
 document.addEventListener('dblclick', e => {
@@ -7883,6 +7903,7 @@ function _mobOnStageTap(e) {
   const el = _dragHit(e), card = S.cards[idx];
   let key = el ? el.dataset.drag : null;
   if (!key && card && card.bg.type === 'image' && card.bg.imageSrc) key = 'photo';
+  if (key && key !== 'photo') _dragSelect(idx, key); else _dragDeselect();
   const tool = { title: 'titulo', kicker: 'titulo', body: 'texto', evidence: 'mais', avatar: 'mais', photo: 'foto' }[key];
   if (!tool || window._mobTool === tool) return;
   window._mobTool = tool; window._mobMoreOpen = false;
@@ -7896,6 +7917,7 @@ function _mobRenderSheet(P) {
   ed.querySelector('#me-count').textContent = `Card ${idx + 1} de ${total}`;
   ed.querySelector('#me-dots').innerHTML = total <= 20 ? S.cards.map((_, i) => `<span class="${i === idx ? 'on' : ''}" onclick="selectCard(${i})"></span>`).join('') : '';
   if (_mobCenterIdx() !== idx) _mobGoTo(idx);
+  if (window._dragSel && window._dragSel.idx !== idx) _dragDeselect();
   const sheet = ed.querySelector('#me-sheet'), tool = window._mobTool;
   if (!tool) { sheet.classList.remove('open'); sheet.innerHTML = ''; return; }
 
@@ -7912,12 +7934,14 @@ function _mobRenderSheet(P) {
       ${P.slider('Tamanho', card.title.size, 14, 60, 1, `(v)=>setCardTitleSize(${idx},v)`)}
       <div>${lbl('Cor')}${sw(card.title.color, `setCardTitleColor(${idx},`)}</div>
       ${card.bg.boxMode ? '' : `<div>${lbl('Posição')}${seg([['top', 'Topo'], ['center', 'Centro'], ['bottom', 'Base'], ['split', 'Dividido']].map(([k, l]) => [(card.textAnchor || 'center') === k, l, `setTextAnchor(${idx},'${k}')`]))}</div>`}`;
+    ess += `<div class="me-hint">Para mover, toque no título no card e arraste com o dedo.</div>`;
     more = X.title;
   } else if (tool === 'texto') {
     ess = `${P.toggle('Mostrar texto', card.body.visible, `toggleBodyVisible(${idx})`)}
       ${card.body.visible ? `<div>${lbl('Texto')}<textarea class="me-ta" style="min-height:110px" oninput="S.cards[${idx}].body.text=this.value;refreshCard(${idx})">${esc(card.body.text)}</textarea></div>
       ${P.slider('Tamanho', card.body.size, 10, 28, 1, `(v)=>setCardBodySize(${idx},v)`)}
       <div>${lbl('Cor')}${sw(card.body.color, `setCardBodyColor(${idx},`)}</div>` : ''}`;
+    if (card.body.visible) ess += `<div class="me-hint">Para mover, toque no texto no card e arraste com o dedo.</div>`;
     more = X.body;
   } else if (tool === 'foto') {
     ess = hasImg ? `${seg([[false, 'Trocar foto', `triggerBgImageUpload(${idx})`], [false, 'Remover', `clearBgImage(${idx});renderCardSidebar()`, 'danger']])}
@@ -8034,19 +8058,39 @@ async function _mobExport() {
 }
 
 // ── CARD TEXT EDITING ──
+// Texto editado no card → texto com as marcações (**destaque**, {#cor|…}, {w700|…}).
+// Cada destaque renderizado carrega data-mk; o que o navegador cria ao editar (b, i, quebras) também vira marcação.
+function _domToMarkers(root) {
+  const wrap = (mk, t) => mk === 'b' ? `**${t}**` : mk === 'u' ? `__${t}__` : mk === 'i' ? `_${t}_` : mk === 's' ? `~~${t}~~`
+    : mk.startsWith('bg') ? `{${mk}|${t}}` : mk[0] === 'c' ? `{${mk.slice(1)}|${t}}` : mk[0] === 'w' ? `{${mk}|${t}}` : t;
+  const walk = node => {
+    let out = '';
+    node.childNodes.forEach(n => {
+      if (n.nodeType === 3) { out += n.nodeValue; return; }
+      if (n.nodeType !== 1) return;
+      if (n.tagName === 'BR') { out += '\n'; return; }
+      const inner = walk(n);
+      if (n.tagName === 'DIV' || n.tagName === 'P') { out += (out && !out.endsWith('\n') ? '\n' : '') + inner; return; }
+      if (!inner.trim()) { out += inner; return; }
+      const mk = n.dataset && n.dataset.mk;
+      if (mk) out += wrap(mk, inner);
+      else if (n.tagName === 'B' || n.tagName === 'STRONG') out += wrap('b', inner);
+      else if (n.tagName === 'I' || n.tagName === 'EM') out += wrap('i', inner);
+      else if (n.tagName === 'U') out += wrap('u', inner);
+      else out += inner;
+    });
+    return out;
+  };
+  return walk(root).replace(/\u00a0/g, ' ').replace(/\n+$/, '');
+}
+
 function updateCardText(idx, field, text) {
   if (!S.cards[idx]) return;
-  // Check if the stored text has inline markers — if so, don't overwrite with plain text
-  // from contenteditable (which strips marker syntax on render)
-  const MARKER_RE = /\*\*|__|\{bg?#|\{w\d{3}\||~~|_[^_]/;
+  if (text && text.nodeType) text = _domToMarkers(text);   // veio do card: preserva os destaques
   const current = field === 'title' ? S.cards[idx].title.text
     : field === 'body' ? S.cards[idx].body.text
     : S.cards[idx].cta?.text || '';
-  if (MARKER_RE.test(current)) {
-    // Has markers — only update if text was edited via sidebar textarea (markers preserved)
-    // Skip contenteditable blur updates that would strip the markers
-    return;
-  }
+  if (text === current) return;
   if (field === 'title') S.cards[idx].title.text = text;
   else if (field === 'body') S.cards[idx].body.text = text;
   else if (field === 'cta') S.cards[idx].cta.text = text;
