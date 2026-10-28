@@ -2531,6 +2531,18 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 .pv-usos button.on.texto { border-color:var(--ink2); color:var(--ink); }
 .pv-usos button.on.fora { border-color:var(--border); color:var(--muted); text-decoration:line-through; }
 .pv-off { opacity:0.45; }
+/* Arrastar elementos no card (editor) */
+.c-card [data-drag] { cursor: move; }
+.c-card [data-drag][contenteditable="true"] { cursor: text; }
+.c-card .drag-guide { position:absolute; z-index:40; pointer-events:none; }
+.c-card .drag-guide.v { top:0; bottom:0; width:0; border-left:1px dashed var(--accent); }
+.c-card .drag-guide.h { left:0; right:0; height:0; border-top:1px dashed var(--accent); }
+.c-card .drag-guide.limit { border-color:#e5484d; }
+.c-card .drag-reset { position:absolute; z-index:41; font:600 9px 'Poppins',sans-serif; padding:2px 7px; border-radius:10px; background:var(--accent); color:#fff; cursor:pointer; white-space:nowrap; }
+.c-card .box-edge { position:absolute; z-index:30; height:10px; cursor:ns-resize; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .15s; }
+.c-card .box-edge::after { content:''; width:34px; height:4px; border-radius:3px; background:#fff; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
+.c-card:hover .box-edge { opacity:1; }
+.tpl-mini-card .box-edge, .tpl-mini-card .drag-reset { display:none; }
 @media (max-width: 768px) {
   .rt-acts button { padding:5px 9px; } .rt-mc { flex-basis:78px; }
   /* No celular a barra lateral rola com a página (fixa, cobria metade da tela) */
@@ -5815,6 +5827,7 @@ function _buildCardsV2(items, tpl, b) {
     } else if (card.evidence) card.evidence.visible = false;
     card.ctaSrc = it.ctaText || '';
     card.provas = it.provas || [];
+    if (it.drag) card.drag = JSON.parse(JSON.stringify(it.drag));
     if (it.role === 'fechamento' && it.ctaText) {
       // Com botão: a chamada vai no botão. Sem botão (família de post): entra no fim do texto
       if (card.cta.visible) card.cta.text = it.ctaText;
@@ -5829,6 +5842,7 @@ function _buildCardsV2(items, tpl, b) {
         if (!card.bg.boxMode && !_evidenceOn(card)) { card.bg.boxMode = true; card.bg.boxTextLayout = 'middle'; card.bg.boxY = 31; card.bg.boxH = 40; card.bg.boxW = 88; }
       }
     }
+    if (it.boxManual && card.bg.boxMode) Object.assign(card.bg, { boxY: it.boxManual.boxY, boxH: it.boxManual.boxH, boxManual: { ...it.boxManual } });
     _ensureContrast(card); _balanceTextCard(card, tpl);
     if (card.textAnchor === 'split') _splitLead(card);
     fitCardText(card); _limitTitleLines(card);
@@ -6558,7 +6572,7 @@ function renderFinal() {
       <button onclick="scrollCarousel(1)" style="position:absolute;right:-16px;top:50%;transform:translateY(-50%);background:var(--bg);border:1.5px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;z-index:10;color:var(--ink)">›</button>
     </div>
     <div style="font-size:0.72rem;color:var(--muted);margin-top:-12px">
-      Clique em qualquer card para editar no painel lateral · Arraste imagens para reposicionar
+      Clique num texto para mover · duplo clique para editar · Option/Alt solta o ímã · setas ajustam 1px
     </div>
     <div class="analysis-box">
       <div class="analysis-title">Análise Estratégica</div>
@@ -6836,7 +6850,7 @@ function _evidenceHtml(card) {
   const top = L.r.y + Math.max(0, (L.r.h - L.height) / 2);
   const mHtml = L.lines.map(l => L.style === 'marker' ? `<span style="background:#ffe45c;padding:0 2px;">${_escHtml(l)}</span>` : _escHtml(l)).join('<br>');
   const border = isColorDark(card.bg.color || '#ffffff') ? 'none' : '1px solid rgba(20,18,16,0.14)';
-  return `<div data-evidence style="position:absolute;left:${L.r.x}px;top:${top}px;width:${L.r.w}px;height:${L.height}px;z-index:2;background:#ffffff;border:${border};border-radius:6px;padding:${L.pad}px;box-sizing:border-box;color:#111;pointer-events:none;">
+  return `<div data-evidence data-drag="evidence" style="position:absolute;left:${L.r.x}px;top:${top}px;width:${L.r.w}px;height:${L.height}px;z-index:2;background:#ffffff;border:${border};border-radius:6px;padding:${L.pad}px;box-sizing:border-box;color:#111;${_dragCss(card, 'evidence')}">
     <div style="font:700 6px/7px 'Roboto',sans-serif;letter-spacing:1px;text-transform:uppercase;color:${vColor};margin-bottom:6px;white-space:nowrap;overflow:hidden;">${_escHtml(e.veiculo || 'Fonte')}</div>
     <div style="font-family:${L.fam};font-weight:${L.weight};font-size:${L.size}px;line-height:1.18;white-space:nowrap;">${mHtml}</div>
     ${L.dLines.length ? `<div style="margin-top:7px;border-left:2px solid ${vColor};padding-left:${L.dBar - 2}px;font:700 ${L.dSize}px/1.3 ${L.dFam};color:#111;white-space:nowrap;">${L.dLines.map(_escHtml).join('<br>')}</div>` : ''}
@@ -6848,7 +6862,8 @@ function _drawEvidence(ctx, card, SC) {
   const L = _evidenceLayout(card), e = card.evidence;
   const vColor = e.color || '#b3261e';
   const top = L.r.y + Math.max(0, (L.r.h - L.height) / 2);
-  const X = L.r.x * SC, Y = top * SC, W = L.r.w * SC, H = L.height * SC, P = L.pad * SC;
+  const dE = _dragOff(card, 'evidence');
+  const X = (L.r.x + dE.x) * SC, Y = (top + dE.y) * SC, W = L.r.w * SC, H = L.height * SC, P = L.pad * SC;
   ctx.save();
   ctx.fillStyle = '#ffffff';
   roundedRect(ctx, X, Y, W, H, 6 * SC); ctx.fill();
@@ -7066,7 +7081,7 @@ function renderCardHtml(card, idx, total) {
         const imgScale   = card.bg.imageScale || 1;
         const rendW = Math.round(natW * coverScale * imgScale);
         const rendH = Math.round(natH * coverScale * imgScale);
-        layers += `<div data-box-img="${idx}" style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};"><img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:${rendW}px;height:${rendH}px;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px);transform-origin:center;pointer-events:none;user-select:none;" draggable="false"/></div>${swapBtn}`;
+        layers += `<div data-box-img="${idx}" style="position:absolute;left:${boxLeft}%;top:${bxY}%;width:${bxW}%;height:${bxH}%;overflow:hidden;z-index:1;border-radius:${boxRadius};"><img src="${card.bg.imageSrc}" data-card-img="${idx}" style="position:absolute;left:50%;top:50%;width:${rendW}px;height:${rendH}px;transform:translate(-50%,-50%) translate(${bxIX}px,${bxIY}px);transform-origin:center;pointer-events:none;user-select:none;" draggable="false"/></div>${swapBtn}${_boxEdgeHtml(card)}`;
       }
     } else {
       // ── FULL MODE ── imagem com a proporção original; o card funciona como máscara
@@ -7154,7 +7169,7 @@ function renderCardHtml(card, idx, total) {
     const bv = getBrand(), pc = _profileColors(card);
     const initials = (bv.handle||'S').replace('@','').slice(0,2).toUpperCase();
     const pTop = card.avatar.placement === 'bottom' ? `bottom:${card.cta.visible ? 80 : 24}px;` : `top:${_profileTopPx(card)}px;`;
-    layers += `<div style="position:absolute;${pTop}left:${_padX(card)}px;right:${_padX(card)}px;z-index:6;display:flex;align-items:center;gap:8px;pointer-events:none;">
+    layers += `<div data-drag="avatar" style="position:absolute;${pTop}left:${_padX(card)}px;right:${_padX(card)}px;z-index:6;display:flex;align-items:center;gap:8px;${_dragCss(card, 'avatar')}">
       <div style="width:30px;height:30px;border-radius:50%;background:${bv.primary||'#141210'};flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;">
         ${bv.avatarImg ? `<img src="${bv.avatarImg}" style="width:100%;height:100%;object-fit:cover;"/>` : `<span style="font:700 10px 'Roboto',sans-serif;color:#fff;">${initials}</span>`}
       </div>
@@ -7175,7 +7190,7 @@ function renderCardHtml(card, idx, total) {
     const avOX = card.avatar.offsetX || 0;
     const avOY = card.avatar.offsetY || 0;
     // Instagram gradient ring
-    layers += `<div style="position:absolute;top:${avTop};bottom:${avBottom};left:20px;right:20px;z-index:6;display:flex;align-items:center;gap:7px;transform:translate(${avOX}px,${avOY}px);">
+    layers += `<div data-drag="avatar" style="position:absolute;top:${avTop};bottom:${avBottom};left:20px;right:20px;z-index:6;display:flex;align-items:center;gap:7px;transform:translate(${avOX}px,${avOY}px);${_dragCss(card, 'avatar')}">
       <div style="width:32px;height:32px;border-radius:50%;background:conic-gradient(from 30deg,#5f46d2,#cd3b72,#e33960,#f59756,#fec053,#5f46d2);padding:1.5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
         <div style="width:28px;height:28px;border-radius:50%;background:${bv.primary||'#141210'};display:flex;align-items:center;justify-content:center;overflow:hidden;">
           ${bv.avatarImg ? `<img src="${bv.avatarImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>` : `<span style="font-family:'Roboto',sans-serif;font-size:0.58rem;font-weight:400;color:#fff;">${initials}</span>`}
@@ -7214,18 +7229,18 @@ function renderCardHtml(card, idx, total) {
 
   let bodyHtml = parseInlineMarkers(card.body.text || '');
 
-  const kickerHtml = (_kickerOn(card) && !card.bg.boxMode) ? `<div data-field="kicker" style="font-family:${card.kicker.fontFamily || card.title.fontFamily};font-weight:${card.kicker.weight || 900};font-size:${card.kicker.size}px;line-height:1;color:${card.kicker.color || card.title.color};text-align:${card.title.align};white-space:nowrap;letter-spacing:-0.02em;">${_escHtml(card.kicker.text)}</div>` : '';
+  const kickerHtml = (_kickerOn(card) && !card.bg.boxMode) ? `<div data-field="kicker" data-drag="kicker" style="${_dragCss(card, 'kicker')}font-family:${card.kicker.fontFamily || card.title.fontFamily};font-weight:${card.kicker.weight || 900};font-size:${card.kicker.size}px;line-height:1;color:${card.kicker.color || card.title.color};text-align:${card.title.align};white-space:nowrap;letter-spacing:-0.02em;">${_escHtml(card.kicker.text)}</div>` : '';
   layers += `<div style="position:absolute;top:${textTop};left:${padX}px;right:${padX}px;bottom:${textBottom};z-index:6;display:flex;flex-direction:column;justify-content:${justify};gap:6px;transform:translate(${titleOffX}px,${titleOffY}px);">
     ${kickerHtml}
-    <div contenteditable="true" spellcheck="false"
-      data-field="title" data-idx="${idx}"
+    <div contenteditable="${_editAttr()}" spellcheck="false"
+      data-field="title" data-idx="${idx}" data-drag="title"
       onblur="updateCardText(${idx},'title',this.innerText)"
-      style="font-family:${card.title.fontFamily};font-weight:${card.title.weight};font-size:${card.title.size}px;line-height:1.1;color:${card.title.color};text-align:${card.title.align};outline:none;cursor:text;font-style:${card.title.italic?'italic':'normal'};text-decoration:${card.title.underline?'underline':'none'};text-transform:${card.title.uppercase?'uppercase':'none'};"
+      style="${_dragCss(card, 'title')}font-family:${card.title.fontFamily};font-weight:${card.title.weight};font-size:${card.title.size}px;line-height:1.1;color:${card.title.color};text-align:${card.title.align};outline:none;cursor:text;font-style:${card.title.italic?'italic':'normal'};text-decoration:${card.title.underline?'underline':'none'};text-transform:${card.title.uppercase?'uppercase':'none'};"
     >${titleHtml}</div>
-    ${(!card.bg.boxMode && card.body.visible && card.body.text) ? `<div contenteditable="true" spellcheck="false"
-      data-field="body" data-idx="${idx}"
+    ${(!card.bg.boxMode && card.body.visible && card.body.text) ? `<div contenteditable="${_editAttr()}" spellcheck="false"
+      data-field="body" data-idx="${idx}" data-drag="body"
       onblur="updateCardText(${idx},'body',this.innerText)"
-      style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyPush};margin-left:${bodyOffX}px;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
+      style="${_dragCss(card, 'body')}font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyPush};margin-left:${bodyOffX}px;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
     >${bodyHtml}</div>` : ''}
   </div>`;
 
@@ -7233,10 +7248,10 @@ function renderCardHtml(card, idx, total) {
   if (card.bg.boxMode && card.body.visible && card.body.text) {
     const bodyAbsY = 200 + (card.body.offsetY || 0); // center(200) + offsetY
     layers += `<div style="position:absolute;top:0;left:${padX}px;right:${padX}px;z-index:6;transform:translateY(${bodyAbsY}px);">
-      <div contenteditable="true" spellcheck="false"
-        data-field="body" data-idx="${idx}"
+      <div contenteditable="${_editAttr()}" spellcheck="false"
+        data-field="body" data-idx="${idx}" data-drag="body"
         onblur="updateCardText(${idx},'body',this.innerText)"
-        style="font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
+        style="${_dragCss(card, 'body')}font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
       >${bodyHtml}</div>
     </div>`;
   }
@@ -7372,6 +7387,230 @@ function cardTouchStart(e, idx) {
   };
   document.addEventListener('touchmove', onMove, { passive: false });
   document.addEventListener('touchend', onEnd);
+}
+
+// ── ARRASTAR ELEMENTOS NO CARD (desktop) ──
+// 1 clique seleciona e arrasta; 2 cliques editam o texto. O deslocamento fica em card.drag[elemento]
+// (px da prévia 320×400), separado do layout do template; o export aplica o mesmo valor.
+const DRAG_SNAP = 5;
+function _dragOff(card, k) { const d = card.drag && card.drag[k]; return { x: (d && d.x) || 0, y: (d && d.y) || 0 }; }
+function _dragCss(card, k) { const d = _dragOff(card, k); return (d.x || d.y) ? `translate:${d.x}px ${d.y}px;` : ''; }
+// Celular continua editando com 1 toque até a etapa 2 (gestos de toque)
+function _isTouchUI() { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } }
+function _editAttr() { return _isTouchUI() ? 'true' : 'false'; }
+
+// Retângulo do elemento em px do card: texto pela área do conteúdo, caixas pelo contorno
+function _dragRect(el, cardEl, k) {
+  const cr = cardEl.getBoundingClientRect();
+  let r;
+  if (el.dataset.drag === 'evidence' || el.dataset.boxImg != null) r = el.getBoundingClientRect();
+  else { const rg = document.createRange(); rg.selectNodeContents(el); r = rg.getBoundingClientRect(); }
+  return { l: (r.left - cr.left) * k, t: (r.top - cr.top) * k, r: (r.right - cr.left) * k, b: (r.bottom - cr.top) * k };
+}
+
+function _dragClearUi(cardEl) {
+  (cardEl || document).querySelectorAll('.drag-guide, .drag-reset').forEach(n => n.remove());
+}
+function _dragGuide(cardEl, k, dir, pos, limit) {
+  const g = document.createElement('div');
+  g.className = `drag-guide ${dir}${limit ? ' limit' : ''}`;
+  g.style[dir === 'v' ? 'left' : 'top'] = (pos / k) + 'px';
+  cardEl.appendChild(g);
+}
+
+// Seleção: contorno + botão "voltar ao padrão" quando há ajuste manual
+function _dragPaintSel() {
+  document.querySelectorAll('[data-drag].drag-on').forEach(n => { n.classList.remove('drag-on'); n.style.outline = ''; });
+  document.querySelectorAll('.drag-reset').forEach(n => n.remove());
+  const sel = window._dragSel;
+  if (!sel) return;
+  const cardEl = document.querySelector(`#carousel-scroll .c-card[data-idx="${sel.idx}"]`);
+  const el = cardEl && cardEl.querySelector(`[data-drag="${sel.key}"]`);
+  if (!el) return;
+  el.classList.add('drag-on');
+  el.style.outline = '1px dashed var(--accent)'; el.style.outlineOffset = '3px';
+  const d = _dragOff(S.cards[sel.idx], sel.key);
+  if (d.x || d.y) {
+    const k = 320 / cardEl.getBoundingClientRect().width, R = _dragRect(el, cardEl, k);
+    const b = document.createElement('div');
+    b.className = 'drag-reset'; b.textContent = '↺ padrão'; b.title = 'Voltar à posição do template';
+    b.style.left = Math.max(4, Math.min(320 - 64, R.r - 56)) / k + 'px';
+    b.style.top = Math.max(4, R.t - 18) / k + 'px';
+    b.onmousedown = e => { e.preventDefault(); e.stopPropagation(); _dragReset(sel.idx, sel.key); };
+    cardEl.appendChild(b);
+  }
+}
+// Depois de mudar o layout (ex.: altura do box), o ajuste manual continua dentro da margem
+function _dragReclamp(idx) {
+  const card = S.cards[idx];
+  const cardEl = document.querySelector(`#carousel-scroll .c-card[data-idx="${idx}"]`);
+  if (!card || !card.drag || !cardEl) return false;
+  const k = 320 / cardEl.getBoundingClientRect().width;
+  let changed = false;
+  for (const key of Object.keys(card.drag)) {
+    const el = cardEl.querySelector(`[data-drag="${key}"]`);
+    if (!el) continue;
+    const d0 = _dragOff(card, key), now = _dragRect(el, cardEl, k);
+    const sn = _dragSnap({ base: { l: now.l - d0.x, r: now.r - d0.x, t: now.t - d0.y, b: now.b - d0.y }, others: [], padX: _padX(card) }, d0.x, d0.y, true);
+    if (sn.x !== d0.x || sn.y !== d0.y) { card.drag[key] = { x: sn.x, y: sn.y }; changed = true; }
+  }
+  return changed;
+}
+function _dragSelect(idx, key) { window._dragSel = { idx, key }; _dragPaintSel(); }
+function _dragDeselect() { window._dragSel = null; _dragPaintSel(); }
+function _dragReset(idx, key) {
+  const c = S.cards[idx];
+  if (c && c.drag) { delete c.drag[key]; if (!Object.keys(c.drag).length) delete c.drag; }
+  refreshCard(idx);
+}
+
+// Ímã: aproxima a borda/centro do elemento das referências (margem do texto, centro, outros elementos,
+// posição original); passa da distância do ímã → fica onde o usuário soltar
+function _dragSnap(D, x, y, free) {
+  const R = { l: D.base.l + x, r: D.base.r + x, t: D.base.t + y, b: D.base.b + y };
+  const guides = [];
+  if (!free) {
+    // Prioridade 0 = margem do template e posição original (o alinhamento padrão vence); 1 = demais referências
+    const near = (cands) => { let best = null; for (const [cur, target, pr] of cands) { const dd = target - cur; if (Math.abs(dd) > DRAG_SNAP) continue; if (!best || pr < best.pr || (pr === best.pr && Math.abs(dd) < Math.abs(best.dd))) best = { dd, target, pr }; } return best; };
+    const cx = (R.l + R.r) / 2, cy = (R.t + R.b) / 2;
+    const xs = [[R.l, D.padX, 0], [R.l, D.base.l, 0], [R.r, 320 - D.padX, 1], [cx, 160, 1]];
+    const ys = [[R.t, D.base.t, 0], [cy, 200, 1]];
+    for (const o of D.others) { xs.push([R.l, o.l, 1], [R.r, o.r, 1]); ys.push([R.t, o.t, 1], [R.b, o.b, 1], [R.t, o.b, 1], [R.b, o.t, 1]); }
+    const sx = near(xs), sy = near(ys);
+    if (sx) { x += sx.dd; guides.push(['v', sx.target]); }
+    if (sy) { y += sy.dd; guides.push(['h', sy.target]); }
+  }
+  // Margem de segurança (6%): o elemento não sai dela
+  const M = SAFE_MARGIN, w = D.base.r - D.base.l, h = D.base.b - D.base.t;
+  const minX = M - D.base.l, maxX = 320 - M - w - D.base.l, minY = M - D.base.t, maxY = 400 - M - h - D.base.t;
+  if (x < minX) { x = minX; guides.push(['v', M, true]); }
+  if (x > maxX) { x = maxX; guides.push(['v', 320 - M, true]); }
+  if (y < minY) { y = minY; guides.push(['h', M, true]); }
+  if (y > maxY) { y = maxY; guides.push(['h', 400 - M, true]); }
+  return { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, guides };
+}
+
+document.addEventListener('mousedown', e => {
+  if (_isTouchUI() || e.button !== 0) return;
+  const edge = e.target.closest('[data-box-edge]');
+  if (edge) { _boxEdgeStart(e, edge); return; }
+  if (e.target.closest('.drag-reset')) return;
+  const el = e.target.closest('#carousel-scroll .c-card [data-drag]');
+  // Clique fora do texto em edição encerra a edição
+  document.querySelectorAll('#carousel-scroll .c-card [data-drag][contenteditable="true"]').forEach(n => { if (n !== el) { n.blur(); n.contentEditable = 'false'; } });
+  if (!el) { if (window._dragSel && !e.target.closest('#sidebar-body')) _dragDeselect(); return; }
+  if (el.isContentEditable) return;               // editando: o mouse seleciona texto
+  e.preventDefault(); e.stopPropagation();
+  const cardEl = el.closest('.c-card'), idx = +cardEl.dataset.idx, key = el.dataset.drag, card = S.cards[idx];
+  if (!card) return;
+  if (S.activeCardIdx !== idx) selectCard(idx);
+  _dragSelect(idx, key);
+  const k = 320 / cardEl.getBoundingClientRect().width;
+  const d0 = _dragOff(card, key), now = _dragRect(el, cardEl, k);
+  const others = [...cardEl.querySelectorAll('[data-drag], [data-box-img]')].filter(n => n !== el).map(n => _dragRect(n, cardEl, k));
+  const D = { idx, key, el, cardEl, k, sx: e.clientX, sy: e.clientY, d0, moved: false, padX: _padX(card),
+    base: { l: now.l - d0.x, r: now.r - d0.x, t: now.t - d0.y, b: now.b - d0.y }, others, cur: d0 };
+  document.querySelectorAll('.drag-reset').forEach(n => n.remove());
+  const onMove = mv => {
+    const dx = (mv.clientX - D.sx) * k, dy = (mv.clientY - D.sy) * k;
+    if (!D.moved && Math.hypot(dx, dy) < 3) return;
+    D.moved = true;
+    const sn = _dragSnap(D, D.d0.x + dx, D.d0.y + dy, mv.altKey);
+    D.cur = sn;
+    el.style.translate = `${sn.x}px ${sn.y}px`;
+    _dragClearUi(cardEl);
+    sn.guides.forEach(([dir, pos, lim]) => _dragGuide(cardEl, k, dir, pos, lim));
+  };
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    _dragClearUi(cardEl);
+    if (!D.moved) { _dragPaintSel(); return; }
+    card.drag = card.drag || {};
+    if (!D.cur.x && !D.cur.y) delete card.drag[key]; else card.drag[key] = { x: D.cur.x, y: D.cur.y };
+    refreshCard(idx);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}, true);
+
+// Duplo clique: edita o texto no lugar
+document.addEventListener('dblclick', e => {
+  if (_isTouchUI()) return;
+  const el = e.target.closest('#carousel-scroll .c-card [data-drag][data-field]');
+  if (!el || el.isContentEditable || el.dataset.field === 'kicker') return;
+  el.contentEditable = 'true';
+  el.style.outline = 'none';
+  el.focus();
+  const rg = document.caretRangeFromPoint ? document.caretRangeFromPoint(e.clientX, e.clientY) : null;
+  if (rg) { const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rg); }
+  el.addEventListener('blur', () => { el.contentEditable = 'false'; }, { once: true });
+});
+
+// Setas: ajuste fino de 1px (Shift = 10px) no elemento selecionado; Esc solta a seleção
+document.addEventListener('keydown', e => {
+  const sel = window._dragSel;
+  if (!sel || S.step !== 4) return;
+  const a = document.activeElement;
+  if (a && (a.isContentEditable || /^(input|textarea|select)$/i.test(a.tagName))) return;
+  if (e.key === 'Escape') { _dragDeselect(); return; }
+  const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!mv) return;
+  e.preventDefault();
+  const card = S.cards[sel.idx];
+  const cardEl = document.querySelector(`#carousel-scroll .c-card[data-idx="${sel.idx}"]`);
+  const el = cardEl && cardEl.querySelector(`[data-drag="${sel.key}"]`);
+  if (!card || !el) return;
+  const step = e.shiftKey ? 10 : 1, k = 320 / cardEl.getBoundingClientRect().width;
+  const d0 = _dragOff(card, sel.key), now = _dragRect(el, cardEl, k);
+  const D = { base: { l: now.l - d0.x, r: now.r - d0.x, t: now.t - d0.y, b: now.b - d0.y }, others: [], padX: _padX(card) };
+  const sn = _dragSnap(D, d0.x + mv[0] * step, d0.y + mv[1] * step, true);
+  card.drag = card.drag || {};
+  card.drag[sel.key] = { x: sn.x, y: sn.y };
+  refreshCard(sel.idx);
+});
+
+// ── Altura do box da imagem: alças na borda de cima e de baixo ──
+function _boxEdgeHtml(card) {
+  if (!card.templateId) return '';
+  const bxW = card.bg.boxW != null ? card.bg.boxW : 100, bxH = card.bg.boxH != null ? card.bg.boxH : 42, bxY = card.bg.boxY != null ? card.bg.boxY : 10;
+  const left = (100 - bxW) / 2;
+  const h = (pos, top) => `<div class="box-edge" data-box-edge="${pos}" title="Arraste para mudar a altura da imagem" style="left:${left + bxW / 2 - 10}%;width:20%;top:calc(${top}% - 5px);"></div>`;
+  return h('top', bxY) + h('bottom', bxY + bxH);
+}
+function _boxEdgeStart(e, edge) {
+  e.preventDefault(); e.stopPropagation();
+  const cardEl = edge.closest('.c-card'), idx = +cardEl.dataset.idx, card = S.cards[idx];
+  if (!card) return;
+  if (S.activeCardIdx !== idx) selectCard(idx);
+  const pos = edge.dataset.boxEdge, k = 320 / cardEl.getBoundingClientRect().width;
+  const y0 = card.bg.boxY != null ? card.bg.boxY : 10, h0 = card.bg.boxH != null ? card.bg.boxH : 42, sy = e.clientY;
+  const minTop = (SAFE_MARGIN + 10) / 4, maxBot = 100 - (SAFE_MARGIN + 10) / 4;
+  let moved = false;
+  const onMove = mv => {
+    const dPct = (mv.clientY - sy) * k / 4;              // 1% da altura = 4px da prévia
+    if (!moved && Math.abs(dPct) < 0.5) return;
+    moved = true;
+    if (pos === 'bottom') card.bg.boxH = Math.round(Math.max(20, Math.min(maxBot - y0, h0 + dPct)) * 2) / 2;
+    else {
+      const ny = Math.max(minTop, Math.min(y0 + h0 - 20, y0 + dPct));
+      card.bg.boxY = Math.round(ny * 2) / 2; card.bg.boxH = Math.round((y0 + h0 - ny) * 2) / 2;
+    }
+    _layoutBoxText(card);
+    _undoIsRestoring = true;                            // um único passo de desfazer por arrasto
+    try { refreshCard(idx); } finally { _undoIsRestoring = false; }
+  };
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    if (!moved) return;
+    card.bg.boxManual = { boxY: card.bg.boxY, boxH: card.bg.boxH };
+    fitCardText(card); _layoutBoxText(card);
+    refreshCard(idx);
+    if (_dragReclamp(idx)) refreshCard(idx);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 }
 
 // ── CARD TEXT EDITING ──
@@ -7531,7 +7770,7 @@ function renderCardSidebar() {
   if (titleEl) titleEl.textContent = `Card ${idx + 1} de ${total}`;
   if (descEl)  descEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;">
-      <span>${card.layout === 'cover' ? '🖼 Capa' : card.layout === 'cta' ? '🎯 CTA' : '📝 Conteúdo'} · Clique inline para editar</span>
+      <span>${card.layout === 'cover' ? '🖼 Capa' : card.layout === 'cta' ? '🎯 CTA' : '📝 Conteúdo'} · Arraste para mover, duplo clique para editar</span>
       <span style="display:flex;gap:4px;">
         <button class="icon-btn" onclick="selectCard(${Math.max(0,idx-1)})" ${idx===0?'disabled':''}
           style="width:24px;height:24px;font-size:0.9rem;">‹</button>
@@ -8750,6 +8989,7 @@ function refreshCard(idx) {
       if (card.bg.boxMode) _updateBoxHandlePositions(idx);
     }
   }
+  if (window._dragSel && window._dragSel.idx === idx) _dragPaintSel();
   clearTimeout(_cardEditSaveTimer);
   _cardEditSaveTimer = setTimeout(() => { autoSave(); }, 1500);
 }
@@ -9918,6 +10158,7 @@ async function applyTemplateV2(tpl) {
     body: (c.leadSrc && c.body.text === c.leadSrc.used) ? c.leadSrc.orig : (!c.cta?.visible && c.ctaSrc && c.body.text.endsWith(c.ctaSrc)) ? c.body.text.slice(0, -c.ctaSrc.length).trim() : c.body.text,
     ctaText: c.cta?.visible ? c.cta.text : (c.ctaSrc || ''),
     provas: (c.evidence?.visible && c.evidence.provaId) ? [c.evidence.provaId] : (c.provas || []),
+    drag: c.drag || null, boxManual: c.bg.boxManual || null,
     imageSrc: c.bg.imageSrc || null, imageMime: c.bg.imageMime || null, imgNaturalW: c.bg.imgNaturalW, imgNaturalH: c.bg.imgNaturalH,
   }));
   await _preloadTemplateFonts(tpl, b);
@@ -10913,10 +11154,11 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   // ── Layer 5a: Avatar estilo perfil (nome + selo / @) ──
   if (card.avatar.visible && card.avatar.style === 'profile') {
     const pc = _profileColors(card);
-    const R = 15 * SC, cx = _padX(card) * SC + R;
-    const cy = card.avatar.placement === 'bottom'
+    const dA = _dragOff(card, 'avatar');
+    const R = 15 * SC, cx = _padX(card) * SC + R + dA.x * SC;
+    const cy = (card.avatar.placement === 'bottom'
       ? EXH - (card.cta.visible ? 80 : 24) * SC - R
-      : _profileTopPx(card) * SC + R;
+      : _profileTopPx(card) * SC + R) + dA.y * SC;
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = b.primary || '#141210'; ctx.fill();
     if (b.avatarImg) { try { await drawCircleImage(ctx, b.avatarImg, cx, cy, R); } catch(e) {} }
@@ -10949,10 +11191,11 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     // Y position
     const ctaRowH   = card.cta.visible ? Math.round(58 * SC) : 0; // 38px btn + 20px pad
     const hdrHeight = card.header.visible ? Math.round(28 * SC) : Math.round(12 * SC);
-    let avX = avPad + avR + avOX;
-    let avY = avPlac === 'top'
+    const dA2 = _dragOff(card, 'avatar');
+    let avX = avPad + avR + avOX + dA2.x * SC;
+    let avY = (avPlac === 'top'
       ? hdrHeight + avR + avOY
-      : EXH - ctaRowH - Math.round(20 * SC) - avR + avOY;
+      : EXH - ctaRowH - Math.round(20 * SC) - avR + avOY) + dA2.y * SC;
 
     // Instagram gradient ring (purple→red→orange→yellow)
     ctx.save();
@@ -11127,14 +11370,17 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       const kx = tAlign === 'center' ? (EXW - kw) / 2 + tOffX : tAlign === 'right' ? EXW - tPad - kw + tOffX : tPad + tOffX;
       if (ctx.letterSpacing !== undefined) ctx.letterSpacing = `${-0.02 * kFS}px`;
       ctx.textAlign = 'left';
-      ctx.fillText(card.kicker.text, kx, blockTop + tOffY + baselineIn(kStyle, kFS, 1.0));
+      const dK = _dragOff(card, 'kicker');
+      ctx.fillText(card.kicker.text, kx + dK.x * SC, blockTop + tOffY + baselineIn(kStyle, kFS, 1.0) + dK.y * SC);
       if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
       ctx.restore();
     }
     const tBase = baselineIn(tBlockStyle, tFS, 1.1);
     let y = blockTop + kickerBlockH + tOffY + tBase;
 
-    // Draw title lines
+    // Draw title lines (com o deslocamento manual do usuário)
+    const dT = _dragOff(card, 'title');
+    ctx.save(); ctx.translate(dT.x * SC, dT.y * SC);
     for (const { segs, rawLine } of titleWrapped) {
       // Compute line width for alignment
       const lineW = measureSegments(ctx, segs, tFS);
@@ -11162,6 +11408,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
       y += tFS * 1.1;
     }
+    ctx.restore();
 
     // Body (normal mode — rendered as part of title block)
     if (bodyWrapped2.length) {
@@ -11174,6 +11421,8 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       } else y = y - tBase + GAP_SC + bOffYsc + bBase2;
       const bShiftX = tOffX + (card.body.offsetX || 0) * SC; // corpo acompanha o translate do bloco
       const bAlign = card.body.align || 'left';
+      const dB = _dragOff(card, 'body');
+      ctx.save(); ctx.translate(dB.x * SC, dB.y * SC);
       for (const { segs: bSegs } of bodyWrapped2) {
         const bLineW = measureSegments(ctx, bSegs, bFS2);
         let bX;
@@ -11196,6 +11445,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
         y += bFS2 * 1.42;
       }
+      ctx.restore();
     }
   }
 
@@ -11216,7 +11466,8 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     const bAlign3 = card.body.align || 'left';
     const bOffY3 = (card.body.offsetY || 0) * SC;
     let by = (EXH / 2) + bOffY3 + baselineIn(bBlockStyle3, bFS3, 1.42);
-
+    const dB3 = _dragOff(card, 'body');
+    ctx.save(); ctx.translate(dB3.x * SC, dB3.y * SC);
     for (const { segs: bSegs3 } of bodyWrapped3) {
       const bLineW3 = measureSegments(ctx, bSegs3, bFS3);
       let bX3;
@@ -11237,6 +11488,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
       by += bFS3 * 1.42;
     }
+    ctx.restore();
   }
 
   // ── Layer 7: CTA button ──
