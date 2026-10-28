@@ -2021,6 +2021,9 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 }
 .deep-analysis-card tr:last-child td { border-bottom: none; }
 
+/* Puxar a página para baixo no topo não recarrega (e não perde o carrossel em andamento) */
+html, body { overscroll-behavior-y: none; }
+
 /* ── EDITOR DO CARROSSEL NO CELULAR ── */
 #mob-editor { position:fixed; left:0; right:0; top:0; height:100%; z-index:90; background:var(--bg); display:flex; flex-direction:column; }
 body.mob-ed-open { overflow:hidden; }
@@ -4564,6 +4567,7 @@ function resetAll() {
   const ccp = document.getElementById('card-color-panel');
   if (ccp) ccp.remove();
   activeSessionId = null; // new carousel = new session
+  try { sessionStorage.removeItem('sc_resume'); } catch (e) {}
   Object.assign(S, {
     step:0, inputMode:'text', insumo:'', insumoFinal:'', isUrl:false, urlExtracted:false,
     imageData:null, imageAnalyzed:false, imageMime:'image/jpeg', cardImages:{}, editedCards: new Set(),
@@ -12673,6 +12677,7 @@ function _clearSession() {
   try { localStorage.removeItem(_SL_KEY); } catch(e) {}
   try { localStorage.removeItem(_SL_BAK); } catch(e) {}
   try { sessionStorage.removeItem(_SL_BAK); } catch(e) {}
+  try { sessionStorage.removeItem('sc_resume'); } catch(e) {}   // outra conta não vê o carrossel desta
   try { document.cookie = _SL_BAK + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; } catch(e) {}
 }
 
@@ -12748,7 +12753,7 @@ function hideLoginScreen() {
   document.querySelector('.app') && (document.querySelector('.app').style.visibility = 'visible');
   document.querySelector('header') && (document.querySelector('header').style.visibility = 'visible');
   // Verifica acesso e sincroniza marcas/templates; plano em seguida
-  checkAccessAndSync().then(() => fetchUserPlan()).catch(() => {});
+  checkAccessAndSync().then(() => { _offerResume(); return fetchUserPlan(); }).catch(() => {});
 }
 
 // ── ACESSO + SYNC ENTRE APARELHOS ──
@@ -12812,7 +12817,7 @@ function showNoAccessScreen(email) {
       O Storycards está em beta fechado. ${email ? `O e-mail <strong style="color:var(--ink)">${email}</strong> ainda não está na lista de acesso.` : ''}
       Fale com a gente no Instagram <a href="https://www.instagram.com/storycards__/" target="_blank" rel="noopener" style="color:var(--accent)">@storycards__</a>.
     </p>
-    <button class="login-btn" onclick="_clearSession();supabaseClient.auth.signOut().then(()=>location.reload())">Entrar com outro e-mail</button>
+    <button class="login-btn" onclick="window._allowUnload=true;_clearSession();supabaseClient.auth.signOut().then(()=>location.reload())">Entrar com outro e-mail</button>
   </div>`;
   document.body.appendChild(el);
 }
@@ -13034,6 +13039,36 @@ async function migrateImagesOnNewSession(newId) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Recarregou sem querer (puxar a tela, fechar a aba): continuar de onde parou ──
+// A sessão já fica salva na conta (autoSave); a aba lembra qual era para oferecer a volta.
+function _rememberSession() {
+  if (!activeSessionId) return;
+  try { sessionStorage.setItem('sc_resume', JSON.stringify({ id: activeSessionId, tema: S.triagem?.tema_central || '', step: S.step })); } catch (e) {}
+}
+function _offerResume() {
+  if (window._resumeOffered) return;
+  window._resumeOffered = true;
+  let r = null;
+  try { r = JSON.parse(sessionStorage.getItem('sc_resume') || 'null'); } catch (e) {}
+  if (!r || !r.id || S.step !== 0 || document.getElementById('resume-modal')) return;
+  const m = document.createElement('div');
+  m.id = 'resume-modal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML = `<div style="background:var(--bg);color:var(--ink);border:1px solid var(--border);border-radius:14px;padding:22px;max-width:340px;width:100%;display:flex;flex-direction:column;gap:12px;text-align:center;">
+    <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1rem;">Continuar de onde parou?</div>
+    <div style="font-size:0.82rem;color:var(--muted);line-height:1.5;">A página foi recarregada. O carrossel${r.tema ? ` <strong style="color:var(--ink)">“${_escHtml(r.tema)}”</strong>` : ''} está salvo.</div>
+    <button class="primary-btn" id="resume-go">Continuar</button>
+    <button class="secondary-btn" id="resume-new">Começar um novo</button>
+  </div>`;
+  document.body.appendChild(m);
+  m.querySelector('#resume-go').onclick = async () => { m.remove(); await loadSession(r.id); };
+  m.querySelector('#resume-new').onclick = () => { m.remove(); try { sessionStorage.removeItem('sc_resume'); } catch (e) {} };
+}
+// Navegadores que permitem (Chrome, Android, desktop) pedem confirmação antes de recarregar ou fechar
+window.addEventListener('beforeunload', e => {
+  if (S.step >= 1 && !window._allowUnload) { e.preventDefault(); e.returnValue = ''; }
+});
+
 async function autoSave() {
   if (!currentSession) return;
   if (S.step < 1 || !S.triagem) return; // only after triagem
@@ -13065,6 +13100,7 @@ async function autoSave() {
       }
 
       showSaveIndicator();
+      _rememberSession();
       // Persist images in IndexedDB (no size limits)
       await saveImagesToStorage(activeSessionId);
     } catch(e) {
@@ -13438,7 +13474,7 @@ function migrateCard(card) {
 }
 
 function restoreSnap(snap, sessionId) {
-  if (sessionId) activeSessionId = sessionId;
+  if (sessionId) { activeSessionId = sessionId; setTimeout(_rememberSession, 0); }
   Object.assign(S, {
     step: snap.step || 0,
     inputMode: snap.inputMode || 'text',
