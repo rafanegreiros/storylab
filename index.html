@@ -2098,6 +2098,16 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
   .sidebar-header { padding: 16px 18px 10px; }
   .sidebar-body { padding: 0 18px 16px; }
   .sidebar-footer { padding: 14px 18px 20px; }
+  /* Botão da etapa preso na base da tela, ao alcance do polegar */
+  body:not(.step-final) .sidebar-footer {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    flex-direction: row-reverse; align-items: stretch; gap: 8px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg); border-top: 1px solid var(--border);
+  }
+  body:not(.step-final) .sidebar-footer .primary-btn { flex: 1; padding: 14px 10px; font-size: 0.9rem; border-radius: 8px; }
+  body:not(.step-final) .sidebar-footer .secondary-btn { width: auto; flex: 0 0 auto; padding: 0 14px; white-space: nowrap; }
+  body:not(.step-final) .app { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
   .canvas {
     padding: 20px 18px;
     flex: 1;
@@ -4147,7 +4157,7 @@ function initSidebar() {
         <div style="font-size:0.82rem;line-height:1.5;padding:12px;background:var(--surface);border-radius:8px;border:1.5px solid var(--border)">
           ${S.selectedHeadline
             ? `<strong style="color:var(--ink)">${S.selectedHeadline.l1}</strong><br><span style="color:var(--muted)">${S.selectedHeadline.l2}</span>`
-            : '<span style="color:var(--muted)">Nenhuma selecionada — clique em uma opção ao lado.</span>'}
+            : `<span style="color:var(--muted)">Nenhuma selecionada — ${_narrowUI() ? 'toque em uma opção abaixo' : 'clique em uma opção ao lado'}.</span>`}
         </div>
       </div>`;
   } else if (S.step === 3) {
@@ -4162,7 +4172,7 @@ function initSidebar() {
     document.getElementById('sidebar-body').innerHTML = `<div>
       <div class="field-label">Visual selecionado</div>
       <div style="font-size:0.82rem;line-height:1.5;padding:12px;background:var(--surface);border-radius:8px;border:1.5px solid var(--border)">
-        ${_sel ? `<strong style="color:var(--ink)">${_escHtml(_sel.name)}</strong><br><span style="color:var(--muted)">${_escHtml(_sel.description || '')}</span>` : '<span style="color:var(--muted)">Escolha um visual ao lado. As prévias já usam o seu texto e a sua marca.</span>'}
+        ${_sel ? `<strong style="color:var(--ink)">${_escHtml(_sel.name)}</strong><br><span style="color:var(--muted)">${_escHtml(_sel.description || '')}</span>` : `<span style="color:var(--muted)">Escolha um visual ${_narrowUI() ? 'abaixo' : 'ao lado'}. As prévias já usam o seu texto e a sua marca.</span>`}
       </div>
       <div style="font-size:0.7rem;color:var(--muted);margin-top:10px;line-height:1.5">Dá para trocar o visual depois, no carrossel, sem perder textos nem fotos.</div>
     </div>`;
@@ -4172,6 +4182,7 @@ function initSidebar() {
     sec.style.display = 'none';
     renderCardSidebar();
   }
+  document.body.classList.toggle('step-final', S.step === 4);
   updateDots();
 }
 
@@ -4347,6 +4358,17 @@ ${conteudo}`;
 // ── LOADING ──
 function showLoading(msg) {
   document.getElementById('canvas').innerHTML = `<div class="loading-wrap"><div class="loader"></div><div class="loading-label">${msg}</div></div>`;
+  _scrollToCanvasMobile();
+}
+
+// Celular: o painel fica em cima e o resultado embaixo; ao gerar, a tela desce até o resultado
+function _narrowUI() { return window.innerWidth <= 768; }
+function _scrollToCanvasMobile() {
+  if (!_narrowUI()) return;
+  const c = document.getElementById('canvas');
+  if (!c) return;
+  const top = c.getBoundingClientRect().top + window.scrollY - 60;
+  if (Math.abs(window.scrollY - top) > 40) window.scrollTo({ top, behavior: 'smooth' });
 }
 
 function showError(msg, retryFn) {
@@ -4463,6 +4485,7 @@ async function handlePrimary() {
     S.step = 3.5;
     initSidebar();
     renderTemplateSelector();
+    _scrollToCanvasMobile();
   } else if (S.step === 3.5) {
     if (!S.selectedTemplate) { alert('Escolha um template para continuar.'); return; }
     await sleep(1500);
