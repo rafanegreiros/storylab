@@ -2289,6 +2289,9 @@ body.mob-ed-open { overflow:hidden; }
   pointer-events: none;
 }
 .save-indicator.show { opacity: 1; }
+.usage-badge { font-family: 'Roboto', sans-serif; font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+.usage-badge.low { color: #b86e00; font-weight: 500; }
+.usage-badge.out { color: #d33; font-weight: 500; }
 
 
 /* ── HISTORY STEP NAVIGATOR ── */
@@ -2656,6 +2659,8 @@ body.mob-ed-open { overflow:hidden; }
   Sessão salva
 </div>
 
+<div class="save-indicator" id="usage-notice"></div>
+
 <!-- HISTORY PANEL -->
 <div class="history-overlay" id="history-overlay" style="display:none" onclick="if(event.target===this)closeHistory()">
   <div class="history-panel">
@@ -2674,6 +2679,7 @@ body.mob-ed-open { overflow:hidden; }
 <header>
   <div class="logo"><img class="logo-img" src="data:image/png;base64,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" alt="Storycards" height="26" style="display:block;height:26px;width:auto"/></div>
   <div class="header-right">
+    <span class="usage-badge" id="usage-badge" title="Carrosséis criados este mês. O limite renova no dia 1º." style="display:none"></span>
     <button class="icon-btn" onclick="openHistory()" title="Histórico" id="history-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
     <button class="icon-btn" onclick="openTemplateManager()" title="Templates"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
     <button class="icon-btn" onclick="openBrand()" title="Identidade Visual"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17a4 4 0 0 1-8 0V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2Z"/><path d="M16.7 13H19a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H7"/><path d="M 7 17h.01"/><path d="m11 8 2.3-2.3a2.4 2.4 0 0 1 3.404.004L18.6 7.6a2.4 2.4 0 0 1 .026 3.434L9.9 19.8"/></svg></button>
@@ -3259,8 +3265,8 @@ function setActiveBrandId(id) {
 
 // Plan limits (checked locally with backend as source of truth)
 let _userPlan = null; // { plan: 'beta'|'solo'|'estudio'|'agencia'|'admin', max_brands }
-const PLAN_LIMITS = { beta: 5, solo: 1, estudio: 5, agencia: 999, admin: 999 };
-const PLAN_LABELS = { beta: 'Beta', solo: 'Solo', estudio: 'Estúdio', agencia: 'Agência', admin: 'Admin' };
+const PLAN_LIMITS = { fundador: 1, beta: 1, solo: 1, estudio: 5, agencia: 999, admin: 999 };
+const PLAN_LABELS = { fundador: 'Fundador', beta: 'Beta', solo: 'Solo', estudio: 'Estúdio', agencia: 'Agência', admin: 'Admin' };
 
 // Emails with unrestricted access (no plan limits)
 const SUPERADMIN_EMAILS = ['rafanegreiros@gmail.com'];
@@ -3764,7 +3770,7 @@ async function createBrandFromModal() {
   const maxAllowed = plan ? plan.max_brands : 1;
   if (brands.length >= maxAllowed) {
     const planLabel = plan ? PLAN_LABELS[plan.plan] || plan.plan : 'Individual';
-    alert(`Limite de ${maxAllowed} identidade${maxAllowed > 1 ? 's' : ''} atingido no plano ${planLabel}.\n\nFaça upgrade para adicionar mais identidades.`);
+    alert(`O plano ${planLabel} inclui ${maxAllowed} identidade${maxAllowed > 1 ? 's' : ''}.`);
     return;
   }
   const name = prompt('Nome da nova identidade (ex: nome do cliente):');
@@ -4591,6 +4597,14 @@ function resetAll() {
 
 // ── ETAPA 1 — TRIAGEM ──
 async function runTriagem() {
+  // Carrossel novo consome um crédito do mês: confere antes de gastar a pesquisa
+  if (!activeSessionId) {
+    const usage = await refreshUsage();
+    if (usage && !usage.unlimited && usage.used >= usage.limit) {
+      alert(`Você usou os ${usage.limit} carrosséis deste mês. O limite renova no dia 1º.\n\nOs carrosséis salvos no Histórico continuam disponíveis para editar e baixar.`);
+      return;
+    }
+  }
   document.getElementById('primary-btn').disabled = true;
   showLoading('Analisando insumo e extraindo ângulo narrativo...');
 
@@ -4630,7 +4644,7 @@ REGRAS CRÍTICAS para "evidencias":
 Retorne APENAS este JSON válido (sem markdown):
 {"transformacao":"o que mudou/está em jogo","friccao_central":"tensão real","angulo_narrativo":"leitura mais forte","evidencias":["argumento real com fonte (Fonte: Nome)","argumento real com fonte (Fonte: Nome)","argumento real com fonte (Fonte: Nome)","argumento real com fonte (Fonte: Nome)"],"funil_detectado":"topo|meio|fundo","tema_central":"até 10 palavras","fontes":[{"titulo":"título real da página","veiculo":"nome do site","url":"url_exata_da_busca","relevancia":"Alta|Média"}]}`;
     try {
-      const res = await callClaudeWithSearch(prompt, 1500);
+      const res = await callClaudeWithSearch(prompt, 1500, 4, SEARCH_TRIAGEM);
       const data = extractJSON(res);
       S.triagem = data;
       if (data.fontes?.length) S.sources = data.fontes;
@@ -4687,7 +4701,7 @@ Retorne APENAS este JSON (sem markdown):
 {"evidencias_externas":["dado ou argumento real (Fonte: Nome do Veículo)","dado ou argumento real (Fonte: Nome do Veículo)"],"fontes":[{"titulo":"título real","veiculo":"nome","url":"url_exata_da_busca","relevancia":"Alta|Média"}]}`;
 
       try {
-        const validacao = extractJSON(await callClaudeWithSearch(promptValidar, 1200));
+        const validacao = extractJSON(await callClaudeWithSearch(promptValidar, 1200, 4, SEARCH_TRIAGEM));
 
         // Merge: insumo evidências + validated external evidências
         const evidInsumo = analise.evidencias_insumo || [];
@@ -6160,8 +6174,7 @@ async function checkApiStatus() {
 }
 
 // ── Built-in validated templates ──
-// Based on visual and structural analysis of high-engagement carousels
-// from @brandsdecoded — 10 templates covering the main patterns identified.
+// Based on visual and structural analysis of high-engagement carousels.
 function _makeCardStyle(overrides) {
   // Base card style — will be overridden by brand colors on apply
   const base = {
@@ -6215,7 +6228,7 @@ function seedBuiltInTemplates() {
   const white90 = '$auto';
 
   const EDITORIAL = {
-    id: 'v2_editorial', v2: true, name: 'Editorial', ref: 'BrandsDecoded',
+    id: 'v2_editorial', v2: true, name: 'Editorial', ref: 'Estilo revista',
     description: 'Revista digital: manchete condensada na capa, título no alto + foto ou prova no meio + texto embaixo. Fundos alternam para dar ritmo.',
     impactFont: "'Archivo Black', sans-serif", shortText: 'split',
     common: D({ header: { visible: true, template: 'editorial3', colorMode: 'auto' }, footer: { visible: false, template: 'dots', colorMode: 'auto' }, emphasis: 'color', emphasisColor: '$accent' }),
@@ -6237,7 +6250,7 @@ function seedBuiltInTemplates() {
   };
 
   const AUTORIDADE = {
-    id: 'v2_autoridade', v2: true, name: 'Post de autoridade', ref: 'Thiago Nigro · Rony Meisler · Bruno Perini',
+    id: 'v2_autoridade', v2: true, name: 'Post de autoridade', ref: 'Estilo opinião assinada',
     description: 'Formato de post: assinatura de perfil no topo, texto corrido com negrito, imagem ou manchete abaixo quando ajuda.',
     impactFont: "'Archivo Black', sans-serif",
     common: D({ bg: { type: 'solid', color: '#ffffff' }, header: { visible: false }, avatar: { visible: true, placement: 'top', style: 'profile', colorMode: 'auto' },
@@ -6255,7 +6268,7 @@ function seedBuiltInTemplates() {
   };
 
   const MARCA_TEXTO = {
-    id: 'v2_marcatexto', v2: true, name: 'Bold marca-texto', ref: 'vlnathalia',
+    id: 'v2_marcatexto', v2: true, name: 'Bold marca-texto', ref: 'Estilo aula direta',
     description: 'Tipografia pesada e centralizada, destaque tipo marca-texto na cor da marca e cantos assinados. Para conteúdo didático e direto.',
     impactFont: "'Archivo Black', sans-serif",
     common: D({ bg: { type: 'solid', color: light }, header: { visible: true, template: 'corners', colorMode: 'auto' }, footer: { visible: true, template: 'corners', colorMode: 'auto' },
@@ -6273,7 +6286,7 @@ function seedBuiltInTemplates() {
   };
 
   const FOTO_PAINEL = {
-    id: 'v2_fotopainel', v2: true, name: 'Foto + painel', ref: 'vlnathalia',
+    id: 'v2_fotopainel', v2: true, name: 'Foto + painel', ref: 'Estilo documental',
     description: 'Foto escurecida em cima com a frase de impacto, painel sólido embaixo com o desenvolvimento. Capa e fechamento com foto cheia.',
     impactFont: "'Archivo Black', sans-serif",
     common: D({ header: { visible: true, template: 'corners', colorMode: 'light' }, footer: { visible: false }, emphasis: 'color', emphasisColor: '$accent' }),
@@ -6296,7 +6309,7 @@ function seedBuiltInTemplates() {
   };
 
   const DADOS = {
-    id: 'v2_dados', v2: true, name: 'Dados em destaque', ref: 'sugestão Storycards',
+    id: 'v2_dados', v2: true, name: 'Dados em destaque', ref: 'Estilo infográfico',
     description: 'Número gigante tirado do próprio texto, com a fonte logo abaixo. Para temas com dado forte: finanças, saúde, mercado.',
     impactFont: "'Archivo Black', sans-serif",
     common: D({ header: { visible: true, template: 'simple', colorMode: 'auto' }, footer: { visible: false, template: 'numeric', colorMode: 'auto' }, emphasis: 'color', emphasisColor: '$accent', kickerFrom: 'number' }),
@@ -6316,7 +6329,7 @@ function seedBuiltInTemplates() {
   };
 
   const PASSOS = {
-    id: 'v2_passos', v2: true, name: 'Passo a passo', ref: 'sugestão Storycards',
+    id: 'v2_passos', v2: true, name: 'Passo a passo', ref: 'Estilo guia prático',
     description: 'Um passo por bloco, com número enorme e barra de progresso. O formato que mais gera “salvar para depois”.',
     impactFont: "'Archivo Black', sans-serif",
     common: D({ header: { visible: false }, footer: { visible: false }, emphasis: 'bold', progressTop: true }),
@@ -12506,7 +12519,7 @@ const NET_ERR_MSG = 'A conexão com o servidor caiu. Confira sua internet e cliq
 function _isNetErr(e) { return e instanceof TypeError || /failed to fetch|networkerror|load failed|network connection/i.test(e?.message || ''); }
 
 async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000) {
-  const token = getAuthToken();
+  let token = await getFreshAuthToken();
   if (!token) { showLoginScreen(); throw new Error('Faça login para continuar.'); }
   for (let attempt = 1; attempt <= retries; attempt++) {
     let res;
@@ -12534,6 +12547,7 @@ async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000) {
     }
     const data = await res.json().catch(() => ({ error: res.status >= 500 ? 'server_down' : 'bad_json' }));
     if (data.error === 'server_down' && attempt < retries) { showLoading(`Servidor instável, tentando novamente (${attempt}/${retries})...`); await sleep(4000); continue; }
+    if (res.status === 401 && attempt < retries) { token = await getFreshAuthToken(true) || token; continue; }
     if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
     if (data.error === 'quota_exceeded') throw new Error(data.message);
     if (res.status === 429 || data.error === 'rate_limit') {
@@ -12552,8 +12566,10 @@ async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000) {
   }
 }
 
-async function callClaudeWithSearch(prompt, maxTokens, retries = 4) {
-  const token = getAuthToken();
+// Provas usam o modelo principal; a busca de contexto da triagem usa o Haiku, bem mais barato
+const SEARCH_TRIAGEM = { model: 'claude-haiku-5-5', kind: 'triagem_search' };
+async function callClaudeWithSearch(prompt, maxTokens, retries = 4, opts = {}) {
+  let token = await getFreshAuthToken();
   if (!token) { showLoginScreen(); throw new Error('Faça login para continuar.'); }
   for (let attempt = 1; attempt <= retries; attempt++) {
     let res;
@@ -12565,9 +12581,10 @@ async function callClaudeWithSearch(prompt, maxTokens, retries = 4) {
           "Authorization": "Bearer " + token
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model: opts.model || "claude-sonnet-4-6",
+          kind: opts.kind,
           max_tokens: maxTokens || 1500,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }],
           messages: [{ role: "user", content: prompt }]
         })
       }, 120000); // 120s timeout — web search can be slow
@@ -12582,6 +12599,7 @@ async function callClaudeWithSearch(prompt, maxTokens, retries = 4) {
     }
     const data = await res.json().catch(() => ({ error: res.status >= 500 ? 'server_down' : 'bad_json' }));
     if (data.error === 'server_down' && attempt < retries) { showLoading(`Servidor instável, tentando novamente (${attempt}/${retries})...`); await sleep(4000); continue; }
+    if (res.status === 401 && attempt < retries) { token = await getFreshAuthToken(true) || token; continue; }
     if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
     if (data.error === 'quota_exceeded') throw new Error(data.message);
     if (res.status === 429 || data.error === 'rate_limit') {
@@ -12667,7 +12685,7 @@ function toggleTheme() {
 }
 
 function initTheme() {
-  const saved = localStorage.getItem('storylab_theme') || 'dark';
+  const saved = localStorage.getItem('storylab_theme') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
   const btn = document.getElementById('theme-btn');
   if (btn) btn.innerHTML = saved === 'dark' ? IC.sun : IC.moon;
@@ -12797,7 +12815,7 @@ function hideLoginScreen() {
   document.querySelector('.app') && (document.querySelector('.app').style.visibility = 'visible');
   document.querySelector('header') && (document.querySelector('header').style.visibility = 'visible');
   // Verifica acesso e sincroniza marcas/templates; plano em seguida
-  checkAccessAndSync().then(() => { _offerResume(); return fetchUserPlan(); }).catch(() => {});
+  checkAccessAndSync().then(() => { _offerResume(); refreshUsage(); return fetchUserPlan(); }).catch(() => {});
 }
 
 // ── ACESSO + SYNC ENTRE APARELHOS ──
@@ -12900,6 +12918,15 @@ function resetMagicLinkForm() {
 
 function getAuthToken() {
   return currentSession?.access_token || null;
+}
+
+// Token guardado pode vencer com a aba parada (timers suspensos): renova antes de chamar a IA
+async function getFreshAuthToken(force = false) {
+  try {
+    const { data } = force ? await supabaseClient.auth.refreshSession() : await supabaseClient.auth.getSession();
+    if (data?.session) { currentSession = data.session; return data.session.access_token; }
+  } catch (e) {}
+  return getAuthToken();
 }
 
 
@@ -13140,6 +13167,7 @@ async function autoSave() {
         if (data.id) {
           activeSessionId = data.id;
           await migrateImagesOnNewSession(data.id);
+          refreshUsage(true);
         }
       }
 
@@ -13151,6 +13179,38 @@ async function autoSave() {
       console.warn('AutoSave failed:', e.message);
     }
   }, 1500);
+}
+
+// Contador de carrosséis do mês, com aviso quando estiverem acabando
+async function refreshUsage(justCreated) {
+  try {
+    const res = await fetch(BACKEND_URL + '/api/usage', { headers: { 'Authorization': 'Bearer ' + getAuthToken() } });
+    if (!res.ok) return null;
+    const usage = await res.json();
+    renderUsage(usage, justCreated);
+    return usage;
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderUsage(usage, justCreated) {
+  const el = document.getElementById('usage-badge');
+  if (!el) return;
+  if (usage.unlimited) { el.style.display = 'none'; return; }
+  const left = usage.limit - usage.used;
+  el.textContent = `${usage.used} de ${usage.limit} este mês`;
+  el.style.display = '';
+  el.classList.toggle('low', left > 0 && usage.used >= usage.limit * 0.8);
+  el.classList.toggle('out', left <= 0);
+  if (justCreated && usage.used >= usage.limit * 0.8) {
+    const notice = document.getElementById('usage-notice');
+    notice.textContent = left > 0
+      ? `Resta${left > 1 ? 'm' : ''} ${left} carross${left > 1 ? 'éis' : 'el'} neste mês.`
+      : 'Este foi o último carrossel do mês. O limite renova no dia 1º.';
+    notice.classList.add('show');
+    setTimeout(() => notice.classList.remove('show'), 6000);
+  }
 }
 
 function showSaveIndicator() {
