@@ -7327,12 +7327,12 @@ function renderCardHtml(card, idx, total) {
     <div contenteditable="${_editAttr()}" spellcheck="false"
       data-field="title" data-idx="${idx}" data-drag="title"
       onblur="updateCardText(${idx},'title',this)"
-      style="${_dragCss(card, 'title')}font-family:${card.title.fontFamily};font-weight:${card.title.weight};font-size:${card.title.size}px;line-height:1.1;color:${card.title.color};text-align:${card.title.align};outline:none;cursor:text;font-style:${card.title.italic?'italic':'normal'};text-decoration:${card.title.underline?'underline':'none'};text-transform:${card.title.uppercase?'uppercase':'none'};"
+      style="${_dragCss(card, 'title')}font-family:${card.title.fontFamily};font-weight:${card.title.weight};font-size:${card.title.size}px;line-height:1.1;color:${card.title.color};text-align:${card.title.align};outline:none;white-space:pre-line;cursor:text;font-style:${card.title.italic?'italic':'normal'};text-decoration:${card.title.underline?'underline':'none'};text-transform:${card.title.uppercase?'uppercase':'none'};"
     >${titleHtml}</div>
     ${(!card.bg.boxMode && card.body.visible && card.body.text) ? `<div contenteditable="${_editAttr()}" spellcheck="false"
       data-field="body" data-idx="${idx}" data-drag="body"
       onblur="updateCardText(${idx},'body',this)"
-      style="${_dragCss(card, 'body')}font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;margin-top:${bodyPush};margin-left:${bodyOffX}px;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
+      style="${_dragCss(card, 'body')}font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;white-space:pre-line;cursor:text;margin-top:${bodyPush};margin-left:${bodyOffX}px;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
     >${bodyHtml}</div>` : ''}
   </div>`;
 
@@ -7343,7 +7343,7 @@ function renderCardHtml(card, idx, total) {
       <div contenteditable="${_editAttr()}" spellcheck="false"
         data-field="body" data-idx="${idx}" data-drag="body"
         onblur="updateCardText(${idx},'body',this)"
-        style="${_dragCss(card, 'body')}font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;cursor:text;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
+        style="${_dragCss(card, 'body')}font-family:${card.body.fontFamily};font-size:${card.body.size}px;line-height:1.42;color:${card.body.color};text-align:${card.body.align};outline:none;white-space:pre-line;cursor:text;font-style:${card.body.italic?'italic':'normal'};text-decoration:${card.body.underline?'underline':'none'};text-transform:${card.body.uppercase?'uppercase':'none'};"
       >${bodyHtml}</div>
     </div>`;
   }
@@ -9553,6 +9553,54 @@ async function exportSingleCardPng(idx) {
   }
 }
 
+// ── Vídeo do card: arquivo original guardado neste navegador ──
+async function _getCardVideoFile(card) {
+  if (!card.bg.videoBlobKey) return null;
+  try {
+    const db = await _openIDB();
+    const tx = db.transaction(_IDB_STORE, 'readonly');
+    return await new Promise((res, rej) => {
+      const r = tx.objectStore(_IDB_STORE).get(card.bg.videoBlobKey);
+      r.onsuccess = () => res(r.result || null);
+      r.onerror = () => rej(r.error);
+    });
+  } catch(e) { console.warn('IDB read failed:', e); return null; }
+}
+
+// Monta o pedido de composição: vídeo + camada PNG com textos, cabeçalho e fundo
+async function _buildVideoComposeForm(card, idx, videoFile) {
+  const EW = 1080, EH = 1350;
+  const staticCanvas = await buildStaticLayersCanvas(card, idx, EW, EH);
+  const staticBlob = await new Promise(res => staticCanvas.toBlob(res, 'image/png'));
+  const form = new FormData();
+  form.append('video', videoFile);
+  form.append('overlay', staticBlob, 'overlay.png');
+  form.append('width',  String(EW));
+  form.append('height', String(EH));
+  form.append('boxMode', card.bg.boxMode ? 'true' : 'false');
+  if (card.bg.boxMode) {
+    const b = _videoBoxRect(card, EW, EH);
+    form.append('boxX', String(Math.round(b.x)));
+    form.append('boxY', String(Math.round(b.y)));
+    form.append('boxW', String(Math.round(b.w)));
+    form.append('boxH', String(Math.round(b.h)));
+  }
+  form.append('scale',  String(card.bg.imageScale || 1));
+  form.append('offsetX', String(card.bg.imageX || 0));
+  form.append('offsetY', String(card.bg.imageY || 0));
+  form.append('muted', card.bg.videoMuted !== false ? 'true' : 'false');
+  return form;
+}
+
+async function _composeCardVideo(card, idx, videoFile) {
+  const form = await _buildVideoComposeForm(card, idx, videoFile);
+  const res = await fetch(`${BACKEND_URL}/video/compose`, {
+    method: 'POST', headers: { 'Authorization': 'Bearer ' + getAuthToken() }, body: form,
+  });
+  if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+  return await res.blob();
+}
+
 async function exportCardAsVideo(idx) {
   const card = S.cards[idx];
   if (!card || !card.bg.videoSrc) { alert('Nenhum vídeo neste card.'); return; }
@@ -9624,29 +9672,10 @@ async function exportCardAsVideo(idx) {
       setStatus('Recuperando vídeo...', 8);
     }
 
-    // ── 2. Build static layers PNG (text, overlay, header — sem o vídeo) ──
+    // ── 2. Elementos do card (sem o vídeo) e envio ao servidor ──
     setStatus('Gerando elementos do card...', 20, 'Renderizando textos e overlays...');
-    const staticCanvas = await buildStaticLayersCanvas(card, idx, EW, EH);
-    const staticBlob = await new Promise(res => staticCanvas.toBlob(res, 'image/png'));
-
-    // ── 3. Send to Railway for server-side composition ──
+    const form = await _buildVideoComposeForm(card, idx, videoFile);
     setStatus('Enviando para o servidor...', 35, 'Preparando upload...');
-    const form = new FormData();
-    form.append('video', videoFile);
-    form.append('overlay', staticBlob, 'overlay.png');
-    form.append('width',  String(EW));
-    form.append('height', String(EH));
-    form.append('boxMode', card.bg.boxMode ? 'true' : 'false');
-    if (card.bg.boxMode) {
-      form.append('boxX', String(Math.round(((1 - (card.bg.boxW ?? 100) / 100) / 2) * EW)));
-      form.append('boxY', String(Math.round(((card.bg.boxY ?? 10) / 100) * EH)));
-      form.append('boxW', String(Math.round(((card.bg.boxW ?? 100) / 100) * EW)));
-      form.append('boxH', String(Math.round(((card.bg.boxH ?? 42) / 100) * EH)));
-    }
-    form.append('scale',  String(card.bg.imageScale || 1));
-    form.append('offsetX', String(card.bg.imageX || 0));
-    form.append('offsetY', String(card.bg.imageY || 0));
-    form.append('muted', card.bg.videoMuted !== false ? 'true' : 'false');
 
     // ── Animated progress while server processes ──
     // Estimate: ~30s for a typical video. Progress goes 35→85% over that time.
@@ -9972,6 +10001,22 @@ function triggerBgVideoUpload(idx) {
     })();
   };
   inp.click();
+}
+
+// Ao reabrir um carrossel, o endereço antigo do vídeo já não vale: recria a partir do arquivo guardado neste navegador
+async function _restoreCardVideos() {
+  let changed = false;
+  for (const card of S.cards) {
+    if (!card?.bg || card.bg.type !== 'video') continue;
+    if (card.bg.videoSrc && card.bg.videoSrc.startsWith('blob:')) {
+      const ok = await fetch(card.bg.videoSrc).then(r => { r.body?.cancel(); return r.ok; }, () => false);
+      if (ok) continue;
+    }
+    card.bg.videoSrc = await loadVideoFromStorage(card.bg.videoBlobKey);
+    card.bg.framePng = null;
+    changed = true;
+  }
+  return changed;
 }
 
 async function loadVideoFromStorage(blobKey) {
@@ -10583,6 +10628,9 @@ function applyTemplate(tplId) {
     imageSrc:  c.bg.imageSrc  || null,
     imageMime: c.bg.imageMime || null,
     videoSrc:  c.bg.videoSrc  || null,
+    videoBlobKey: c.bg.videoBlobKey || null,
+    videoMuted:   c.bg.videoMuted,
+    framePng:     c.bg.framePng || null,
     hasImage:  !!(c.bg.imageSrc),
     hasVideo:  !!(c.bg.videoSrc),
   }));
@@ -10605,6 +10653,9 @@ function applyTemplate(tplId) {
     if (existing[i].hasVideo) {
       resolved.bg.type     = 'video';
       resolved.bg.videoSrc = existing[i].videoSrc;
+      resolved.bg.videoBlobKey = existing[i].videoBlobKey;
+      resolved.bg.videoMuted   = existing[i].videoMuted;
+      resolved.bg.framePng     = existing[i].framePng;
       resolved.bg.imageSrc = null;
     } else if (existing[i].hasImage) {
       resolved.bg.type      = 'image';
@@ -11022,6 +11073,7 @@ async function exportAllCards() {
     .replace(/\s+/g,'-').substring(0,30);
 
   const pngBlobs = [];
+  const videoFails = [];
   const total = S.cards.length;
 
   for (let i = 0; i < total; i++) {
@@ -11031,24 +11083,27 @@ async function exportAllCards() {
     if (status) status.textContent = `Card ${i+1} de ${total}...`;
 
     try {
-      if (S.cards[i].bg.type === 'video') {
-        // Video cards: use pre-extracted frame PNG from Railway (stored on upload)
-        // Falls back to exportCardToCanvas (black frame) if frame not available
-        const framePng = S.cards[i].bg.framePng; // ImageBitmap stored at upload time
-        if (framePng) {
-          const EW = 1080, EH = 1350;
-          const composite = document.createElement('canvas');
-          composite.width = EW; composite.height = EH;
-          const cctx = composite.getContext('2d');
-          cctx.drawImage(framePng, 0, 0, EW, EH);
-          const staticCanvas = await buildStaticLayersCanvas(S.cards[i], i, EW, EH);
-          cctx.drawImage(staticCanvas, 0, 0, EW, EH);
-          const blob = await new Promise(res => composite.toBlob(res, 'image/png'));
-          pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.png`, blob });
-        } else {
-          // No frame extracted yet — export as-is (likely black bg)
-          const blob = await exportCardToCanvas(S.cards[i], i);
-          pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.png`, blob });
+      if (S.cards[i].bg.type === 'video' && S.cards[i].bg.videoSrc) {
+        // Card com vídeo: PNG com um quadro do vídeo (mesma montagem do .mp4) + o .mp4 no ZIP
+        const EW = 1080, EH = 1350;
+        const composite = document.createElement('canvas');
+        composite.width = EW; composite.height = EH;
+        const cctx = composite.getContext('2d');
+        cctx.fillStyle = '#111111'; cctx.fillRect(0, 0, EW, EH);
+        _drawVideoFrame(cctx, S.cards[i], i, EW, EH);
+        const staticCanvas = await buildStaticLayersCanvas(S.cards[i], i, EW, EH);
+        cctx.drawImage(staticCanvas, 0, 0, EW, EH);
+        const blob = await new Promise(res => composite.toBlob(res, 'image/png'));
+        pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}-quadro.png`, blob });
+
+        if (status) status.textContent = `Card ${i+1} de ${total}: gerando o vídeo (pode levar 1 minuto)...`;
+        const videoFile = await _getCardVideoFile(S.cards[i]);
+        if (!videoFile) { videoFails.push(i + 1); }
+        else {
+          try {
+            const mp4 = await _composeCardVideo(S.cards[i], i, videoFile);
+            pngBlobs.push({ name: `${tema}-card${String(i+1).padStart(2,'0')}.mp4`, blob: mp4 });
+          } catch(e) { console.error(`Card ${i+1} vídeo:`, e); videoFails.push(i + 1); }
         }
       } else {
         const blob = await exportCardToCanvas(S.cards[i], i);
@@ -11078,12 +11133,14 @@ async function exportAllCards() {
       }
     }
     if (fill2) fill2.style.width = '100%';
-    if (status2) status2.textContent = `✅ ${pngBlobs.length} cards exportados!`;
+    if (status2) status2.textContent = videoFails.length
+      ? `✅ ZIP baixado. O vídeo do card ${videoFails.join(', ')} não foi gerado: o arquivo original não está neste navegador. Use "Exportar este card (.mp4)" no card para enviá-lo de novo.`
+      : `✅ ${total} cards exportados!`;
   } catch(err) {
     if (status2) status2.textContent = `Erro: ${err.message}`;
   }
 
-  setTimeout(() => { overlay.remove(); if (btn) btn.disabled = false; }, 2500);
+  setTimeout(() => { overlay.remove(); if (btn) btn.disabled = false; }, videoFails.length ? 9000 : 2500);
 }
 
 
@@ -11258,7 +11315,8 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   // SC: canvas pixels per preview pixel
   // Use actual rendered card width from DOM for accurate text wrap matching
   const _cardEl = document.querySelector(`.c-card[data-idx="${idx}"]`);
-  const _previewCardW = _cardEl ? _cardEl.getBoundingClientRect().width : 320;
+  // Largura de layout (sem o zoom de tela): o tamanho visto na tela não pode mudar a quebra de linha do export
+  const _previewCardW = (_cardEl && _cardEl.offsetWidth) || 320;
   const SC = EXW / _previewCardW;
   const canvas = document.createElement('canvas');
   canvas.width  = EXW;
@@ -11289,22 +11347,9 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       ctx.fillStyle = card.bg.color || '#141210';
       ctx.fillRect(0, 0, EXW, EXH);
       if (card.bg.type === 'video' && card.bg.videoSrc) {
-        // Draw current video frame in box
-        const vidEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video[data-card-vid]`);
-        if (vidEl) {
-          const bxW = (card.bg.boxW != null ? card.bg.boxW : 100) / 100;
-          const bxH = (card.bg.boxH != null ? card.bg.boxH : 42)  / 100;
-          const bxY = (card.bg.boxY != null ? card.bg.boxY : 10)  / 100;
-          const boxW = EXW * bxW, boxH = EXH * bxH;
-          const boxX = (EXW - boxW) / 2, boxY = EXH * bxY;
-          const scaleV = Math.max(boxW / vidEl.videoWidth, boxH / vidEl.videoHeight) * (card.bg.imageScale || 1);
-          const rW = vidEl.videoWidth * scaleV, rH = vidEl.videoHeight * scaleV;
-          const ox = (card.bg.boxImgX || 0) * (EXW / 320);
-          const oy = (card.bg.boxImgY || 0) * (EXH / 400);
-          ctx.save(); ctx.beginPath(); ctx.rect(boxX, boxY, boxW, boxH); ctx.clip();
-          ctx.drawImage(vidEl, boxX + (boxW - rW) / 2 + ox, boxY + (boxH - rH) / 2 + oy, rW, rH);
-          ctx.restore();
-        }
+        // Camada estática do vídeo: deixa a caixa transparente para o vídeo aparecer por baixo
+        if (card._videoHole) { const b = _videoBoxRect(card, EXW, EXH); ctx.clearRect(b.x, b.y, b.w, b.h); }
+        else _drawVideoFrame(ctx, card, idx, EXW, EXH);
       } else if (card.bg.type === 'image' && card.bg.imageSrc) {
         await drawBoxImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXW, EXH, SC);
       } else if (_evidenceOn(card)) {
@@ -11320,15 +11365,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
       } else if (card.bg.type === 'image' && card.bg.imageSrc) {
         await drawImageOnCanvas(ctx, card.bg.imageSrc, card.bg, EXW, EXH);
       } else if (card.bg.type === 'video' && card.bg.videoSrc) {
-        // Draw current video frame full
-        const vidEl = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video[data-card-vid]`);
-        if (vidEl) {
-          const scaleV = Math.max(EXW / vidEl.videoWidth, EXH / vidEl.videoHeight) * (card.bg.imageScale || 1);
-          const rW = vidEl.videoWidth * scaleV, rH = vidEl.videoHeight * scaleV;
-          const ox = (card.bg.imageX || 0) * (EXW / 320);
-          const oy = (card.bg.imageY || 0) * (EXH / 400);
-          ctx.drawImage(vidEl, (EXW - rW) / 2 + ox, (EXH - rH) / 2 + oy, rW, rH);
-        }
+        _drawVideoFrame(ctx, card, idx, EXW, EXH);
       }
     }
   }
@@ -12072,13 +12109,49 @@ async function exportCardToCanvasEl(card, idx) {
 
 // Builds the static layers canvas for video export at W×H
 // Uses exportCardToCanvas directly at the target resolution — same coordinate space as video frame loop
+// ── Vídeo no export: caixa do vídeo (modo caixa), em pixels do export ──
+function _videoBoxRect(card, W, H) {
+  const bxW = (card.bg.boxW != null ? card.bg.boxW : 100) / 100;
+  const bxH = (card.bg.boxH != null ? card.bg.boxH : 42)  / 100;
+  const bxY = (card.bg.boxY != null ? card.bg.boxY : 10)  / 100;
+  const w = W * bxW, h = H * bxH;
+  return { x: (W - w) / 2, y: H * bxY, w, h };
+}
+// Quadro atual do vídeo que está tocando no card; se não houver, o quadro guardado no envio
+function _videoFrameSource(card, idx) {
+  const v = document.querySelector(`video[data-card-vid="${idx}"], .c-card[data-idx="${idx}"] video[data-card-vid]`);
+  if (v && v.readyState >= 2 && v.videoWidth) return { el: v, w: v.videoWidth, h: v.videoHeight };
+  const f = card.bg.framePng;
+  if (f && f.width) return { el: f, w: f.width, h: f.height };
+  return null;
+}
+function _drawVideoFrame(ctx, card, idx, W, H) {
+  const src = _videoFrameSource(card, idx);
+  if (!src) return false;
+  if (card.bg.boxMode) {
+    const b = _videoBoxRect(card, W, H);
+    const s = Math.max(b.w / src.w, b.h / src.h) * (card.bg.imageScale || 1);
+    const rW = src.w * s, rH = src.h * s;
+    const ox = (card.bg.boxImgX || 0) * (W / 320), oy = (card.bg.boxImgY || 0) * (H / 400);
+    ctx.save(); ctx.beginPath(); ctx.rect(b.x, b.y, b.w, b.h); ctx.clip();
+    ctx.drawImage(src.el, b.x + (b.w - rW) / 2 + ox, b.y + (b.h - rH) / 2 + oy, rW, rH);
+    ctx.restore();
+  } else {
+    const s = Math.max(W / src.w, H / src.h) * (card.bg.imageScale || 1);
+    const rW = src.w * s, rH = src.h * s;
+    const ox = (card.bg.imageX || 0) * (W / 320), oy = (card.bg.imageY || 0) * (H / 400);
+    ctx.drawImage(src.el, (W - rW) / 2 + ox, (H - rH) / 2 + oy, rW, rH);
+  }
+  return true;
+}
+
 async function buildStaticLayersCanvas(card, idx, W, H) {
   // Clone card: replace video bg with solid transparent so exportCardToCanvas skips video layer
   const cardNoVid = JSON.parse(JSON.stringify(card));
-  // For box mode: keep solid bg color so the area outside the box renders correctly
+  // Modo caixa: mantém a cor de fundo e deixa só a caixa transparente (o vídeo entra por baixo)
   // For full mode: use a dark bg so isColorDark() returns true → white text (matches video preview)
   if (card.bg.boxMode) {
-    cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', imageSrc: null, videoSrc: null });
+    cardNoVid._videoHole = true;
   } else {
     // Use transparent bg so video shows through, but force white text/icons via colorMode overrides
     cardNoVid.bg = Object.assign({}, card.bg, { type: 'solid', color: 'rgba(0,0,0,0)', imageSrc: null, videoSrc: null });
@@ -13633,8 +13706,10 @@ function restoreSnap(snap, sessionId) {
         anyImg = true;
       }
     });
-    // Re-render cards if we injected images
-    if (anyImg && S.step === 4 && S.cards.length) {
+    return _restoreCardVideos().then(anyVid => anyImg || anyVid);
+  }).then(changed => {
+    // Re-render cards if we injected images or videos
+    if (changed && S.step === 4 && S.cards.length) {
       renderFinal();
       setTimeout(() => selectCard(S.activeCardIdx || 0), 60);
     }
