@@ -4320,7 +4320,7 @@ Retorne APENAS JSON válido (sem markdown):
       })
     });
     const data = await res.json();
-    if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
+    if (res.status === 403) { if (data?.error === 'no_access') showNoAccessScreen(null, data.status); throw new Error('Acesso não liberado.'); }
     if (data.error === 'quota_exceeded') throw new Error(data.message);
     if (!res.ok || !data.content) throw new Error(data.error?.message || data.message || 'Erro na análise');
     const text = data.content.map(i => i.text||'').join('').replace(/```json|```/g,'').trim();
@@ -12621,7 +12621,7 @@ async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000) {
     const data = await res.json().catch(() => ({ error: res.status >= 500 ? 'server_down' : 'bad_json' }));
     if (data.error === 'server_down' && attempt < retries) { showLoading(`Servidor instável, tentando novamente (${attempt}/${retries})...`); await sleep(4000); continue; }
     if (res.status === 401 && attempt < retries) { token = await getFreshAuthToken(true) || token; continue; }
-    if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
+    if (res.status === 403) { if (data?.error === 'no_access') showNoAccessScreen(null, data.status); throw new Error('Acesso não liberado.'); }
     if (data.error === 'quota_exceeded') throw new Error(data.message);
     if (res.status === 429 || data.error === 'rate_limit') {
       if (attempt < retries) {
@@ -12673,7 +12673,7 @@ async function callClaudeWithSearch(prompt, maxTokens, retries = 4, opts = {}) {
     const data = await res.json().catch(() => ({ error: res.status >= 500 ? 'server_down' : 'bad_json' }));
     if (data.error === 'server_down' && attempt < retries) { showLoading(`Servidor instável, tentando novamente (${attempt}/${retries})...`); await sleep(4000); continue; }
     if (res.status === 401 && attempt < retries) { token = await getFreshAuthToken(true) || token; continue; }
-    if (res.status === 403) { showNoAccessScreen(); throw new Error('Acesso não liberado.'); }
+    if (res.status === 403) { if (data?.error === 'no_access') showNoAccessScreen(null, data.status); throw new Error('Acesso não liberado.'); }
     if (data.error === 'quota_exceeded') throw new Error(data.message);
     if (res.status === 429 || data.error === 'rate_limit') {
       if (attempt < retries) {
@@ -12921,7 +12921,7 @@ async function checkAccessAndSync() {
     .then(r => r.ok ? r.json() : null).catch(() => null);
   if (!me) return; // backend fora — não bloqueia, tenta de novo no próximo login
   _accessChecked = true;
-  if (!me.access?.allowed) { showNoAccessScreen(me.email); return; }
+  if (!me.access?.allowed) { showNoAccessScreen(me.email, me.access?.status); return; }
 
   const res = await fetch(BACKEND_URL + '/api/kv', { headers: { 'Authorization': 'Bearer ' + token } }).catch(() => null);
   if (!res || !res.ok) return;
@@ -12940,19 +12940,33 @@ async function checkAccessAndSync() {
   if (changed) { try { applyBrandToCards(); } catch(e) {} }
 }
 
-function showNoAccessScreen(email) {
+const SALES_URL = 'https://storycards.com.br/#oferta';
+const SUPPORT_EMAIL = 'suporte@storycards.com.br';
+
+// Tela para quem entrou mas não tem assinatura ativa.
+// status 'none' = nunca comprou com este e-mail; outros (expired, canceled...) = já foi assinante.
+function showNoAccessScreen(email, status) {
   if (document.getElementById('no-access-screen')) return;
+  const safeEmail = String(email || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const formerSub = status && status !== 'none';
+  const emailLine = safeEmail ? `<strong style="color:var(--ink)">${safeEmail}</strong>` : 'este e-mail';
+  const title = formerSub ? 'Sua assinatura está pausada' : 'Falta pouco para você criar';
+  const text = formerSub
+    ? `A assinatura de ${emailLine} não está ativa no momento. Suas marcas e seus carrosséis continuam guardados: é só assinar de novo para voltar de onde parou.`
+    : `Não encontramos uma assinatura com ${emailLine}. Já comprou? Entre com o <strong style="color:var(--ink)">mesmo e-mail usado na compra</strong>. Se pagou por Pix, a liberação pode levar alguns minutos.`;
   const el = document.createElement('div');
   el.id = 'no-access-screen';
-  el.style.cssText = 'position:fixed;inset:0;z-index:20000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px';
-  el.innerHTML = `<div class="login-box" style="text-align:center;max-width:380px">
+  el.style.cssText = 'position:fixed;inset:0;z-index:20000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto';
+  el.innerHTML = `<div class="login-box" style="text-align:center;max-width:400px">
     <div class="login-logo">${document.querySelector('.login-logo')?.innerHTML || ''}</div>
-    <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:10px">Seu acesso ainda não foi liberado</div>
-    <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;margin-bottom:20px">
-      O Storycards está em beta fechado. ${email ? `O e-mail <strong style="color:var(--ink)">${email}</strong> ainda não está na lista de acesso.` : ''}
-      Fale com a gente no Instagram <a href="https://www.instagram.com/storycards__/" target="_blank" rel="noopener" style="color:var(--accent)">@storycards__</a>.
-    </p>
-    <button class="login-btn" onclick="window._allowUnload=true;_clearSession();supabaseClient.auth.signOut().then(()=>location.reload())">Entrar com outro e-mail</button>
+    <div style="font-size:1.05rem;font-weight:700;color:var(--ink);margin-bottom:10px">${title}</div>
+    <p style="font-size:0.85rem;color:var(--muted);line-height:1.6;margin-bottom:22px">${text}</p>
+    <a class="login-btn" href="${SALES_URL}" target="_blank" rel="noopener" style="display:block;text-decoration:none;text-align:center;box-sizing:border-box">${formerSub ? 'Assinar de novo' : 'Quero ser Fundador'}</a>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px;font-size:0.82rem">
+      <a href="#" onclick="event.preventDefault();window._allowUnload=true;location.reload()" style="color:var(--accent);text-decoration:none">Já paguei: verificar de novo</a>
+      <a href="#" onclick="event.preventDefault();window._allowUnload=true;_clearSession();supabaseClient.auth.signOut().then(()=>location.reload())" style="color:var(--accent);text-decoration:none">Entrar com outro e-mail</a>
+    </div>
+    <p style="font-size:0.75rem;color:var(--muted);line-height:1.6;margin-top:22px">Dúvidas? Escreva para <a href="mailto:${SUPPORT_EMAIL}" style="color:var(--muted)">${SUPPORT_EMAIL}</a></p>
   </div>`;
   document.body.appendChild(el);
 }
