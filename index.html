@@ -11818,7 +11818,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   // ── Layer 6: Text (title + body) ──
   // Mirror renderCardHtml: text container has top/bottom boundaries,
   // center is middle of that container — exactly like the HTML div with top+bottom set
-  const tPad  = Math.round(_padX(card) * SC); // margem lateral do card (20px = 6,25%)
+  const tPad  = _padX(card) * SC; // margem lateral do card (20px = 6,25%)
   const availW = EXW - tPad * 2;
   const emph = _emphasisOf(card);
 
@@ -11848,7 +11848,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
   const tOffX = (card.title.offsetX || 0) * SC;
 
   if (card.title.text) {
-    const tFS = Math.round(card.title.size * SC);
+    const tFS = card.title.size * SC;
     const tAlign = card.title.align || 'left';
     const tBlockStyle = {
       weight: String(card.title.weight || 700),
@@ -11867,7 +11867,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
     const titleWrapped = wrapSegmentedText(ctx, titleRaw, tBlockStyle, availW, tFS);
 
     // Measure body for vertical centering
-    const bFS2 = Math.round(card.body.size * SC);
+    const bFS2 = card.body.size * SC;
     let bodyWrapped2 = [];
     if (!card.bg.boxMode && card.body.visible && card.body.text) {
       const bodyRaw2 = card.body.uppercase
@@ -11986,7 +11986,7 @@ async function exportCardToCanvas(card, idx, _overrideW, _overrideH) {
 
   // Body in box mode — independent layer, position from card center (mirrors preview HTML)
   if (card.bg.boxMode && card.body.visible && card.body.text) {
-    const bFS3 = Math.round(card.body.size * SC);
+    const bFS3 = card.body.size * SC;
     const bodyRaw3 = card.body.uppercase
       ? card.body.text.toUpperCase()
       : card.body.text;
