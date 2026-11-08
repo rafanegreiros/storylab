@@ -2176,6 +2176,37 @@ body.mob-ed-open { overflow:hidden; }
   #step-dots-mobile { display: none !important; }
 }
 
+/* ── PAINEL CONTROLE (só admin) ── */
+.history-panel.ctl-panel { width: 760px; max-width: 100vw; }
+.ctl-body { flex: 1; overflow-y: auto; padding: 20px 24px 32px; display: flex; flex-direction: column; gap: 22px; }
+.ctl-month { display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif; font-weight: 600; font-size: .9rem; color: var(--ink); }
+.ctl-month button { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; width: 28px; height: 28px; font-size: 1rem; line-height: 1; }
+.ctl-month button:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.ctl-month button:disabled { opacity: .35; cursor: default; }
+.ctl-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.ctl-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.ctl-kpi-label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.ctl-kpi-value { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.35rem; color: var(--ink); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.ctl-kpi-sub { font-size: .75rem; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.ctl-h { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .5px; color: var(--ink); margin-bottom: 10px; }
+.ctl-chart { display: flex; align-items: flex-end; gap: 3px; height: 140px; padding: 8px 0 0; border-bottom: 1px solid var(--border); }
+.ctl-bar { flex: 1; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 1px; position: relative; }
+.ctl-bar.zero { background: var(--border); }
+.ctl-bar:hover { opacity: .8; }
+.ctl-axis { display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); margin-top: 4px; }
+.ctl-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.ctl-table th { text-align: left; font-weight: 500; color: var(--muted); font-size: .72rem; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.ctl-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); color: var(--ink); font-variant-numeric: tabular-nums; }
+.ctl-table td.num, .ctl-table th.num { text-align: right; white-space: nowrap; }
+.ctl-table tr.flag td { background: rgba(229,62,62,.08); }
+.ctl-email { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctl-tag { display: inline-block; font-size: .68rem; padding: 2px 7px; border-radius: 999px; background: var(--surface2); color: var(--muted); }
+.ctl-alert { color: #e53e3e; font-size: .72rem; font-weight: 600; }
+.ctl-note { font-size: .76rem; color: var(--muted); line-height: 1.55; }
+.ctl-note a { color: var(--accent); }
+.ctl-scroll { overflow-x: auto; }
+@media (max-width: 640px) { .ctl-body { padding: 16px; } .ctl-hide-sm { display: none; } }
+
 /* ── HISTORY PANEL ── */
 .history-overlay {
   position: fixed; inset: 0; z-index: 200;
@@ -2676,10 +2707,24 @@ body.mob-ed-open { overflow:hidden; }
   </div>
 </div>
 
+<!-- PAINEL CONTROLE (só admin) -->
+<div class="history-overlay" id="control-overlay" style="display:none" onclick="if(event.target===this)closeControl()">
+  <div class="history-panel ctl-panel">
+    <div class="history-header">
+      <div class="history-title">Controle de gastos</div>
+      <button class="history-close" onclick="closeControl()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="ctl-body" id="control-body"></div>
+  </div>
+</div>
+
 <header>
   <div class="logo"><img class="logo-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXwAAABCCAYAAABU4G2jAAAACXBIWXMAAAsSAAALEgHS3X78AAATCklEQVR4nO1d7ZXjtpK98Jn/3RvBcCNwvwiGL4KWIxhuBO6NwHQEq43gcSJYTQSmI7A6ArMzUEdQ+wNgi6L4gVsAReoN7jk4HrcIoFhVKBQKBdCICDQwxjwCeHLlEUA+8fgRwAlADeAoIidVpwkJCQkJahjG4BtjMgA7AAWAnwP6fQVQATiISBPQTkJCQsJNYYwpicdrEakXIoWGl8F3hr4E8HUBGr4BKJPhT0hI2DqMMU8A/iKq/CIih6XoYfHT1I/GmEdjzB7A31jG2MO1+7cxZu/CRAkJCQlbRU4+f1yCCC1GDb6byWoAv96Ill8B1K7fhISEhC2CsU9vW4tcDBr8jrEPidNr8DMiGH1jjBAlj0N6QkLCDwDGNm3KuwcGDL6L19cAHm5MS4sHJE8/ISFhm2Cc4O0bfAAHrGfsW7RGP1uZjoSEhAQAgCIaUC9ARhAuDL5LN7p1GGcMD7CpmwkJCQlbQE4+v10P32XIvERq989I7XwxxsSiKSEhISEETJj5dYsHTLse/g66UM47gN8B/ENEjCt5+28A/wTwv+45DcqUrpmQkLAB3PWGLXBp8AtF/W8AMhEpRWTwBUWkFpEXABnsxMDiQUlbQkJCQhS4/cTPRJXNG/wvZN1vIlL4LltE5CQiJYD/IvsB4oWaEhISEjRgswbrJYgIxSdAtfv8JiKFpkMRqVyI5n+Iap+NMU9jq4h7Q4ff+cDPRwCnLd2/kXAN5/F1Sx81rBxX0dnO5YbA+GbjD6VrHZm1Fz62aGAvdZySFWXwQ+TuUtJb+Q2Fs5u2sAe7PilpqpT1AAAisjfG7MCtKnboLJOc0cxD6HAofCc8t0Kh4RStgH0HrywoYwxgL5mrAVSBCpTDn1eDlz05A5JjRPFb3ji5MoNjH7q5pdCFih0onYsD277m9rt+c/XeYWV4EJGK6ZOBgr5uXeCsa/uQ06GRdC3D+SbePk4isifoecJ57E2GZIwxb7C2bUgnc98+QSatOBpb2VGRlo5+1bB6PT2W3OVpLwCEKLmIIKS4F2T6rHv1S7J+cFG8Y+4EEaP/BkCh5DXDq7JXN4MdBF68gR1czHup3qlHI8Pjk0KGh0gyPAF4CX3fBXXsY6zB7s1p6GF4tVPw+uBJR3tbgFZOea+9E1F/v6LsqinZaY3nzueFPF6YYeKpV5elObgQ75UtIMi2HAE8kXxmeFV26j35yihArl4DeOLdHkn+VSsOxq4MHwPfe0kdEydDepzDOia+fTx16u1Z/ZzQB9+25squMw7oeivLrpgy+Ky37TWDeSgH5Tndg8GH9XAZg6ctk4ofavBBGPsB2VTku6iNH/gVxdxgjGkwpsoJ5MTdoXF3Ix2b5deAIfNuu8PvI1Evn+j/iWzLR0aZQseyGRpvJbtqzODnZEMNAj2UAUNU98rB/d4t2Ujdm5TIhnURgUY0+NTAGVBq5j2KAB1inIbJcA7iG4y5Qnv64I1PaDn50gjOcawV8pMxWrCcIa3BOQCjOrYgjVOlHDL4maIhL2OzVMHGDD6pFDHLrBxIXu2hMCoDfTZEfXVYh6RzdGWKdQajl/xWNPYUjaSeVeTzApuVsobsGuLZeoTGbGEap0p+YfAdQRpijoiwgXvvBh/rDcS2TIbYSF7V4BR8kDcK+dArRvChyMEQCtYz9pN0bYzGWfmAi0tXChquHAOsa0iHShmBN7HLccjgawTQlhqRNnLvzeBj/YHYllH+k7xSvcvIQGTaKBQ6UBHtNyNtZBuQX+XxrrcMNVH61aGRSsJQ0HCV4bQBvvRLPkBjHtDeEecwd8i75n2DH0JUtxxg0zxVG1J3aPC1QjjhvKzNHc/2UHjXnfbG4puL82qk35rRG4UOBKfKBcqvv88Ukr456kFDt4JsXL1sYILT6EM5Iwt230ZT8l6fmvdoy9HVL3AeezEm/is5QudMlyNtPSrf+3Bh8BUD1LfUjsDd0AssNBmolYjsp1DwYzYXG/pMnzGjplEQqkTij7d+gHdQrhyQAL6UY7TCGlTNJDK1QmvItqo5XoI/e1MvMBbUOgbdvqNgIgwNa0yrABqbkXbZsVwsYXuGDH6mIE7D8D0WXAGQ9IQY/IbsyzsVD3y6WluGvIIyQF7tSmQH8jCOewdGn2YVvdM2s0l+HKiv8Ui95Kd4b8H4ZF2Q7fgeTGLPL8wZ/JCkhcbV99Yx6JzTCn57EdpVXzXQVk62caWrEXmQDzXCboSFlFbQUY0/ywRlHxo+Ufsc0O0PlAPtlEr5HBB+QKhi+iPabYh2h2K/NckLKm9ewfNBgwrO+HinUCp4MEhfAD9beumTx9CFn6uF2x/Ts4Js42r8TtBJtx3T0ISWGpEyfsh+VX2Cj9d6K1yg4WgitKGmd6BvdmL08cBY7zyLMKA1k3Wo3Ng2qAORiGvwWX6GHDxj6Bbozjs0ine6siXgx573BAg+rLUfvDxNRI7uQp8K/LXJWnwB8Icx5k/Ylz7eqF8tcvL5UtnPHjbe6nsZVoybRd8R6UpqETm4S6k+e1bZYf5yvh1BwqtcXwbGvts3ETkwFdwYYqoM8aeB/YBQF48YvlQsh9UVBo/Es6exHxS37QJ2AqV11F2sxtqkQvgL+moAX5kKEufW0RyechSRpqNjb7D60scJ50snG59ZJMc6OaRlgFcZNCt78oTyMLTv4vqryP5eevVLsn6UqzM6/TPx3dmwDrgwRxHoFQn0F4lRq+SYPF9gnIyOR/AbwNWNdEndl2LM1JHaESy4vzl7PbLYWSt3s3gBctYLwG/t1aayvW9DDnlYU6C8w5H6DN9Z+vqoA+v3sQfwq+ezz8aYxzGZOw/P64pphz7vmdUBYL37hqzT4gjrjb5j+AtIR0x4zkuhc9U1g2biN1bfSvL5Loob9sVgbLWiWWnXxpgXWeA6be/78J3hr91HxXeuPMcmqIdn2AGbL9wPi4x8vg7sj62fBfbXBNa/gNil5yv8DfVUWIcx2N8HJo6CqA8EGAwRybV1Y6HzIZQc5zvmPyuaaiZ+Ywz+UIjNC87pZL67/T1gsmYR0+A/APiXMWYPa/9qzH+gxQ8RloU7WA8u5BTYXGE3o5i2c8U712QfMS6aY8IDQVdJL7GUBLfsHw3rgNssL3p12VTEoFDcrYt7vxznQ2BNrDE40yfTVhnwfmw4R336nx0zmAjDIG5IvE1rL6AINS6hcEtNADlBxyLtagUYibfqPlnljakTPd1g5DJ2ylDdBviMoXIJXkTk6RPsRBrVuA+U0YkP/H4WPd7WGHfg9s3mbmFlecSUBkRqe/cj5sEQ+6Hyg4i8iMgTgP+A/Wj5N9g4ZgiiZI0krAOxoZXvRJWh0A0Tzvkm1+EcNtZck88vDmNMZozZG2MaAH/Bfhv6GbowjS+mQgl5xLbm8IV4lvrM4AAy4tnJdxIbDv8WQswEPsPuj/1ljKndJ0ZHEdXg9+EmgErsB88zWOP/pmzu2W3YJdwvKuLZUIM/tFGeE/WBMOMUFcaY3BhTA/gbdoAvaeD7mOIDM4m+DUzCXlCkftaafjpg3mu2L2cDlzL6Lb4A+D9n+LOhBxY1+F10jH8G4L+h8/jZDIuEDUFsLruv3J/dhmMXuWfddxnOm2fyzt+1xikmjDGPxpgKwB+43ZmYPuqJ3xjDGDKBMrIDAhIPnLFkNoe93ssZ/d95imh8AdCepbrARZbOyCya4XJ5U0ngzreI7J23UoNjbA7+cEnCtlDBP0XzI1vHLVV9dWUsDZZJ51zdu3cD9oDbevNXkJHsEGcYGdrqADLYcFwT0FdOPl/7PigipZvA91g2y/EBwMEdwvxwXD4ZY0oAvxENnRDB6Io9iVjCxiB9wc7ym8BUXjmBLAYtG0AFhcFHeDjnruCMfQ3OIRrDnzjfq36E3cT/StQdA2uEV59EPcHoGh2mcg7zzk2YbZr7EpP6Z9d+2f1jDm5XWP05uoHdazbrwmvnnWyTzhoAf/JVnZmgfKe6V7eMzePAd2kIeh5dHd+01GakzyyEhwq9zl3JFPUz4n375ej08wXjX/iqifbKCTpvplckzaLhe0d2TD9R7CGWy7i6yCD6BP6kX04+PwoRObm7c77EavNGaMjnW29NBcWG1eqx5xns4b+y2xljjggP52Se9WOgRGcVM3KnTvf07V4u9xwqcJ79OyxPK/ELtzLjLVaGzivxbAxoxwCbDRhl1SI2bNbm2AP4GPftobkcutXegzEmF3fPz0/Cn956MMYUio7/nVCTz+eB/bGb1XVgf0uDCbnswJ2OrShKloGPvB5gDe8XdIyGG+SMQX6F9WZLH2MfOdslaiZLZLDhpvZUMmvwa7YfX4hILSJ7EdmJyCOAX6DLcvzgRbtpy3rZpTHmIHGyGDLiWW1KZ6z+AVhBkDchPhtjMk/vawj/VgZf7FUL3+G3afUMf7m/KRyYqHDO0GeiSv/4P2twduQ4ZHTpdaxtt8cQPZNlZbyA9KJl4IZMx5ux/cZ8oI3Ss6+DS3Y5gtOxMy0ufvQCPjYUfKMi+Pu+veKqZJujMcqZPg5kP5Wyn4Lsp1kz1rrgewXJEopbMhXv9Ag+9p732mDqUzqloG+0fYX8gm6ABB/Dp8Y1dF9AGzyBDN42sHf1V1petHn4mqyGXyOEdthsnyW8BHrp58Dy7OtQXuwU3BKT5dG9ZKgwOfm+qMZ+EMXqau7U4kj/jIf4p3Q8RIXX3BDPArwHW0/8RumyhK+8GvJ5b9m5cVaT7QPxLky72Qr+J+BjMGiOIv/LGHMYOCAzCXeY5AB+s7Ymn/fBM2uIAUDs1aWswap9++ooIbtRcxfnFMSGCmJOTj63MLLy8g6vuNxqNq+67P3/YmnHLnb/G1mtmfiNGTOh1xwAvMH/2We/IjD9tR75O2vwC/L5jHy++fhXZ5mQQ7+UbnPz85mlyJN7TpNyNnlBUa8fDf0F+KVVqexr8hY/J4ujou3BJThLZ8jSm+RfiM71y+yn4aD88PVCsroKiSr0aZK2Trs76MbcqJ6S7VDhlZH+CgX9DSbSM12b2vRXwXjaa6Zoy+vThtCFDT/o7DfGxp6mGF13imZAqJUGC32ha6SvRtleewAm75SXANpPGFFubNTgB/KvX0YHdqcvzV5Vq88vPVmV0Ov1EcO3gVJywsx3YWENTxXA0xp2ssh77eZkO+prigONaMujffseHdk1AXyZHSdK3SiH9KI3QbF0NxdtRJg9blFOU4wYYMx+CTpG+so3wB/BhIeAbRv8GLKqFzYasXV5zDMslO1Vrm6O88nKGE7WoE6AnzhnJ2NP+TUbkJ+Xzill+dE27Lgo3X9r6O1yOWrwN2bAuqUgFUOz4z5bbj3BEGXytB+2bfCzW+oH1vk+c1vmPPJ8ZT0aK8cenRVRt4moK2uPs24pPehtVqbxylFeYnaKXSqlckRn9kx/1Ur8GQwP3IvBd/SFeqPM6m8RZ8CjTBr7Dn1L06HR0ypAXjGvYskW5EsDzmbMhqnAf3AndsmvaJogtliZ2CtFI5Ujj02PR5/Vjfkza+zvxOCH6BptUFh+RJKTVx76wjpUQTcuXjr0PZJ1y8i6soSXfwLvCGQbkOdUKQbpmSH2CestS2Ic7Cpj0rSiQg6VAzw9W5YPKxh81ojMKvaGBuLeV06OrgzL7KNVnT70WR43/KThhK40EfnSGnvG4HtnDN5Y19r3GR0Tvgy+Zeysiakk0GdmXBWizzyyUnoLdISecon3jDyQS5yzunwNErWZP9Dnknp91Oox4ocCylj6sAVdgjXOMSbFj5UXuFWmZlV5CxtaY2blwRCcYdmZqukrZkQFaWkPUhJFvwXiGf4TZtK2Jugol3zPBeTly7MqQl95RBm1g66IQFeM1XWN8YygyreNXj0mdXv04+eR+BOy93Ox8iLHSLkRXWvLAZ7OhXGEeMNd2r+DNWbMF4SG8O6IPcjwJ+miw52+y2FXLuzx8FzZ5w6WZzvwJ/q+48yjk7L/AsRpPu17xoCTzx+ej/8SS2+cjArorqF9hZVRJYFfg+vR9OhoeoH/ZVntmKpk4GKvXvs5zucLht75Hda47Tt1DvA/EVyL58VgWhhjXuDPnzdY3uz7cjLG7OFvD14k4KoIx/cCOnsAWLnUrhwYnaMN/kVlq5BPcB96wPnI7xMuX+QN5+O9R/fvOoRp9wp3lDvDpXK13kqLBtY7+qH407lOwseReBd7ZewSdLQx3azz5xyXR+kb2JTD7t8Wg3O0WrqAM21N579qnemMZbh2VM7FWnAyy3GejLpjqsFGx9OAXIFr2QJ2hX+E1bnu37n+Qgx+QkJMuPtovno+/k3sR6ETEhI8kQx+ws3g7vIeQ39VOId/bNFjS0jYMpLBT7gZjDGxlO1NRLJIbSUk/DD4af6RhITNoVqbgISEe0Ty8BNuhoge/n/GzIZJSPhRkDz8hHvD78nYJyTokDz8hJshgof/KiLU2YmEhIQzkoefcC94hc2zTkhIUCIZ/ISt4x3A77BHx+/qMFBCwtbwaW0CEhJ6eEfnNDYCrpRISEi4xP8D2lvzm1E90FIAAAAASUVORK5CYII=" alt="Storycards" height="26" style="display:block;height:26px;width:auto"/></div>
   <div class="header-right">
     <span class="usage-badge" id="usage-badge" title="Carrosséis criados este mês. O limite renova no dia 1º." style="display:none"></span>
+    <button class="icon-btn" onclick="openControl()" title="Controle de gastos" id="control-btn" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4"/><path d="M12 16V8"/><path d="M17 16v-7"/></svg></button>
     <button class="icon-btn" onclick="openHistory()" title="Histórico" id="history-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
     <button class="icon-btn" onclick="openTemplateManager()" title="Templates"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
     <button class="icon-btn" onclick="openBrand()" title="Identidade Visual"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17a4 4 0 0 1-8 0V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2Z"/><path d="M16.7 13H19a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H7"/><path d="M 7 17h.01"/><path d="m11 8 2.3-2.3a2.4 2.4 0 0 1 3.404.004L18.6 7.6a2.4 2.4 0 0 1 .026 3.434L9.9 19.8"/></svg></button>
@@ -2725,6 +2770,7 @@ body.mob-ed-open { overflow:hidden; }
 
 <!-- MOBILE MENU -->
 <div id="mobile-menu">
+  <button class="mobile-menu-item" id="control-mobile-btn" style="display:none" onclick="openControl();toggleMobileMenu()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4"/><path d="M12 16V8"/><path d="M17 16v-7"/></svg> Controle</button>
 
   <button class="mobile-menu-item" onclick="openHistory();toggleMobileMenu()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Histórico</button>
   <button class="mobile-menu-item" onclick="openTemplateManager();toggleMobileMenu()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Templates</button>
@@ -12766,7 +12812,10 @@ function initTheme() {
 
 
 // ── SUPABASE AUTH ──
-const BACKEND_URL = 'https://storylab-backend-production.up.railway.app';
+// ?api=local (só no computador de desenvolvimento) testa contra o servidor local
+const BACKEND_URL = (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).get('api') === 'local')
+  ? 'http://localhost:3001'
+  : 'https://storylab-backend-production.up.railway.app';
 
 // ── Multi-layer session storage for maximum persistence ──
 const _SL_KEY = 'sb-fgwjpisxuttaafgxjuhr-auth-token'; // Supabase default key
@@ -12922,6 +12971,10 @@ async function checkAccessAndSync() {
   if (!me) return; // backend fora — não bloqueia, tenta de novo no próximo login
   _accessChecked = true;
   if (!me.access?.allowed) { showNoAccessScreen(me.email, me.access?.status); return; }
+  if (me.access?.admin) {
+    document.getElementById('control-btn').style.display = '';
+    document.getElementById('control-mobile-btn').style.display = '';
+  }
 
   const res = await fetch(BACKEND_URL + '/api/kv', { headers: { 'Authorization': 'Bearer ' + token } }).catch(() => null);
   if (!res || !res.ok) return;
@@ -13312,6 +13365,119 @@ async function openHistory() {
 
 function closeHistory() {
   document.getElementById('history-overlay').style.display = 'none';
+}
+
+// ── PAINEL CONTROLE: custo estimado do mês, por dia, por cliente e por etapa (só admin) ──
+let _ctlMonth = null;
+const _CTL_KINDS = {
+  claude_search: 'Pesquisa na internet (provas)',
+  triagem_search: 'Pesquisa da triagem',
+  claude: 'Escrita e ajustes (sem pesquisa)',
+  fetch_url: 'Leitura de link colado',
+};
+const _CTL_MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function openControl() {
+  document.getElementById('control-overlay').style.display = 'flex';
+  loadControl(_ctlMonth);
+}
+function closeControl() {
+  document.getElementById('control-overlay').style.display = 'none';
+}
+function _ctlShift(delta) {
+  const [y, m] = _ctlMonth.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  loadControl(d.toISOString().slice(0, 7));
+}
+
+async function loadControl(month) {
+  const body = document.getElementById('control-body');
+  body.innerHTML = '<div class="history-loading"><div class="post-generating" style="display:inline-block;margin-right:8px"></div> Carregando...</div>';
+  try {
+    const res = await fetch(BACKEND_URL + '/api/admin/report' + (month ? '?month=' + month : ''), {
+      headers: { 'Authorization': 'Bearer ' + getAuthToken() }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    renderControl(await res.json());
+  } catch (e) {
+    body.innerHTML = '<div class="history-empty">Não foi possível carregar o controle agora.<br>Tente de novo em instantes.</div>';
+  }
+}
+
+function renderControl(r) {
+  _ctlMonth = r.month;
+  const fx = r.usd_brl || 5.36;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const brl = v => v == null ? '—' : (v * fx).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const usd = v => v == null ? '—' : 'US$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const t = r.totals;
+  const [y, m] = r.month.split('-').map(Number);
+  const now = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 7);
+
+  const kpi = (label, value, sub) => `<div class="ctl-kpi"><div class="ctl-kpi-label">${label}</div><div class="ctl-kpi-value">${value}</div>${sub ? `<div class="ctl-kpi-sub">${sub}</div>` : ''}</div>`;
+  const kpis = [
+    kpi('Gasto no mês', brl(t.usd), usd(t.usd)),
+    r.is_current ? kpi('Hoje', brl(t.today_usd), usd(t.today_usd)) : '',
+    r.is_current ? kpi('Previsão do mês', brl(t.projection_usd), 'no ritmo atual') : '',
+    kpi('Por carrossel', brl(t.usd_per_carousel), t.carousels + (t.carousels === 1 ? ' carrossel' : ' carrosséis')),
+    kpi('Clientes ativos', t.users, t.calls + ' chamadas · ' + t.searches + ' buscas'),
+  ].join('');
+
+  const max = Math.max(...r.days.map(d => d.usd), 0.0001);
+  const bars = r.days.map(d => {
+    const h = Math.round(d.usd / max * 100);
+    const [, mm, dd] = d.date.split('-');
+    return `<div class="ctl-bar${d.usd ? '' : ' zero'}" style="height:${d.usd ? Math.max(h, 2) : 1}%" title="${dd}/${mm}: ${brl(d.usd)} · ${d.carousels} carrossel(éis)"></div>`;
+  }).join('');
+
+  const users = r.users.length ? r.users.map(u => `
+    <tr class="${u.flag ? 'flag' : ''}">
+      <td><div class="ctl-email" title="${esc(u.email)}">${esc(u.email)}</div>${u.flag ? '<div class="ctl-alert">Acima do normal</div>' : ''}</td>
+      <td class="ctl-hide-sm"><span class="ctl-tag">${esc(u.plan)}</span></td>
+      <td class="num">${u.carousels}</td>
+      <td class="num">${brl(u.usd)}</td>
+      <td class="num">${brl(u.usd_per_carousel)}</td>
+      <td class="num ctl-hide-sm">${u.last_at ? new Date(u.last_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'}</td>
+    </tr>`).join('') : '<tr><td colspan="6" style="color:var(--muted)">Nenhum uso neste mês.</td></tr>';
+
+  const kinds = r.kinds.map(k => `
+    <tr>
+      <td>${esc(_CTL_KINDS[k.kind] || k.kind)}</td>
+      <td class="num">${k.calls}</td>
+      <td class="num">${brl(k.usd)}</td>
+      <td class="num">${t.usd ? Math.round(k.usd / t.usd * 100) : 0}%</td>
+    </tr>`).join('');
+
+  document.getElementById('control-body').innerHTML = `
+    <div class="ctl-month">
+      <button onclick="_ctlShift(-1)" title="Mês anterior">‹</button>
+      <span>${_CTL_MONTHS[m - 1]} de ${y}</span>
+      <button onclick="_ctlShift(1)" title="Próximo mês" ${r.month >= now ? 'disabled' : ''}>›</button>
+    </div>
+    <div class="ctl-kpis">${kpis}</div>
+    <div>
+      <div class="ctl-h">Gasto por dia</div>
+      <div class="ctl-chart">${bars}</div>
+      <div class="ctl-axis"><span>1</span><span>${Math.ceil(r.days.length / 2)}</span><span>${r.days.length}</span></div>
+    </div>
+    <div>
+      <div class="ctl-h">Por cliente</div>
+      <div class="ctl-scroll"><table class="ctl-table">
+        <thead><tr><th>E-mail</th><th class="ctl-hide-sm">Plano</th><th class="num">Carrosséis</th><th class="num">Gasto</th><th class="num">Por carrossel</th><th class="num ctl-hide-sm">Último uso</th></tr></thead>
+        <tbody>${users}</tbody>
+      </table></div>
+    </div>
+    <div>
+      <div class="ctl-h">Onde vai o custo</div>
+      <div class="ctl-scroll"><table class="ctl-table">
+        <thead><tr><th>Etapa</th><th class="num">Chamadas</th><th class="num">Gasto</th><th class="num">Parte</th></tr></thead>
+        <tbody>${kinds || '<tr><td colspan="4" style="color:var(--muted)">Sem dados.</td></tr>'}</tbody>
+      </table></div>
+    </div>
+    <div class="ctl-note">
+      Estimativa feita pelo Storycards com o preço de tabela da Anthropic e dólar a R$ ${fx.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Conta só o uso dentro da ferramenta; testes feitos por fora não entram.
+      A fatura oficial e o saldo de créditos ficam no <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">console da Anthropic</a>.
+    </div>`;
 }
 
 async function loadHistoryList() {
