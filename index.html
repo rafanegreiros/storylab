@@ -13369,6 +13369,13 @@ function closeHistory() {
 
 // ── PAINEL CONTROLE: custo estimado do mês, por dia, por cliente e por etapa (só admin) ──
 let _ctlMonth = null;
+let _ctlAdmin = false; // incluir os testes do próprio admin nos números
+try { _ctlAdmin = localStorage.getItem('storycards_ctl_admin') === '1'; } catch (e) {}
+function _ctlToggleAdmin(on) {
+  _ctlAdmin = on;
+  try { localStorage.setItem('storycards_ctl_admin', on ? '1' : '0'); } catch (e) {}
+  loadControl(_ctlMonth);
+}
 const _CTL_KINDS = {
   claude_search: 'Pesquisa na internet (provas)',
   triagem_search: 'Pesquisa da triagem',
@@ -13394,7 +13401,7 @@ async function loadControl(month) {
   const body = document.getElementById('control-body');
   body.innerHTML = '<div class="history-loading"><div class="post-generating" style="display:inline-block;margin-right:8px"></div> Carregando...</div>';
   try {
-    const res = await fetch(BACKEND_URL + '/api/admin/report' + (month ? '?month=' + month : ''), {
+    const res = await fetch(BACKEND_URL + '/api/admin/report?admin=' + (_ctlAdmin ? '1' : '0') + (month ? '&month=' + month : ''), {
       headers: { 'Authorization': 'Bearer ' + getAuthToken() }
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -13419,7 +13426,7 @@ function renderControl(r) {
     kpi('Gasto no mês', brl(t.usd), usd(t.usd)),
     r.is_current ? kpi('Hoje', brl(t.today_usd), usd(t.today_usd)) : '',
     r.is_current ? kpi('Previsão do mês', brl(t.projection_usd), 'no ritmo atual') : '',
-    kpi('Por carrossel', brl(t.usd_per_carousel), t.carousels + (t.carousels === 1 ? ' carrossel' : ' carrosséis')),
+    kpi('Por carrossel', brl(t.usd_per_carousel), t.carousels + (t.carousels === 1 ? ' carrossel' : ' carrosséis') + ' · com tentativas e ajustes'),
     kpi('Clientes ativos', t.users, t.calls + ' chamadas · ' + t.searches + ' buscas'),
   ].join('');
 
@@ -13438,7 +13445,7 @@ function renderControl(r) {
       <td class="num">${brl(u.usd)}</td>
       <td class="num">${brl(u.usd_per_carousel)}</td>
       <td class="num ctl-hide-sm">${u.last_at ? new Date(u.last_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'}</td>
-    </tr>`).join('') : '<tr><td colspan="6" style="color:var(--muted)">Nenhum uso neste mês.</td></tr>';
+    </tr>`).join('') : `<tr><td colspan="6" style="color:var(--muted)">${r.include_admin ? 'Nenhum uso neste mês.' : 'Nenhum cliente usou neste mês ainda.'}</td></tr>`;
 
   const kinds = r.kinds.map(k => `
     <tr>
@@ -13453,6 +13460,9 @@ function renderControl(r) {
       <button onclick="_ctlShift(-1)" title="Mês anterior">‹</button>
       <span>${_CTL_MONTHS[m - 1]} de ${y}</span>
       <button onclick="_ctlShift(1)" title="Próximo mês" ${r.month >= now ? 'disabled' : ''}>›</button>
+      <label style="margin-left:auto;display:flex;align-items:center;gap:6px;font-family:'Roboto',sans-serif;font-weight:400;font-size:.78rem;color:var(--muted);cursor:pointer">
+        <input type="checkbox" ${r.include_admin ? 'checked' : ''} onchange="_ctlToggleAdmin(this.checked)"> Incluir meus testes
+      </label>
     </div>
     <div class="ctl-kpis">${kpis}</div>
     <div>
@@ -13475,7 +13485,7 @@ function renderControl(r) {
       </table></div>
     </div>
     <div class="ctl-note">
-      Estimativa feita pelo Storycards com o preço de tabela da Anthropic e dólar a R$ ${fx.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Conta só o uso dentro da ferramenta; testes feitos por fora não entram.
+      Estimativa feita pelo Storycards com o preço de tabela da Anthropic e dólar a R$ ${fx.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Conta só o uso dentro da ferramenta; testes feitos por fora não entram. Por padrão mostra só clientes: marque "Incluir meus testes" para somar o seu uso de admin.
       A fatura oficial e o saldo de créditos ficam no <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">console da Anthropic</a>.
     </div>`;
 }
