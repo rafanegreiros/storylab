@@ -2245,6 +2245,12 @@ body.mob-ed-open { overflow:hidden; }
   transition: all 0.15s;
 }
 .history-close:hover { border-color: var(--ink); color: var(--ink); }
+.history-import { margin-left:auto; margin-right:8px; background:none; border:1px solid rgba(255,170,0,0.4); color:#c98500; border-radius:6px; padding:5px 10px; font-family:'Poppins',sans-serif; font-size:0.65rem; font-weight:600; cursor:pointer; }
+.history-import:hover { background:rgba(255,170,0,0.1); }
+.history-filters { display:flex; gap:6px; padding:10px 12px 0; flex-shrink:0; }
+.history-filters:empty { display:none; }
+.history-filters select { flex:1; min-width:0; background:var(--surface); color:var(--ink); border:1px solid var(--border); border-radius:6px; padding:6px 8px; font-size:0.72rem; }
+.history-group { font-family:'Poppins',sans-serif; font-size:0.6rem; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); padding:8px 4px 2px; display:flex; justify-content:space-between; }
 
 .history-list {
   flex: 1; overflow-y: auto;
@@ -2615,6 +2621,11 @@ body.mob-ed-open { overflow:hidden; }
 .rt-acts button:hover:not(:disabled) { color:var(--ink); border-color:var(--ink2); }
 .rt-acts button:disabled { opacity:0.35; cursor:default; }
 .rt-par { margin-top:8px; padding-left:10px; border-left:2px solid var(--border); }
+.rv-box .rv-item { margin-top:8px; padding:6px 8px; border-radius:6px; font-size:0.78rem; line-height:1.5; color:var(--ink); }
+.rv-box .rv-item.ok { background:rgba(46,160,67,0.08); }
+.rv-box .rv-item.warn { background:rgba(227,160,8,0.12); }
+.rv-box .rv-onde { font-size:0.6rem; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+.rv-box .rv-mot { font-size:0.7rem; color:var(--muted); }
 .rt-wrap [contenteditable]:focus { background:var(--surface2); border-radius:4px; }
 .rt-provas { margin-top:14px; }
 .rt-provas-head { font-family:'Poppins',sans-serif; font-size:0.62rem; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); padding:12px 0 2px; }
@@ -2697,10 +2708,13 @@ body.mob-ed-open { overflow:hidden; }
   <div class="history-panel">
     <div class="history-header">
       <div class="history-title">Histórico</div>
+      <button class="history-import" id="history-import-btn" style="display:none" onclick="document.getElementById('history-import-file').click()" title="Importar carrosséis de um arquivo JSON (admin)">Importar carrosséis</button>
+      <input type="file" id="history-import-file" accept=".json,application/json" style="display:none" onchange="importarCarrosseis(this)"/>
       <button class="history-close" onclick="closeHistory()">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
+    <div class="history-filters" id="history-filters"></div>
     <div class="history-list" id="history-list">
       <div class="history-loading">Carregando...</div>
     </div>
@@ -3047,6 +3061,10 @@ body.mob-ed-open { overflow:hidden; }
             <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Frase Central</div>
             <input class="modal-input" id="brand-tagline" type="text" placeholder="Carrosséis com posicionamento e autoridade." style="margin-bottom:0;padding:8px 10px;"/>
           </div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Palavras e frases proibidas</div>
+          <input class="modal-input" id="brand-proibidos" type="text" placeholder="Separe por vírgula. Ex.: soluções inovadoras, criatividade sem limites, design que conecta" style="margin-bottom:0;padding:8px 10px;"/>
         </div>
         <!-- Row 2: Ano (compact) -->
         <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;">
@@ -3705,6 +3723,7 @@ function openBrand() {
   document.getElementById('brand-tagline').value = b.tagline || '';
   document.getElementById('brand-year').value = b.year || new Date().getFullYear();
   if (document.getElementById('brand-nicho')) document.getElementById('brand-nicho').value = b.nicho || '';
+  if (document.getElementById('brand-proibidos')) document.getElementById('brand-proibidos').value = b.proibidos || '';
   if (document.getElementById('brand-header-weight'))       document.getElementById('brand-header-weight').value       = b.headerWeight || 400;
   if (document.getElementById('brand-header-font-role'))    document.getElementById('brand-header-font-role').value    = b.headerFontRole || 'body';
   if (document.getElementById('brand-header-color-custom')) {
@@ -4006,6 +4025,7 @@ function saveBrand() {
     tagline:  document.getElementById('brand-tagline').value.trim(),
     year:     document.getElementById('brand-year').value.trim(),
     nicho:    document.getElementById('brand-nicho')?.value.trim() || '',
+    proibidos: document.getElementById('brand-proibidos')?.value.trim() || '',
     headerWeight:       parseInt(document.getElementById('brand-header-weight')?.value || '400'),
     headerFontRole:     document.getElementById('brand-header-font-role')?.value || 'body',
     headerColorCustom:  (document.getElementById('brand-header-color-enabled')?.checked
@@ -4625,7 +4645,7 @@ function resetAll() {
     imageData:null, imageAnalyzed:false, imageMime:'image/jpeg', cardImages:{}, editedCards: new Set(),
     fonteMode:'enriquecer', funil:'auto', tom:'Autoridade', triagem:null, triagemDeep:null, showDeep:false, headlines:[], headlineAngle:'',
     selectedHeadline:null, espinha:null, espinhaSources:[], profundidade:'padrao', roteiro:null, roteiroCompleto:null, cardCount:'auto', selectedTemplate:null, renderCards:[], renderAnalysis:null, sources:[], postDescricao:'', postComentario:'',
-    cards:[], activeCardIdx:0 });
+    imageGuide:null, semana:'', importado:false, cards:[], activeCardIdx:0 });
   initSidebar();
   document.getElementById('canvas').innerHTML = `
     <div class="empty-state">
@@ -4971,8 +4991,10 @@ async function runHeadlines() {
 
 Tema: ${t.tema_central} | Tom: ${S.tom} | Funil: ${t.funil_detectado}
 Fricção: ${t.friccao_central}
+Insumo (trecho): "${(S.insumoFinal || S.insumo || '').substring(0, 800)}"
 
 REGRAS: 2 linhas. Linha 1: termina "?" ou ":". Linha 2: termina "." ou "!". Naturezas em ordem: reenquadramento, conflito oculto, implicação sistêmica, contradição, ameaça/oportunidade, nomeação, diagnóstico cultural, inversão, ambição de mercado, mecanismo social.
+CASO CONCRETO: se o insumo traz uma notícia ou um caso com nome (marca, empresa, pessoa, evento), TODAS as headlines citam o caso pelo nome na linha 1 ou na linha 2 (ex.: "A Caixa pagou R$ 3,5 milhões por um logo?"). O tema geral entra através do caso.${_regrasMarca()}
 
 IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
 {"angulo_selecionado":"1 frase","headlines":[{"num":1,"natureza":"reenquadramento","l1":"","l2":""}]}`;
@@ -5024,7 +5046,7 @@ Evidências da triagem: ${(t.evidencias || []).join(' | ')}
 Insumo: ${(S.insumoFinal || S.insumo || '').substring(0, 2500)}
 
 Cada campo com 2 a 4 frases, específicas: use nomes, datas e números presentes no material. NUNCA invente dados.
-- hook: a cena ou tensão concreta que abre a história
+- hook: a cena ou tensão concreta que abre a história (se o insumo traz um caso com nome, o hook é o caso)
 - mecanismo: por que isso acontece (a explicação causal)
 - aplicacao: a consequência ampla e real; por que isso importa para quem lê
 - direcao: o ARCO do carrossel em 4 a 6 movimentos, em que ordem a história será contada, do gancho à conclusão
@@ -5058,14 +5080,19 @@ IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
 
 // ── Provas: busca global, citação em português, dado que fecha a manchete ──
 function _promptProvas(tema, argumento, qtd, extra) {
+  const ano = new Date().getFullYear();
+  const insumo = (S.insumoFinal || S.insumo || '').substring(0, 1200);
   return `Pesquisador de dados para um carrossel editorial no Instagram (público brasileiro). Encontre ${qtd > 1 ? `até ${qtd} provas reais e verificáveis` : '1 prova real e verificável'} que sustentem o argumento abaixo.
 
 Tema: ${tema}
 Argumento central: ${argumento}
-${extra || ''}
+${insumo ? `Insumo do usuário (trecho): "${insumo}"\n` : ''}${extra || ''}
 COMO PESQUISAR
 - Use web_search em português E em inglês (e em outros idiomas se o tema pedir): estudos de universidades, revistas científicas, órgãos oficiais, institutos de pesquisa e veículos de referência do mundo todo.
-- Prefira a fonte primária (o estudo, a instituição, o órgão) à matéria que só a comenta. Se achar só a matéria, informe o estudo citado nela.
+- Prefira a fonte primária (o estudo, a instituição, o órgão, a empresa citada) à matéria que só a comenta. Se achar só a matéria, informe o estudo citado nela.
+- FONTES ACEITAS: a fonte primária ou um veículo de referência (jornal, revista ou portal com redação própria, ex.: Folha, Estadão, Valor, Exame, Meio & Mensagem, Reuters, Bloomberg, The Guardian, HBR). DESCARTE páginas de "estatísticas", listas de números e blogs de SEO ou de empresas que só agregam dados de terceiros (ex.: "50 estatísticas de branding", "segundo Gartner e Digital Silk"). Se o número só aparece nesse tipo de página, procure a fonte original; não achou, não use.
+- DATA: prefira dados de ${ano - 3} em diante. Dado mais antigo só se for um clássico muito citado e insubstituível, e então o ano entra no "dado" (ex.: "Em 2019, ..."). Trabalho acadêmico isolado e antigo (TCC, dissertação, tese) não serve como prova principal.
+- CASO DO INSUMO: se o insumo traz uma notícia ou um caso concreto (marca, empresa, pessoa, evento com nome), a PRIMEIRA prova é sobre o próprio caso: o número ou fato central dele, de uma fonte de referência. As demais sustentam o argumento em volta do caso.
 - Use APENAS dados encontrados na busca. Não invente números, nomes ou datas. Melhor 2 provas fortes do que 4 fracas.
 
 CADA PROVA PRECISA SER FUNCIONAL PARA A DISCUSSÃO
@@ -5245,6 +5272,9 @@ INSUMO ORIGINAL (trecho):
 const ROTEIRO_REGRAS = `REGRAS DE ESCRITA:
 - Texto editorial, específico e verificável: nomes, datas, números e fontes vindos das PROVAS e do INSUMO. NUNCA invente dados.
 - Inclua ressalvas honestas quando as evidências tiverem limites ou divergências.
+- ATRIBUIÇÃO COM NOME: toda afirmação apoiada em fonte diz QUEM afirma (instituição, veículo, empresa ou pessoa, como nas PROVAS). PROIBIDO atribuir sem nome: "especialistas apontam", "segundo especialistas", "análise de especialistas", "estudos mostram", "pesquisas indicam", "dados revelam", "muitos acreditam". Sem fonte com nome, a frase vira leitura do próprio perfil (afirmação direta) ou sai do texto.
+- CASO CONCRETO: se o INSUMO traz um caso (marca, empresa, pessoa ou evento com nome), ele é o fio da história e aparece pelo nome em pelo menos 2 blocos, não só na abertura. O tema geral é explicado ATRAVÉS do caso; nunca use a notícia só como isca.
+- Toda frase completa: sujeito, verbo e complemento. Releia cada parágrafo e confira que nenhuma palavra ficou faltando (ex.: "é de — não de" está errado; o certo é "é de posicionamento, não de estética").
 - Terceira pessoa (sem "você"), exceto no CTA.
 - "virada": frase curta de impacto que abre o bloco (máx. 14 palavras) e funciona sozinha como título de card.
 - "destaque": título curto do parágrafo (máx. 8 palavras), usado se o parágrafo virar um card próprio.
@@ -5254,6 +5284,15 @@ const ROTEIRO_REGRAS = `REGRAS DE ESCRITA:
 - Marque com **negrito** 1 a 3 palavras-chave por parágrafo e 1 palavra-chave (ou expressão curta) em cada virada — é o que recebe o destaque visual do template.
 - Quando um parágrafo usar o dado de uma das PROVAS, preencha "prova" com a letra dela (ex.: "A"); senão, deixe "prova" vazio. Use cada prova em no máximo um parágrafo.
 - Provas marcadas [CARD] aparecem num box (manchete + dado) ao lado do parágrafo: cada uma precisa de um parágrafo próprio com "prova" preenchido, e esse parágrafo INTERPRETA o dado (o que ele muda na prática, para quem lê), sem repetir o número nem a manchete.`;
+
+// Termos proibidos do perfil da marca (campo "Palavras e frases proibidas" na identidade)
+function _proibidosMarca() {
+  return (getBrand().proibidos || '').split(/[,;\n]+/).map(t => t.trim().replace(/^["“']|["”']$/g, '')).filter(Boolean);
+}
+function _regrasMarca() {
+  const p = _proibidosMarca();
+  return p.length ? `\n- PROIBIDO no texto (perfil da marca): ${p.map(t => `"${t}"`).join(', ')}.` : '';
+}
 
 async function runRoteiro() {
   document.getElementById('primary-btn').disabled = true;
@@ -5269,7 +5308,7 @@ ${_roteiroContext()}
 PROFUNDIDADE: ${pf.label} → EXATAMENTE ${pf.blocos} blocos; cada bloco com ${pf.pars} parágrafos de ${pf.palavras} palavras.
 A Direção da espinha indica a ORDEM da história: agrupe os movimentos dela nesses ${pf.blocos} blocos (não crie um bloco por movimento).
 
-${ROTEIRO_REGRAS}
+${ROTEIRO_REGRAS}${_regrasMarca()}
 - "conclusao": fechamento em 1 a 2 frases que amarra a tese (não é CTA), no máximo 25 palavras.
 - "fechamento": 1 frase curta que complementa a conclusão SEM pedir ação (ou string vazia).
 - "cta": UMA única ação, curta (máx. 9 palavras) e específica do tema, coerente com o funil — ex.: "Comente **GUIA** e receba o passo a passo no direct", "Salve para revisar antes da próxima consulta". Marque a palavra-chave com **.
@@ -5283,6 +5322,7 @@ Responda SOMENTE com JSON válido:
     S.roteiro = data;
     S.roteiroCompleto = null;
     S.cardCount = 'auto';
+    await revisarRoteiro();
     S.step = 3.2; initSidebar(); renderRoteiro(); autoSave();
   } catch(e) { showError(e.message, handlePrimary); }
   document.getElementById('primary-btn').disabled = false;
@@ -5317,7 +5357,7 @@ function paginarRoteiro(r, wanted) {
     const ps = parsOf(g.b).slice(g.from, g.to + 1);
     const first = g.from === 0;
     cards.push({
-      role: first ? 'virada' : 'desenvolvimento',
+      role: first ? (g.b.papel || 'virada') : 'desenvolvimento',
       title: first ? (g.b.virada || ps[0]?.destaque || '') : (ps[0]?.destaque || ''),
       titleLong: first ? '' : (ps[0]?.manchete || ''),
       body: ps.map(p => p.texto).join(' '),
@@ -5341,7 +5381,7 @@ async function condensarRoteiro(nBlocos) {
   const base = S.roteiroCompleto || S.roteiro;
   showLoading(`Condensando a história em ${nBlocos + 2} cards...`);
   const prompt = `Reescreva o roteiro abaixo em EXATAMENTE ${nBlocos} bloco(s), cada um com 1 parágrafo de 35 a 55 palavras. Preserve os fatos mais fortes, as fontes e a sequência lógica. Mantenha conclusao, cta e credito.
-${ROTEIRO_REGRAS}
+${ROTEIRO_REGRAS}${_regrasMarca()}
 
 ROTEIRO COMPLETO (JSON):
 ${JSON.stringify({ blocos: base.blocos, conclusao: base.conclusao, fechamento: base.fechamento, cta: base.cta, credito: base.credito })}
@@ -5351,6 +5391,9 @@ Responda SOMENTE com JSON no mesmo formato:
   const data = extractJSON(await callClaude(prompt, 2500, 4, 150000));
   if (!data.blocos?.length) throw new Error('Não foi possível condensar o roteiro.');
   S.roteiro = { ...base, ...data };
+  const completo = S.roteiroCompleto;
+  await revisarRoteiro();
+  S.roteiroCompleto = completo;   // a revisão não descarta a versão completa guardada
 }
 
 async function setCardCount(val) {
@@ -5385,7 +5428,7 @@ async function aprofundarBloco(bi) {
 
 ${_roteiroContext()}
 
-${ROTEIRO_REGRAS}
+${ROTEIRO_REGRAS}${_regrasMarca()}
 
 OUTROS BLOCOS (não repetir): ${S.roteiro.blocos.filter((_, i) => i !== bi).map(x => x.virada).join(' | ')}
 BLOCO ATUAL: ${JSON.stringify(b)}
@@ -5393,7 +5436,7 @@ BLOCO ATUAL: ${JSON.stringify(b)}
 Responda SOMENTE com JSON: {"virada":"","paragrafos":[{"destaque":"","manchete":"","texto":"","prova":""}]}`;
   try {
     const nb = extractJSON(await callClaude(prompt, 1500, 4, 120000));
-    if (nb.paragrafos?.length) { S.roteiro.blocos[bi] = nb; S.roteiroCompleto = null; }
+    if (nb.paragrafos?.length) { S.roteiro.blocos[bi] = nb; S.roteiroCompleto = null; await revisarRoteiro(); }
   } catch(e) { alert('Não foi possível aprofundar o bloco: ' + e.message); }
   renderRoteiro(); autoSave();
 }
@@ -5427,6 +5470,136 @@ function editRoteiro(path, el) {
   }
   S.roteiroCompleto = null;
   _renderRoteiroStrip(); autoSave();
+}
+
+// ── REVISÃO FINAL DO ROTEIRO (Haiku, sem busca) ──
+// Depois que o roteiro é escrito: confere frase incompleta / palavra faltando, atribuição sem nome,
+// número sem prova correspondente e termos proibidos da marca. Corrige o que dá para corrigir com segurança
+// (troca de trecho exato) e mostra o resto para o usuário conferir. Checagens locais (grátis) + 1 chamada barata.
+const REVISAO_IA = { model: 'claude-haiku-5-5', kind: 'revisao' };
+const _ATRIB_VAGA = /\b(especialistas?\s+(apontam|afirmam|dizem|indicam|alertam|recomendam|explicam|acreditam|concordam)|segundo\s+(os\s+)?especialistas|(an[aá]lises?|opini[aã]o)\s+de\s+especialistas|de\s+acordo\s+com\s+especialistas|(estudos|pesquisas|dados|levantamentos|n[uú]meros)\s+(recentes\s+)?(mostram|indicam|revelam|apontam|sugerem|comprovam)|(estudos|pesquisas)\s+recentes|muitos\s+(acreditam|dizem|afirmam)|sabe-se\s+que|[ée]\s+consenso)\b/i;
+const _PALAVRA_FALTANDO = /(^|[\s(])(de|da|do|das|dos|em|no|na|nos|nas|ser|com|para|por|pelo|pela|ao|à|aos|às|um|uma|os|as|seu|sua)\s+(—|–|-\s|[,.;:!?])/i;
+
+function _roteiroCampos(r) {
+  const out = [];
+  (r?.blocos || []).forEach((b, bi) => {
+    out.push({ id: `b.${bi}.virada`, onde: `Bloco ${bi + 1} (virada)`, texto: b.virada || '' });
+    (b.paragrafos || []).forEach((p, pi) => {
+      out.push({ id: `b.${bi}.p.${pi}.texto`, onde: `Bloco ${bi + 1}, parágrafo ${pi + 1}`, texto: p.texto || '', prova: p.prova || '' });
+      if (p.manchete) out.push({ id: `b.${bi}.p.${pi}.manchete`, onde: `Bloco ${bi + 1}, manchete ${pi + 1}`, texto: p.manchete });
+    });
+  });
+  ['conclusao', 'fechamento', 'cta'].forEach(k => { if (r?.[k]) out.push({ id: k, onde: k === 'cta' ? 'Chamada (CTA)' : k === 'conclusao' ? 'Conclusão' : 'Fechamento', texto: r[k] }); });
+  return out.filter(c => c.texto);
+}
+function _setCampoRoteiro(r, id, val) {
+  const k = id.split('.');
+  if (k[0] === 'b') { const b = r.blocos[+k[1]]; if (k[2] === 'virada') b.virada = val; else b.paragrafos[+k[3]][k[4]] = val; }
+  else r[k[0]] = val;
+}
+// Números do texto que não aparecem nas provas, no insumo nem na pesquisa (ex.: "87%" de onde?)
+function _numerosSemProva(texto, corpus) {
+  const norm = n => n.replace(/[.\s]/g, '').replace(',', '.').replace(/\.0+$/, '');
+  const base = new Set((corpus.match(/\d[\d.,]*/g) || []).map(norm));
+  return (_plainText(texto).match(/\d[\d.,]*\s*(%|mil|milh[õo]es|bilh[õo]es|vezes|x\b)?/gi) || [])
+    .map(s => s.trim()).filter(s => { const n = norm(s.match(/\d[\d.,]*/)[0].replace(/[.,]$/, '')); return (n.length > 1 || /%/.test(s)) && !base.has(n); });
+}
+function _revisaoLocal(r) {
+  const alertas = [];
+  const proib = _proibidosMarca();
+  const lista = _provasList();
+  const corpus = [lista.map(p => `${p.manchete_pt} ${p.dado} ${p.fonte_data || ''}`).join(' '), S.insumoFinal || S.insumo || '',
+    JSON.stringify(S.triagem || {}), JSON.stringify(S.triagemDeep || {}), (S.sources || []).map(x => x.titulo || '').join(' '),
+    S.espinha ? `${S.espinha.hook} ${S.espinha.mecanismo} ${S.espinha.aplicacao} ${S.espinha.direcao}` : '',
+    `${S.selectedHeadline?.l1 || ''} ${S.selectedHeadline?.l2 || ''}`].join(' ');
+  for (const c of _roteiroCampos(r)) {
+    const plain = _plainText(c.texto);
+    let m;
+    if ((m = plain.match(_PALAVRA_FALTANDO))) alertas.push({ id: c.id, onde: c.onde, tipo: 'frase', trecho: plain.slice(Math.max(0, m.index - 25), m.index + m[0].length + 15).trim(), motivo: 'Parece faltar uma palavra aqui.' });
+    if ((m = plain.match(_ATRIB_VAGA))) alertas.push({ id: c.id, onde: c.onde, tipo: 'atribuicao', trecho: m[0], motivo: 'Atribuição sem nome: diga quem afirma ou transforme em leitura própria.' });
+    for (const t of proib) if (plain.toLowerCase().includes(t.toLowerCase())) alertas.push({ id: c.id, onde: c.onde, tipo: 'proibido', trecho: t, motivo: 'Termo proibido no perfil da marca.' });
+    if (c.id.endsWith('.texto') || c.id.endsWith('.manchete') || c.id.endsWith('.virada'))
+      for (const n of _numerosSemProva(c.texto, corpus)) alertas.push({ id: c.id, onde: c.onde, tipo: 'numero', trecho: n, motivo: 'Número que não aparece em nenhuma prova nem no insumo.' });
+  }
+  return alertas;
+}
+
+async function revisarRoteiro(opts = {}) {
+  const r = S.roteiro;
+  if (!r?.blocos?.length) return;
+  if (!opts.silent) showLoading('Revisando o texto final...');
+  const locais = _revisaoLocal(r);
+  const campos = _roteiroCampos(r);
+  const provas = _provasList().filter(p => p.uso !== 'fora');
+  const proib = _proibidosMarca();
+  const prompt = `Você é revisor final de um carrossel editorial em português. NÃO reescreva o texto: só conserte erros pontuais, trocando o MÍNIMO de palavras.
+
+CONFIRA EM CADA CAMPO:
+1. Frase incompleta ou palavra faltando (ex.: "o diagnóstico costuma ser de — não de estética" → falta "posicionamento"). Complete com a palavra que o contexto pede.
+2. Atribuição sem nome ("especialistas apontam", "estudos mostram", "pesquisas indicam", "segundo análise de especialistas"). Se uma prova abaixo sustenta a frase, troque pelo nome da fonte dela; se não, transforme em afirmação direta sem atribuição.
+3. Número sem prova: todo número precisa existir nas PROVAS ou no INSUMO. Número que não existe lá NÃO pode ser corrigido por você: só alerte.
+4. Termos proibidos da marca: ${proib.length ? proib.map(t => `"${t}"`).join(', ') : 'nenhum cadastrado'}. Troque por uma expressão concreta.
+5. Se o INSUMO traz um caso com nome (marca, empresa, pessoa) e ele não aparece em pelo menos 2 blocos, alerte (não corrija).
+
+Preserve as marcações **assim** exatamente como estão (não crie nem apague **). Não mexa no que está certo.
+
+PROVAS: ${provas.map(p => `${p.id}) ${p.dado} (Fonte: ${p.origem || p.fonte_veiculo || 'sem fonte'})`).join(' | ') || 'nenhuma'}
+INSUMO (trecho): "${(S.insumoFinal || S.insumo || '').substring(0, 1200)}"
+${locais.length ? `PONTOS JÁ DETECTADOS AUTOMATICAMENTE (confira e corrija se der): ${locais.map(a => `[${a.id}] "${a.trecho}" — ${a.motivo}`).join(' | ')}\n` : ''}
+CAMPOS (id: texto):
+${campos.map(c => `${c.id}: ${c.texto}`).join('\n')}
+
+Responda SOMENTE com JSON. "trecho" é cópia EXATA de um pedaço do campo (com as ** se houver) e "troca" é o mesmo pedaço corrigido:
+{"correcoes":[{"id":"","trecho":"","troca":"","motivo":"curto"}],"alertas":[{"id":"","trecho":"","motivo":"curto"}]}`;
+  let ia = null;
+  try { ia = extractJSON(await callClaude(prompt, 1500, 2, 60000, REVISAO_IA)); }
+  catch (e) { console.warn('Revisão final indisponível:', e.message); }
+
+  const feitas = [];
+  for (const c of (ia?.correcoes || [])) {
+    const campo = campos.find(x => x.id === c.id);
+    if (!campo || !c.trecho || !c.troca || c.trecho === c.troca) continue;
+    const atual = campos.find(x => x.id === c.id).texto;
+    const n = atual.split(c.trecho).length - 1;
+    const stars = s => (s.match(/\*\*/g) || []).length;
+    if (n !== 1 || stars(c.troca) % 2 || stars(c.troca) < stars(c.trecho)) continue;  // trecho único; destaques fechados e nenhum apagado
+    if (_words(c.troca) > _words(c.trecho) + 12) continue;                     // revisão pontual, não reescrita
+    const novo = atual.replace(c.trecho, c.troca);
+    _setCampoRoteiro(r, c.id, novo); campo.texto = novo;
+    feitas.push({ id: c.id, onde: campo.onde, antes: c.trecho, depois: c.troca, motivo: c.motivo || '' });
+  }
+  // Depois das correções, as checagens locais rodam de novo: só fica o que ainda está no texto
+  const restantes = _revisaoLocal(r);
+  const vistos = new Set(restantes.map(a => a.id + '|' + a.trecho));
+  for (const a of (ia?.alertas || [])) {
+    const campo = campos.find(x => x.id === a.id);
+    const key = a.id + '|' + a.trecho;
+    if (!a.motivo || vistos.has(key)) continue;
+    vistos.add(key);
+    restantes.push({ id: a.id, onde: campo ? campo.onde : 'Carrossel', tipo: 'ia', trecho: a.trecho || '', motivo: a.motivo });
+  }
+  r._revisao = { feitas, alertas: restantes, ia: !!ia, em: Date.now() };
+  if (feitas.length) S.roteiroCompleto = null;
+}
+
+function _revisaoHtml() {
+  const v = S.roteiro?._revisao;
+  if (!v) return '';
+  const item = (cls, onde, corpo) => `<div class="rv-item ${cls}"><div class="rv-onde">${_escHtml(onde)}</div>${corpo}</div>`;
+  const feitas = v.feitas.map(f => item('ok', f.onde, `<div><s>${_escHtml(_plainText(f.antes))}</s> → <b>${_escHtml(_plainText(f.depois))}</b></div>${f.motivo ? `<div class="rv-mot">${_escHtml(f.motivo)}</div>` : ''}`)).join('');
+  const alertas = v.alertas.map(a => item('warn', a.onde, `<div>${a.trecho ? `“${_escHtml(_plainText(a.trecho))}”` : ''}</div><div class="rv-mot">${_escHtml(a.motivo)}</div>`)).join('');
+  const resumo = !v.feitas.length && !v.alertas.length ? 'Nada a corrigir: frases completas, fontes com nome e números com prova.'
+    : `${v.feitas.length ? `${v.feitas.length} ajuste${v.feitas.length > 1 ? 's' : ''} feito${v.feitas.length > 1 ? 's' : ''}` : ''}${v.feitas.length && v.alertas.length ? ' · ' : ''}${v.alertas.length ? `${v.alertas.length} ponto${v.alertas.length > 1 ? 's' : ''} para você conferir` : ''}`;
+  return `<div class="rt-blk rv-box">
+    <div class="rt-blk-head"><span class="rt-tag" style="background:#E6F1FB;color:#0C447C">Revisão final</span>
+      <span style="font-size:0.7rem;color:var(--muted)">${resumo}${v.ia ? '' : ' (só checagem automática: a revisão da IA não respondeu)'}</span>
+      <div class="rt-acts"><button onclick="_revisarDeNovo()" title="Revisar o texto atual de novo">Revisar de novo</button></div></div>
+    ${feitas}${alertas}
+  </div>`;
+}
+async function _revisarDeNovo() {
+  try { await revisarRoteiro(); } catch (e) { alert('Não foi possível revisar: ' + e.message); }
+  renderRoteiro(); autoSave();
 }
 
 function _roteiroTag(role, label) {
@@ -5466,6 +5639,7 @@ function renderRoteiro() {
       <div class="rt-strip" id="rt-strip"></div>
       <div class="rt-legend">${Object.values(ROTEIRO_ROLES).map(v => `<span><i style="background:${v[1]};border:1px solid ${v[2]}"></i>${v[0]}</span>`).join('')}</div>
       <div class="rt-list">
+        ${_revisaoHtml()}
         <div class="rt-blk">
           <div class="rt-blk-head">${_roteiroTag('capa')}<span style="font-size:0.68rem;color:var(--muted)">headline escolhida</span></div>
           <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:0.95rem;color:var(--ink);margin-top:8px">${_escHtml(h.l1)}</div>
@@ -6766,7 +6940,11 @@ function renderFinal() {
     attachCardClickHandlers();
     selectCard(0);
     _mobEdMount();
-    generatePostContent();
+    if (S.postDescricao) {
+      const dEl = document.getElementById('post-descricao'), cEl = document.getElementById('post-comentario');
+      if (dEl) dEl.textContent = S.postDescricao;
+      if (cEl) cEl.textContent = S.postComentario || '';
+    } else generatePostContent();
     // Init image guide — lazy load via IntersectionObserver
     initImageGuide();
     // Restore cached guide if exists
@@ -6906,7 +7084,20 @@ function _textBottomPx(card) {
 // Destaque do template: como as palavras marcadas com **...** aparecem
 // 'bold' (negrito) · 'color' (cor de destaque) · 'highlight' (marca-texto atrás do texto)
 function _emphasisOf(card) {
-  return { mode: card.emphasis || 'bold', color: card.emphasisColor || getBrand().accent || '#0071e3' };
+  const b = getBrand();
+  const e = { mode: card.emphasis || 'bold', color: card.emphasisColor || b.accent || '#0071e3' };
+  // A cor de destaque é conferida contra o fundo ATUAL do card (título e texto). Se o fundo foi trocado
+  // depois do template (ex.: card azul com destaque azul), a palavra destacada sumia do card.
+  // Troca por outra cor da marca que contraste; sem nenhuma, usa a mais legível entre claro e escuro.
+  if (e.mode === 'color') {
+    const bgs = [_titleBg(card), _bodyBg(card)].map(_hexRgb).filter(Boolean);
+    const score = c => { const x = _hexRgb(c); return x ? Math.min(...bgs.map(bg => _contrastRatio(x, bg))) : 0; };
+    if (bgs.length && score(e.color) < 2.5) {
+      const alt = [b.accent, b.primary, b.support].find(c => score(c) >= 3);
+      e.color = alt || ['#ffffff', '#141210', b.light, b.dark].filter(Boolean).sort((x, y) => score(y) - score(x))[0];
+    }
+  }
+  return e;
 }
 
 // Kicker: elemento acima do título (número gigante, número do passo, rótulo)
@@ -12637,7 +12828,7 @@ async function fetchWithTimeout(url, options, timeoutMs = 60000) {
 const NET_ERR_MSG = 'A conexão com o servidor caiu. Confira sua internet e clique em Refazer.';
 function _isNetErr(e) { return e instanceof TypeError || /failed to fetch|networkerror|load failed|network connection/i.test(e?.message || ''); }
 
-async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000) {
+async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000, opts = {}) {
   let token = await getFreshAuthToken();
   if (!token) { showLoginScreen(); throw new Error('Faça login para continuar.'); }
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -12650,7 +12841,8 @@ async function callClaude(prompt, maxTokens, retries = 4, timeoutMs = 90000) {
           "Authorization": "Bearer " + token
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model: opts.model || "claude-sonnet-4-6",
+          kind: opts.kind,
           max_tokens: maxTokens || 1000,
           messages: [{ role: "user", content: prompt }]
         })
@@ -12972,6 +13164,7 @@ async function checkAccessAndSync() {
   _accessChecked = true;
   if (!me.access?.allowed) { showNoAccessScreen(me.email, me.access?.status); return; }
   if (me.access?.admin) {
+    window._adminAccess = true;
     document.getElementById('control-btn').style.display = '';
     document.getElementById('control-mobile-btn').style.display = '';
   }
@@ -13107,6 +13300,9 @@ function getSessionSnapshot() {
     sources: S.sources,
     postDescricao: S.postDescricao || '',
     postComentario: S.postComentario || '',
+    imageGuide: S.imageGuide || null,
+    semana: S.semana || '',
+    importado: !!S.importado,
     brand: getBrand(),
     brandId: getActiveBrandId(),
     savedAt: new Date().toISOString(),
@@ -13279,7 +13475,7 @@ window.addEventListener('beforeunload', e => {
 });
 
 async function autoSave() {
-  if (!currentSession) return;
+  if (!currentSession || _importando) return;
   if (S.step < 1 || !S.triagem) return; // only after triagem
 
   clearTimeout(saveTimer);
@@ -13288,7 +13484,10 @@ async function autoSave() {
       const token = getAuthToken();
       const snap = getSessionSnapshot();
       const tema = S.triagem?.tema_central || 'Sem título';
-      const body = JSON.stringify({ session_data: JSON.stringify(snap), tema, step: S.step });
+      if (!S.semana) S.semana = _semanaISO();
+      const brand = getBrand();
+      const body = JSON.stringify({ session_data: JSON.stringify({ ...snap, semana: S.semana }), tema, step: S.step,
+        brand_id: getActiveBrandId() || '', brand_name: brand?.name || '', week_tag: S.semana });
       const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
 
       if (activeSessionId) {
@@ -13309,6 +13508,7 @@ async function autoSave() {
         }
       }
 
+      _histMetaSet(activeSessionId, { brandId: getActiveBrandId() || '', brandName: brand?.name || '', semana: S.semana });
       showSaveIndicator();
       _rememberSession();
       // Persist images in IndexedDB (no size limits)
@@ -13379,6 +13579,7 @@ function _ctlToggleAdmin(on) {
 const _CTL_KINDS = {
   claude_search: 'Pesquisa na internet (provas)',
   triagem_search: 'Pesquisa da triagem',
+  revisao: 'Revisão final do texto (Haiku)',
   claude: 'Escrita e ajustes (sem pesquisa)',
   fetch_url: 'Leitura de link colado',
 };
@@ -13490,45 +13691,212 @@ function renderControl(r) {
     </div>`;
 }
 
+// ── HISTÓRICO: marca e semana de cada carrossel ──
+// O servidor guarda brand_id / brand_name / week_tag (colunas novas). Enquanto o banco não tiver as colunas,
+// a ferramenta também guarda essa etiqueta neste navegador (storycards_hist_meta), para os filtros funcionarem.
+let _histItems = [];
+let _histFiltro = { marca: '', semana: '' };
+function _histMeta() { try { return JSON.parse(localStorage.getItem('storycards_hist_meta') || '{}'); } catch (e) { return {}; } }
+function _histMetaSet(id, meta) {
+  if (!id) return;
+  try { const m = _histMeta(); m[id] = { ...(m[id] || {}), ...meta }; localStorage.setItem('storycards_hist_meta', JSON.stringify(m)); } catch (e) {}
+}
+// Semana no padrão ISO: "2026-W47"
+function _semanaISO(d = new Date()) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dia = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - dia);
+  const ano = t.getUTCFullYear();
+  const sem = Math.ceil(((t - Date.UTC(ano, 0, 1)) / 864e5 + 1) / 7);
+  return `${ano}-W${String(sem).padStart(2, '0')}`;
+}
+// "2026-W47" → "Semana 47 · 16 a 22/11/2026"
+function _semanaLabel(tag) {
+  const m = /^(\d{4})-W(\d{1,2})$/.exec(tag || '');
+  if (!m) return tag || 'Sem semana';
+  const ano = +m[1], sem = +m[2];
+  const jan4 = new Date(Date.UTC(ano, 0, 4));
+  const seg = new Date(jan4); seg.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() || 7) - 1) + (sem - 1) * 7);
+  const dom = new Date(seg); dom.setUTCDate(seg.getUTCDate() + 6);
+  const f = d => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  return `Semana ${sem} · ${f(seg)} a ${f(dom)}/${dom.getUTCFullYear()}`;
+}
+function _isAdminUser() { return !!window._adminAccess || isAdmin(); }
+
 async function loadHistoryList() {
   const list = document.getElementById('history-list');
+  const imp = document.getElementById('history-import-btn');
+  if (imp) imp.style.display = _isAdminUser() ? '' : 'none';
   list.innerHTML = '<div class="history-loading"><div class="post-generating" style="display:inline-block;margin-right:8px"></div> Carregando...</div>';
-
   try {
     const token = getAuthToken();
-    const res = await fetch(BACKEND_URL + '/api/history', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
+    const res = await fetch(BACKEND_URL + '/api/history', { headers: { 'Authorization': 'Bearer ' + token } });
     const data = await res.json();
-    const items = data.history || [];
-
-    if (!items.length) {
-      list.innerHTML = '<div class="history-empty">Nenhuma sessão salva ainda.<br><br>A ferramenta salva automaticamente após a triagem.</div>';
-      return;
-    }
-
-    list.innerHTML = items.map(item => {
-      const date = new Date(item.updated_at);
-      const dateStr = date.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
-      const timeStr = date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-      return `
-        <div class="history-item" data-id="${item.id}">
-          <div class="history-item-body">
-            <div class="history-item-tema">${item.tema}</div>
-            <div class="history-item-meta">${dateStr} · ${timeStr}</div>
-          </div>
-          <button class="history-item-del" data-del-id="${item.id}" title="Remover">
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          </button>
-        </div>`;
-    }).join('');
-
-    // Event delegation via dedicated function
-    bindHistoryEvents();
-
-  } catch(e) {
+    const meta = _histMeta();
+    const marcas = getAllBrands();
+    _histItems = (data.history || []).map(it => {
+      const m = meta[it.id] || {};
+      const brandId = it.brand_id || m.brandId || '';
+      const marca = marcas.find(b => b.id === brandId);
+      return { ...it, brandId, brandName: marca?.name || it.brand_name || m.brandName || '', semana: it.week_tag || m.semana || '', importado: !!(it.imported || m.importado) };
+    });
+    _renderHistoryList();
+  } catch (e) {
     list.innerHTML = '<div class="history-empty">Erro ao carregar histórico.</div>';
   }
+}
+function _setHistFiltro(k, v) { _histFiltro[k] = v; _renderHistoryList(); }
+function _renderHistoryList() {
+  const list = document.getElementById('history-list');
+  const filtros = document.getElementById('history-filters');
+  const items = _histItems;
+  if (!items.length) {
+    if (filtros) filtros.innerHTML = '';
+    list.innerHTML = '<div class="history-empty">Nenhuma sessão salva ainda.<br><br>A ferramenta salva automaticamente após a triagem.</div>';
+    return;
+  }
+  // Opções dos filtros: só marcas e semanas que existem no histórico
+  const marcas = [...new Map(items.filter(i => i.brandId || i.brandName).map(i => [i.brandId || i.brandName, i.brandName || 'Marca removida'])).entries()];
+  const semanas = [...new Set(items.map(i => i.semana).filter(Boolean))].sort().reverse();
+  const opt = (v, l, cur) => `<option value="${_escHtml(v)}" ${v === cur ? 'selected' : ''}>${_escHtml(l)}</option>`;
+  if (filtros) filtros.innerHTML = `
+    <select onchange="_setHistFiltro('marca',this.value)" aria-label="Filtrar por marca">${opt('', 'Todas as marcas', _histFiltro.marca)}${marcas.map(([k, n]) => opt(k, n, _histFiltro.marca)).join('')}${items.some(i => !i.brandId && !i.brandName) ? opt('-', 'Sem marca registrada', _histFiltro.marca) : ''}</select>
+    <select onchange="_setHistFiltro('semana',this.value)" aria-label="Filtrar por semana">${opt('', 'Todas as semanas', _histFiltro.semana)}${semanas.map(s => opt(s, _semanaLabel(s), _histFiltro.semana)).join('')}${items.some(i => !i.semana) ? opt('-', 'Sem semana', _histFiltro.semana) : ''}</select>`;
+  const vis = items.filter(i => {
+    const mk = i.brandId || i.brandName;
+    if (_histFiltro.marca && (_histFiltro.marca === '-' ? mk : mk !== _histFiltro.marca)) return false;
+    if (_histFiltro.semana && (_histFiltro.semana === '-' ? i.semana : i.semana !== _histFiltro.semana)) return false;
+    return true;
+  });
+  if (!vis.length) { list.innerHTML = '<div class="history-empty">Nenhum carrossel com esses filtros.</div>'; return; }
+  // Agrupado por semana (mais recente primeiro); sem etiqueta vai para o fim
+  const grupos = new Map();
+  vis.forEach(i => { const k = i.semana || ''; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(i); });
+  const ordem = [...grupos.keys()].sort((a, b) => !a ? 1 : !b ? -1 : b.localeCompare(a));
+  const lixo = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+  list.innerHTML = ordem.map(k => `
+    <div class="history-group">${_escHtml(k ? _semanaLabel(k) : 'Sem semana')} <span>${grupos.get(k).length}</span></div>
+    ${grupos.get(k).map(item => {
+      const date = new Date(item.updated_at);
+      const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      return `<div class="history-item" data-id="${item.id}">
+          <div class="history-item-body">
+            <div class="history-item-tema">${_escHtml(_plainText(item.tema))}</div>
+            <div class="history-item-meta">${dateStr} · ${timeStr}${item.brandName ? `<span class="history-step-badge">${_escHtml(item.brandName)}</span>` : ''}${item.importado ? '<span class="history-step-badge">importado</span>' : ''}</div>
+          </div>
+          <button class="history-item-del" data-del-id="${item.id}" title="Remover">${lixo}</button>
+        </div>`;
+    }).join('')}`).join('');
+  bindHistoryEvents();
+}
+
+// ── IMPORTAR CARROSSÉIS (só admin) ──
+// Lê um JSON com vários carrosséis já escritos (formato em "Conteudo marcas/_formato-importacao.md")
+// e salva cada um no histórico como se tivesse sido gerado aqui: abre direto no editor, faltando só as fotos.
+let _importando = false;
+const _normNome = t => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+function _acharMarca(c) {
+  const marcas = getAllBrands();
+  if (c.brandId) { const b = marcas.find(x => x.id === c.brandId); if (b) return b; }
+  const nome = _normNome(c.marca);
+  return nome ? marcas.find(x => _normNome(x.name) === nome) || null : null;
+}
+function _validarImport(c) {
+  if (!c || typeof c !== 'object') return 'item inválido';
+  if (!c.capa?.titulo) return 'falta "capa.titulo"';
+  if (!Array.isArray(c.cards) || !c.cards.length) return 'falta a lista "cards"';
+  const vazio = c.cards.findIndex(x => !x || (!x.titulo && !x.texto));
+  if (vazio >= 0) return `o card ${vazio + 2} está sem título e sem texto`;
+  if (c.semana && !/^\d{4}-W\d{2}$/.test(c.semana)) return `semana "${c.semana}" fora do padrão (use 2026-W47)`;
+  return '';
+}
+async function _importarUm(c, brand) {
+  setActiveBrandId(brand.id);
+  activeSessionId = null;
+  const provas = [];
+  const blocos = c.cards.map(cd => {
+    let letra = '';
+    const p = cd.prova;
+    if (p && (p.dado || p.manchete)) {
+      letra = String.fromCharCode(65 + provas.length);
+      const box = p.box !== false;
+      provas.push({ id: letra, manchete_pt: p.manchete || '', dado: p.dado || '', origem: p.fonte || '', fonte_veiculo: p.veiculo || p.fonte || '',
+        fonte_titulo: p.titulo_original || p.manchete || '', fonte_url: p.url || '', fonte_data: p.data || '', ponto: p.ponto || '', card: box, uso: box ? 'card' : 'texto' });
+    }
+    return { virada: cd.titulo || '', papel: cd.imagem ? 'virada' : 'desenvolvimento',
+      paragrafos: [{ destaque: '', manchete: cd.manchete || '', texto: cd.texto || '', prova: letra }] };
+  });
+  const f = c.fechamento || {};
+  const tplId = getTemplates().some(t => t.id === c.template && t.v2) ? c.template : 'v2_editorial';
+  const tpl = getTemplates().find(t => t.id === tplId);
+  const tema = _plainText(c.tema || c.capa.titulo);
+  const fontes = (c.fontes || []).filter(x => x && (x.url || x.titulo)).map(x => ({ titulo: x.titulo || x.url, veiculo: x.veiculo || '', url: x.url || '', relevancia: 'Alta' }));
+  Object.assign(S, {
+    step: 4, inputMode: 'text', insumo: c.insumo || '', insumoFinal: '', isUrl: false, fonteMode: 'enriquecer', funil: 'auto', tom: c.tom || 'Autoridade',
+    triagem: { tema_central: tema, funil_detectado: c.funil || 'topo', evidencias: [] }, triagemDeep: null,
+    headlines: [], headlineAngle: '', selectedHeadline: { num: 1, natureza: 'importado', l1: c.capa.titulo, l2: c.capa.subtitulo || '' },
+    espinha: { hook: '', mecanismo: '', aplicacao: '', direcao: '', prova: provas.map(p => p.dado), provasFontes: provas },
+    profundidade: 'padrao', cardCount: 'auto', roteiroCompleto: null, selectedTemplate: tplId,
+    roteiro: { objetivo: '', razao_viral: '', blocos, conclusao: f.titulo || '', fechamento: f.texto || '', cta: f.cta || '', credito: '' },
+    sources: fontes, postDescricao: c.descricao || '', postComentario: c.primeiro_comentario || '',
+    semana: c.semana || _semanaISO(), importado: true, cards: [], activeCardIdx: 0,
+  });
+  _syncProofSources();
+  const pag = paginarRoteiro(S.roteiro, 'auto');
+  S.renderCards = pag.cards.map((x, i) => ({ num: i + 1, tipo: x.role, titulo: x.title, corpo: x.body, layout: x.role === 'capa' ? 'cover' : x.role === 'fechamento' ? 'cta' : 'text' }));
+  S.renderAnalysis = { tema, funil: S.triagem.funil_detectado, objetivo: '', razao_viral: '' };
+  await _preloadTemplateFonts(tpl, getBrand());
+  S.cards = _buildCardsV2(pag.cards.map(x => ({ role: x.role, bi: x.bi, title: x.title, titleLong: x.titleLong, body: x.body, ctaText: x.ctaText, provas: x.provas })), tpl, getBrand());
+  S.cards.forEach(x => { _ensureContrast(x); fitCardText(x); _layoutBoxText(x); });
+  // Sugestões de imagem: capa + cards com "imagem" → guia de imagens do carrossel
+  const guia = [];
+  if (c.capa.imagem) { S.cards[0].dicaImagem = c.capa.imagem; guia.push({ card: 1, titulo: _plainText(c.capa.titulo), descricao: c.capa.imagem }); }
+  c.cards.forEach((cd, i) => { if (cd.imagem && S.cards[i + 1]) { S.cards[i + 1].dicaImagem = cd.imagem; guia.push({ card: i + 2, titulo: _plainText(cd.titulo || ''), descricao: cd.imagem }); } });
+  S.imageGuide = guia;
+  const snap = getSessionSnapshot();
+  const res = await fetch(BACKEND_URL + '/api/history', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken() },
+    body: JSON.stringify({ session_data: JSON.stringify(snap), tema, step: 4, brand_id: brand.id, brand_name: brand.name, week_tag: S.semana, imported: true }),
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok || !d.id) throw new Error(d.message || d.error || 'o servidor não salvou');
+  _histMetaSet(d.id, { brandId: brand.id, brandName: brand.name, semana: S.semana, importado: true });
+  return d.id;
+}
+async function importarCarrosseis(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (!_isAdminUser()) { alert('Importar carrosséis é só para administradores.'); return; }
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (e) { alert('Esse arquivo não é um JSON válido: ' + e.message); return; }
+  const lista = Array.isArray(data) ? data : (data.carrosseis || []);
+  if (!lista.length) { alert('Nenhum carrossel encontrado. O arquivo precisa ter a lista "carrosseis".'); return; }
+  if (S.step >= 1 && !confirm('O carrossel aberto agora continua salvo no histórico e será fechado para a importação. Continuar?')) return;
+  const marcaAntes = getActiveBrandId();
+  const feitos = [], recusados = [];
+  closeHistory();
+  _importando = true;
+  try {
+    for (let k = 0; k < lista.length; k++) {
+      const c = lista[k];
+      const nome = _plainText(c?.capa?.titulo || c?.tema || `Carrossel ${k + 1}`);
+      const problema = _validarImport(c);
+      if (problema) { recusados.push(`"${nome}": ${problema}`); continue; }
+      const brand = _acharMarca(c);
+      if (!brand) { recusados.push(`"${nome}": a marca "${c.marca || c.brandId || '(sem marca)'}" não está cadastrada. Cadastre a marca ou corrija o nome no arquivo.`); continue; }
+      showLoading(`Importando ${k + 1} de ${lista.length}: ${nome.slice(0, 60)}`);
+      try { await _importarUm(c, brand); feitos.push(`"${nome}" (${brand.name}, ${_semanaLabel(S.semana)})`); }
+      catch (e) { recusados.push(`"${nome}": ${e.message}`); }
+    }
+  } finally {
+    _importando = false;
+    resetAll();
+    if (marcaAntes && getAllBrands().some(b => b.id === marcaAntes)) setActiveBrandId(marcaAntes);
+  }
+  await openHistory();
+  alert(`${feitos.length} carrossel(is) importado(s).${feitos.length ? '\n\n' + feitos.join('\n') : ''}${recusados.length ? `\n\nNão importados (${recusados.length}):\n` + recusados.join('\n') : ''}`);
 }
 
 let _currentHistSnap = null; // snap in memory for step navigation
@@ -13751,10 +14119,13 @@ function showHistoryList() {
   panel.innerHTML = `
     <div class="history-header">
       <div class="history-title">Histórico</div>
+      <button class="history-import" id="history-import-btn" style="display:none" onclick="document.getElementById('history-import-file').click()" title="Importar carrosséis de um arquivo JSON (admin)">Importar carrosséis</button>
+      <input type="file" id="history-import-file" accept=".json,application/json" style="display:none" onchange="importarCarrosseis(this)"/>
       <button class="history-close" onclick="closeHistory()">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
+    <div class="history-filters" id="history-filters"></div>
     <div class="history-list" id="history-list">
       <div class="history-loading">Carregando...</div>
     </div>`;
@@ -13868,6 +14239,9 @@ function restoreSnap(snap, sessionId) {
     sources: snap.sources || [],
     postDescricao: snap.postDescricao || '',
     postComentario: snap.postComentario || '',
+    imageGuide: snap.imageGuide || null,
+    semana: snap.semana || '',
+    importado: !!snap.importado,
   });
   if (snap.brand) {
     const brands = getAllBrands();
