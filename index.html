@@ -177,7 +177,7 @@ header {
   z-index: 5;
   display: grid;
   grid-template-columns: 360px 1fr;
-  height: calc(100vh - 57px);
+  height: calc(100vh - 57px - 30px); /* 30px = faixa da marca */
   align-items: start;
 }
 
@@ -753,6 +753,59 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
   color: var(--muted);
 }
 
+/* ── EM ALTA AGORA (tela de início) ── */
+.trends-box { width: 100%; max-width: 980px; margin: 0 auto; text-align: left; }
+.trends-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.trends-kicker { display: flex; align-items: center; gap: 8px; font-size: 0.68rem; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent); }
+.trends-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 0 3px rgba(255,59,48,0.18); }
+.trends-title { font-family: 'Poppins', sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--ink); margin-top: 4px; }
+.trends-sub { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+.trends-tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
+.trends-tab { font-size: 0.74rem; padding: 6px 14px; border-radius: 999px; cursor: pointer; color: var(--ink2); border: none; background: none; font-family: inherit; }
+.trends-tab.active { background: var(--ink); color: var(--bg); font-weight: 600; }
+.trends-search { display: flex; gap: 8px; margin-bottom: 14px; }
+.trends-search input { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; color: var(--ink); font-size: 0.85rem; font-family: inherit; }
+.trends-search input:focus { outline: none; border-color: var(--accent); }
+.trends-btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 10px 16px; font-size: 0.8rem; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: inherit; }
+.trends-btn:disabled { opacity: 0.5; cursor: default; }
+.trends-btn.ghost { background: none; color: var(--ink); border: 1px solid var(--border); }
+.trends-empty { border: 1px dashed var(--border); border-radius: 14px; padding: 26px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.trends-empty p { font-size: 0.82rem; color: var(--ink2); line-height: 1.55; max-width: 520px; }
+.trends-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.trend-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.trend-card.lead { grid-column: 1 / -1; padding: 20px 22px; }
+.trend-meta { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.trend-meta a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+.trend-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.trend-lente { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: rgba(0,113,227,0.12); color: #0071e3; }
+.trend-lente.l-comportamento { background: rgba(175,82,222,0.13); color: #a24bd0; }
+.trend-lente.l-dado { background: rgba(52,199,89,0.14); color: #23954a; }
+.trend-lente.l-paralelo { background: rgba(255,149,0,0.15); color: #c46f00; }
+.trend-lente.l-contraponto { background: rgba(255,59,48,0.13); color: #d8382e; }
+.trend-lente.l-memoria { background: rgba(142,142,147,0.18); color: var(--ink2); }
+.trend-terr { font-size: 0.62rem; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink2); }
+.trend-titulo { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 0.95rem; line-height: 1.35; color: var(--ink); }
+.trend-card.lead .trend-titulo { font-size: 1.2rem; }
+.trend-resumo { font-size: 0.78rem; color: var(--ink2); line-height: 1.55; }
+.trend-ponte { font-size: 0.74rem; color: var(--ink2); line-height: 1.5; padding-left: 10px; border-left: 2px solid var(--accent); }
+.trend-gancho { font-size: 0.85rem; font-weight: 600; color: var(--ink); line-height: 1.45; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.trend-card .trends-btn { align-self: flex-start; margin-top: auto; }
+.trends-terr-box { display: flex; align-items: center; justify-content: space-between; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+.trends-terr-box > div { flex: 1; min-width: 0; }
+.trends-terr-box > .trends-btn { flex-shrink: 0; }
+@media (max-width: 700px) { .trends-terr-box { flex-direction: column; align-items: flex-start; } }
+.trends-terr-label { font-size: 0.68rem; color: var(--muted); margin-bottom: 7px; }
+.trends-terr-label b { color: var(--accent); font-weight: 600; }
+.trends-terr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.trends-terr-chip { font-size: 0.72rem; padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); color: var(--ink); }
+.trends-terr-chip.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.trends-foot { font-size: 0.68rem; color: var(--muted); margin-top: 10px; }
+.trends-loading { display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: var(--ink2); padding: 22px; border: 1px solid var(--border); border-radius: 14px; }
+.trends-spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: trspin .8s linear infinite; }
+@keyframes trspin { to { transform: rotate(360deg); } }
+.canvas .trends-box + .empty-state { display: none; }
+@media (max-width: 700px) { .trends-search { flex-direction: column; } .trend-card.lead .trend-titulo { font-size: 1.05rem; } }
+
 /* ── LOADING ── */
 .loading-wrap {
   flex: 1;
@@ -778,6 +831,52 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
   animation: pulse 1.5s ease-in-out infinite;
 }
 @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+/* Loading com etapa + progresso estimado (espinha dorsal) */
+.sc-prog { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 16px; text-align: center; }
+.sc-prog-ico { width: 96px; height: 72px; overflow: visible; }
+.sc-prog-ico .sc-frame { stroke: var(--border); }
+.sc-prog-ico .sc-dot { fill: var(--muted); }
+.sc-prog-ico .sc-ghost { fill: var(--border); }
+.sc-prog-ico .sc-ln { fill: var(--accent); transform-box: fill-box; transform-origin: left center; animation: scLine 2.4s ease-out infinite; }
+.sc-prog-ico .sc-lens { animation: scLens 4.5s ease-in-out infinite; }
+.sc-prog-ico .sc-lens circle { fill: var(--bg); fill-opacity: .6; stroke: var(--accent); }
+.sc-prog-ico .sc-lens line { stroke: var(--accent); }
+@keyframes scLine { 0% { transform: scaleX(0); } 40%, 100% { transform: scaleX(1); } }
+@keyframes scLens { 0%,100% { transform: translate(0,0); } 25% { transform: translate(34px,6px); } 50% { transform: translate(10px,22px); } 75% { transform: translate(40px,30px); } }
+/* Ícones por etapa: leitura (faixa que varre), headlines (pares que se alternam), roteiro (título + texto + cursor),
+   revisão (checks), condensar (cards que se juntam), carrossel (cards deslizando) */
+.sc-prog-ico .sc-acc { fill: var(--accent); }
+.sc-prog-ico .sc-scan { fill: var(--accent); opacity: .85; animation: scScan 2.6s ease-in-out infinite; }
+@keyframes scScan { 0%,100% { transform: translateY(0); } 50% { transform: translateY(38px); } }
+.sc-prog-ico .sc-hl { opacity: 0; animation: scHl 4.5s ease-in-out infinite; }
+@keyframes scHl { 0% { opacity: 0; transform: translateY(4px); } 8%, 30% { opacity: 1; transform: translateY(0); } 38%, 100% { opacity: 0; transform: translateY(-4px); } }
+.sc-prog-ico .sc-tx { fill: var(--accent); opacity: .55; transform-box: fill-box; transform-origin: left center; animation: scTx 4s ease-out infinite; }
+@keyframes scTx { 0% { transform: scaleX(0); } 22%, 100% { transform: scaleX(1); } }
+.sc-prog-ico .sc-cur { fill: var(--accent); animation: scBlink 1s steps(1) infinite; }
+@keyframes scBlink { 50% { opacity: 0; } }
+.sc-prog-ico .sc-chk { stroke: var(--accent); fill: none; opacity: 0; transform-box: fill-box; transform-origin: center; animation: scChk 3.2s ease-out infinite; }
+@keyframes scChk { 0% { opacity: 0; transform: scale(.4); } 10%, 80% { opacity: 1; transform: scale(1); } 92%, 100% { opacity: 0; } }
+.sc-prog-ico .sc-card { fill: none; stroke: var(--accent); }
+.sc-prog-ico .sc-card-l { animation: scSqL 2.8s ease-in-out infinite; }
+.sc-prog-ico .sc-card-r { animation: scSqR 2.8s ease-in-out infinite; }
+@keyframes scSqL { 0%,15%,100% { transform: translateX(0); } 50%,65% { transform: translateX(14px); } }
+@keyframes scSqR { 0%,15%,100% { transform: translateX(0); } 50%,65% { transform: translateX(-14px); } }
+.sc-prog-ico .sc-slide { animation: scSlide 2.4s cubic-bezier(.6,0,.3,1) infinite; }
+@keyframes scSlide { 0%, 30% { transform: translateX(0); } 70%, 100% { transform: translateX(-28px); } }
+.sc-prog-meta { font-size: 0.8rem; color: var(--ink2); letter-spacing: .01em; }
+.sc-prog-meta b { color: var(--ink); font-weight: 500; }
+.sc-prog-pct { font-variant-numeric: tabular-nums; display: inline-block; min-width: 2.6em; text-align: left; }
+.sc-prog-bar { width: 220px; max-width: 70vw; height: 3px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.sc-prog-fill { height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width .5s ease; }
+.sc-prog-note { font-size: 0.74rem; color: var(--muted); min-height: 1.1em; max-width: 320px; }
+@media (prefers-reduced-motion: reduce) {
+  .sc-prog-ico * { animation: none !important; }
+  .sc-prog-ico .sc-hl:not(.sc-hl-1), .sc-prog-ico .sc-cur { opacity: 0; }
+  .sc-prog-ico .sc-hl-1, .sc-prog-ico .sc-chk { opacity: 1; }
+  .sc-prog-ico .sc-lens { transform: translate(20px,14px); }
+  .sc-prog-fill { transition: none; }
+}
 
 /* ── TRIAGEM ── */
 .triagem-card {
@@ -2406,6 +2505,29 @@ body.mob-ed-open { overflow:hidden; }
 .history-refazer-btn:hover { border-color: var(--ink); color: var(--ink); }
 
 
+/* ── FAIXA DA MARCA (entre o topo e as etapas) ── */
+/* Letreiro: uma linha só, passando devagar (como a faixa da página de vendas) */
+#tagline-strip {
+  background: #0071e3; color: rgba(255,255,255,.82);
+  font-size: 0.72rem; font-weight: 400; line-height: 1.4; letter-spacing: 0.3px;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  padding: 7px 0; overflow: hidden; white-space: nowrap;
+}
+.tagline-track { display: flex; width: max-content; animation: taglineMove 120s linear infinite; }
+#tagline-strip:hover .tagline-track { animation-play-state: paused; }
+.tagline-track span { padding: 0 22px; position: relative; }
+.tagline-track span::after {
+  content: ""; position: absolute; right: -3px; top: 50%;
+  width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.45);
+  transform: translateY(-50%);
+}
+@keyframes taglineMove { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (max-width: 700px) { #tagline-strip { font-size: 0.66rem; padding: 6px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .tagline-track { animation: none; }
+  #tagline-strip { overflow-x: auto; }
+}
+
 /* ── STEP BREADCRUMB (replaces dots) ── */
 #step-breadcrumb {
   border-bottom: 1px solid var(--border);
@@ -2750,6 +2872,15 @@ body.mob-ed-open { overflow:hidden; }
   </div>
 </header>
 
+<div id="tagline-strip" aria-label="A ferramenta que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.">
+  <div class="tagline-track" aria-hidden="true">
+    <span>A ferramenta que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.</span><span>A ferramenta que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.</span>
+    <span>A ferramenta que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.</span><span>A ferramenta que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.</span>
+    <span>A ferramenta que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.</span><span>A ferramenta que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.</span>
+    <span>A ferramenta que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.</span><span>A ferramenta que transforma qualquer ideia em carrossel profissional — com estrutura narrativa, templates visuais e conteúdo pronto para postar.</span>
+  </div>
+</div>
+
 <!-- STEP BREADCRUMB TIMELINE -->
 <nav id="step-breadcrumb">
   <div class="bc-item">
@@ -3066,6 +3197,11 @@ body.mob-ed-open { overflow:hidden; }
           <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Palavras e frases proibidas</div>
           <input class="modal-input" id="brand-proibidos" type="text" placeholder="Separe por vírgula. Ex.: soluções inovadoras, criatividade sem limites, design que conecta" style="margin-bottom:0;padding:8px 10px;"/>
         </div>
+        <div style="margin-bottom:8px;">
+          <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Territórios do nicho <span style="text-transform:none;letter-spacing:0;opacity:0.8">(Em alta agora · opcional)</span></div>
+          <input class="modal-input" id="brand-territorios" type="text" placeholder="Deixe em branco para a IA montar. Ex.: identidade visual, naming, comportamento do consumidor, cultura pop" style="margin-bottom:0;padding:8px 10px;"/>
+          <div id="brand-territorios-hint" style="font-size:0.62rem;color:var(--muted);margin-top:4px;line-height:1.45"></div>
+        </div>
         <!-- Row 2: Ano (compact) -->
         <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;">
           <div>
@@ -3207,6 +3343,7 @@ const S = {
   funil: 'auto',
   tom: 'Autoridade',
   triagem: null,
+  trendSource: null,      // notícia escolhida em "Em alta agora" (vira a primeira fonte)
   triagemDeep: null,
   showDeep: false,
   headlines: [],
@@ -3214,6 +3351,7 @@ const S = {
   selectedHeadline: null,
   espinha: null,
   espinhaSources: [],
+  genKeys: {},            // "impressão digital" do que gerou headlines/espinha/roteiro (para reaproveitar sem nova chamada à IA)
   profundidade: 'padrao', // direto | padrao | aprofundado
   roteiro: null,          // contrato de blocos: { blocos:[{virada, paragrafos:[{destaque,texto}]}], conclusao, cta, credito, objetivo, razao_viral }
   roteiroCompleto: null,  // versão antes de condensar (para voltar a mais cards)
@@ -3724,6 +3862,13 @@ function openBrand() {
   document.getElementById('brand-year').value = b.year || new Date().getFullYear();
   if (document.getElementById('brand-nicho')) document.getElementById('brand-nicho').value = b.nicho || '';
   if (document.getElementById('brand-proibidos')) document.getElementById('brand-proibidos').value = b.proibidos || '';
+  if (document.getElementById('brand-territorios')) {
+    document.getElementById('brand-territorios').value = b.territorios || '';
+    const auto = (TR.territorios && TR.territoriosBrand === b.id && !b.territorios) ? TR.territorios.join(', ') : '';
+    document.getElementById('brand-territorios-hint').textContent = auto
+      ? 'Hoje a IA está usando: ' + auto + '. Escreva os seus, separados por vírgula, para trocar.'
+      : 'Os temas em alta variam entre esses territórios do nicho, cada dia por um olhar diferente.';
+  }
   if (document.getElementById('brand-header-weight'))       document.getElementById('brand-header-weight').value       = b.headerWeight || 400;
   if (document.getElementById('brand-header-font-role'))    document.getElementById('brand-header-font-role').value    = b.headerFontRole || 'body';
   if (document.getElementById('brand-header-color-custom')) {
@@ -3813,6 +3958,7 @@ function renderBrandSwitcher() {
 function switchBrand(id) {
   setActiveBrandId(id);
   applyBrandToCards();
+  renderTrends();
   _reapplyBrandToCards();
   openBrand(); // re-render modal with new brand
 }
@@ -4026,6 +4172,7 @@ function saveBrand() {
     year:     document.getElementById('brand-year').value.trim(),
     nicho:    document.getElementById('brand-nicho')?.value.trim() || '',
     proibidos: document.getElementById('brand-proibidos')?.value.trim() || '',
+    territorios: document.getElementById('brand-territorios')?.value.trim() || '',
     headerWeight:       parseInt(document.getElementById('brand-header-weight')?.value || '400'),
     headerFontRole:     document.getElementById('brand-header-font-role')?.value || 'body',
     headerColorCustom:  (document.getElementById('brand-header-color-enabled')?.checked
@@ -4043,6 +4190,7 @@ function saveBrand() {
   updateBrand(b.id, b);
   setActiveBrandId(b.id);
   applyBrandToCards();
+  renderTrends();
   document.getElementById('brand-modal').style.display = 'none';
   _reapplyBrandToCards();
 }
@@ -4482,8 +4630,92 @@ ${conteudo}`;
 
 // ── LOADING ──
 function showLoading(msg) {
+  // Durante um loading com etapa/progresso, avisos de "tentando novamente" aparecem na linha de nota, sem apagar a barra
+  if (_scProg && document.getElementById('sc-prog')) { _scProgNote(msg, true); return; }
   document.getElementById('canvas').innerHTML = `<div class="loading-wrap"><div class="loader"></div><div class="loading-label">${msg}</div></div>`;
   _scrollToCanvasMobile();
+}
+
+// ── LOADING COM ETAPA E PROGRESSO ESTIMADO ──
+// A IA responde de uma vez só, então o progresso é estimado pelo tempo típico da etapa (estSeg):
+// sobe rápido no começo, desacelera, nunca passa de 95% sozinho e só vai a 100% quando a resposta volta.
+let _scProg = null;
+const _SC_ICO_BASE = `<rect class="sc-frame" x="2" y="2" width="92" height="68" rx="8" fill="none" stroke-width="2"/><line class="sc-frame" x1="2" y1="16" x2="94" y2="16" stroke-width="2"/><circle class="sc-dot" cx="11" cy="9" r="2"/><circle class="sc-dot" cx="18" cy="9" r="2"/><circle class="sc-dot" cx="25" cy="9" r="2"/>`;
+const _SC_LINES = [[26,56],[36,70],[46,44],[56,62]];
+// Cada etapa tem um desenho próprio dentro da mesma janelinha de navegador
+function _scIcon(modo) {
+  const ghost = (ws) => _SC_LINES.map(([y], i) => `<rect class="sc-ghost" x="12" y="${y}" width="${ws ? ws[i] : _SC_LINES[i][1]}" height="4" rx="2"/>`).join('');
+  const desenhos = {
+    // pesquisa na web: lupa passeando sobre a página
+    busca: () => ghost() + `<g class="sc-lens"><circle cx="30" cy="34" r="10" stroke-width="2.5"/><line x1="37.5" y1="41.5" x2="45" y2="49" stroke-width="3" stroke-linecap="round"/></g>`,
+    // leitura do insumo: faixa azul varrendo o texto de cima a baixo
+    leitura: () => ghost() + `<rect class="sc-scan" x="8" y="22" width="80" height="2" rx="1"/>`,
+    // headlines: pares de linhas (linha 1 / linha 2) que se alternam, como opções sendo testadas
+    headlines: () => [[58,44],[50,66],[68,38]].map(([a,b], i) => `<g class="sc-hl sc-hl-${i+1}" style="animation-delay:${i*1.5}s"><rect class="sc-acc" x="14" y="30" width="${a}" height="6" rx="3"/><rect class="sc-acc" x="14" y="42" width="${b}" height="5" rx="2.5" opacity=".5"/></g>`).join(''),
+    // estrutura: linhas do plano surgindo
+    estrutura: () => _SC_LINES.map(([y,w],i) => `<rect class="sc-ln" x="12" y="${y}" width="${w}" height="4" rx="2" style="animation-delay:${i*0.3}s;${i ? 'opacity:.55' : ''}"/>`).join(''),
+    // roteiro: título + texto sendo escrito linha a linha, com cursor piscando
+    roteiro: () => `<rect class="sc-acc" x="12" y="23" width="36" height="5" rx="2.5"/>`
+      + [[33,68],[41,62],[49,70],[57,40]].map(([y,w],i) => `<rect class="sc-tx" x="12" y="${y}" width="${w}" height="3" rx="1.5" style="animation-delay:${i*0.8}s"/>`).join('')
+      + `<rect class="sc-cur" x="55" y="55" width="2" height="7" rx="1"/>`,
+    // revisão: checks aparecendo ao lado de cada linha
+    revisao: () => ghost([50,58,44,54]) + _SC_LINES.map(([y],i) => `<path class="sc-chk" d="M72 ${y+2} l3 3 l6 -6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation-delay:${i*0.5}s"/>`).join(''),
+    // condensar: três cards se juntando
+    condensar: () => `<rect class="sc-card sc-card-l" x="16" y="24" width="18" height="34" rx="3" stroke-width="2"/><rect class="sc-card" x="39" y="24" width="18" height="34" rx="3" stroke-width="2" style="fill:var(--accent);fill-opacity:.15"/><rect class="sc-card sc-card-r" x="62" y="24" width="18" height="34" rx="3" stroke-width="2"/>`,
+    // montar o carrossel: cards deslizando para o lado
+    carrossel: () => `<defs><clipPath id="sc-clip"><rect x="4" y="18" width="88" height="50"/></clipPath></defs><g clip-path="url(#sc-clip)"><g class="sc-slide">`
+      + [0,1,2,3,4].map(i => `<rect class="sc-card" x="${10 + i*28}" y="25" width="22" height="34" rx="3" stroke-width="2"/>`).join('') + `</g></g>`,
+  };
+  return `<svg class="sc-prog-ico" viewBox="0 0 96 72" aria-hidden="true">${_SC_ICO_BASE}${(desenhos[modo] || desenhos.estrutura)()}</svg>`;
+}
+function startStepLoading({ etapa, total, label, modo, estSeg }) {
+  stopStepLoading();
+  document.getElementById('canvas').innerHTML = `<div class="sc-prog" id="sc-prog" role="status" aria-live="polite">
+    ${_scIcon(modo)}
+    <div class="sc-prog-meta">${total > 1 ? `Etapa ${etapa} de ${total} · ` : ''}<b>${label}</b> · <span class="sc-prog-pct" id="sc-prog-pct">0%</span></div>
+    <div class="sc-prog-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="${label}"><div class="sc-prog-fill" id="sc-prog-fill"></div></div>
+    <div class="sc-prog-note" id="sc-prog-note"></div>
+  </div>`;
+  _scrollToCanvasMobile();
+  _scProg = { t0: performance.now(), est: estSeg, label, pct: 0, retry: false };
+  const tick = () => {
+    if (!_scProg) return;
+    const s = (performance.now() - _scProg.t0) / 1000;
+    const p = Math.min(95, 95 * (1 - Math.exp(-2.2 * s / _scProg.est)));
+    _scProgSet(p);
+    if (!_scProg.retry) {
+      if (s > _scProg.est * 2) _scProgNote('Está levando mais que o normal. Ainda trabalhando, não feche a página.');
+      else if (s > _scProg.est * 1.3) _scProgNote('Quase lá, finalizando...');
+    }
+  };
+  tick();
+  _scProg.timer = setInterval(tick, 250);
+}
+function _scProgSet(p) {
+  if (!_scProg) return;
+  _scProg.pct = Math.max(_scProg.pct, p);
+  const v = Math.floor(_scProg.pct);
+  const pct = document.getElementById('sc-prog-pct'), fill = document.getElementById('sc-prog-fill');
+  if (pct) pct.textContent = v + '%';
+  if (fill) { fill.style.width = _scProg.pct + '%'; fill.parentElement.setAttribute('aria-valuenow', v); }
+}
+function _scProgNote(msg, retry) {
+  if (_scProg && retry) _scProg.retry = true;
+  const n = document.getElementById('sc-prog-note');
+  if (n && n.textContent !== msg) n.textContent = msg;
+}
+// Resposta chegou: completa a barra e segura um instante em 100% para a pessoa ver a etapa fechando
+async function finishStepLoading() {
+  if (!_scProg) return;
+  clearInterval(_scProg.timer);
+  _scProgSet(100);
+  console.info(`[loading] ${_scProg.label}: ${((performance.now() - _scProg.t0) / 1000).toFixed(1)}s`);
+  await new Promise(r => setTimeout(r, 350));
+  _scProg = null;
+}
+function stopStepLoading() {
+  if (_scProg) clearInterval(_scProg.timer);
+  _scProg = null;
 }
 
 // Celular: o painel fica em cima e o resultado embaixo; ao gerar, a tela desce até o resultado
@@ -4589,21 +4821,27 @@ async function handlePrimary() {
       const inp = document.getElementById('inp-insumo');
       const raw = inp ? inp.value.trim() : S.insumo;
       if (!raw) { alert('Insira um insumo para continuar.'); return; }
+      // Insumo vindo de "Em alta agora" mantém o texto completo (notícia + fonte); se a pessoa editou, vale o texto novo
+      const veioDeTrend = S.trendSource && raw === S.trendSource.gancho && S.insumoFinal;
+      if (!veioDeTrend) S.trendSource = null;
       S.insumo = raw;
       if (isUrlInput(raw) && !S.urlExtracted) {
         S.isUrl = true; initSidebar(); await extractUrl(raw);
       }
-      if (!S.isUrl) S.insumoFinal = raw;
+      if (!S.isUrl && !veioDeTrend) S.insumoFinal = raw;
       await runTriagem();
     }
   } else if (S.step === 1) {
+    if (_reuseHeadlines()) return;
     await sleep(1500); // small breathing room between steps
     await runHeadlines();
   } else if (S.step === 2) {
     if (!S.selectedHeadline) { alert('Selecione uma headline.'); return; }
+    if (_reuseEspinha()) return;
     await sleep(1500);
     await runEspinha();
   } else if (S.step === 3) {
+    if (_reuseRoteiro()) return;
     await runRoteiro();
   } else if (S.step === 3.2) {
     if (!S.roteiro) { alert('Gere o roteiro para continuar.'); return; }
@@ -4643,8 +4881,8 @@ function resetAll() {
   Object.assign(S, {
     step:0, inputMode:'text', insumo:'', insumoFinal:'', isUrl:false, urlExtracted:false,
     imageData:null, imageAnalyzed:false, imageMime:'image/jpeg', cardImages:{}, editedCards: new Set(),
-    fonteMode:'enriquecer', funil:'auto', tom:'Autoridade', triagem:null, triagemDeep:null, showDeep:false, headlines:[], headlineAngle:'',
-    selectedHeadline:null, espinha:null, espinhaSources:[], profundidade:'padrao', roteiro:null, roteiroCompleto:null, cardCount:'auto', selectedTemplate:null, renderCards:[], renderAnalysis:null, sources:[], postDescricao:'', postComentario:'',
+    fonteMode:'enriquecer', funil:'auto', tom:'Autoridade', triagem:null, triagemDeep:null, showDeep:false, headlines:[], headlineAngle:'', trendSource:null,
+    selectedHeadline:null, espinha:null, espinhaSources:[], genKeys:{}, profundidade:'padrao', roteiro:null, roteiroCompleto:null, cardCount:'auto', selectedTemplate:null, renderCards:[], renderAnalysis:null, sources:[], postDescricao:'', postComentario:'',
     imageGuide:null, semana:'', importado:false, cards:[], activeCardIdx:0 });
   initSidebar();
   document.getElementById('canvas').innerHTML = `
@@ -4659,6 +4897,7 @@ function resetAll() {
         <div class="flow-step"><div class="flow-step-num">5</div>Carrossel + painel visual</div>
       </div>
     </div>`;
+  renderTrends();
 }
 
 // ── ETAPA 1 — TRIAGEM ──
@@ -4672,14 +4911,15 @@ async function runTriagem() {
     }
   }
   document.getElementById('primary-btn').disabled = true;
-  showLoading('Analisando insumo e extraindo ângulo narrativo...');
-
   const texto = S.insumoFinal || S.insumo;
   // If content came from URL extraction, force "baseado no insumo" mode
   // to prevent Claude from ignoring the real content and searching instead
   const forcarInsumo = S.isUrl && S.urlExtracted && S.insumoFinal;
   const funilCtx = S.funil === 'auto' ? 'auto' : S.funil;
   const usarBusca = S.fonteMode === 'enriquecer' && !forcarInsumo;
+  startStepLoading(usarBusca
+    ? { etapa: 1, total: 1, label: 'Pesquisando o tema na web', modo: 'busca', estSeg: 10 }
+    : { etapa: 1, total: 1, label: 'Lendo o seu texto', modo: 'leitura', estSeg: 8 });
   // Limit input text to reduce tokens
   const textoLimitado = texto.substring(0, 1200);
 
@@ -4711,12 +4951,15 @@ Retorne APENAS este JSON válido (sem markdown):
 {"transformacao":"o que mudou/está em jogo","friccao_central":"tensão real","angulo_narrativo":"leitura mais forte","evidencias":["argumento real com fonte (Fonte: Nome)","argumento real com fonte (Fonte: Nome)","argumento real com fonte (Fonte: Nome)","argumento real com fonte (Fonte: Nome)"],"funil_detectado":"topo|meio|fundo","tema_central":"até 10 palavras","fontes":[{"titulo":"título real da página","veiculo":"nome do site","url":"url_exata_da_busca","relevancia":"Alta|Média"}]}`;
     try {
       const res = await callClaudeWithSearch(prompt, 1500, 4, SEARCH_TRIAGEM);
+      await finishStepLoading();
       const data = extractJSON(res);
       S.triagem = data;
       if (data.fontes?.length) S.sources = data.fontes;
+      // A notícia escolhida em "Em alta agora" continua como primeira fonte
+      if (S.trendSource && !(S.sources || []).some(f => f.url && f.url === S.trendSource.url)) S.sources = [S.trendSource, ...(S.sources || [])];
       S.step = 1; initSidebar(); renderTriagem();
       runDeepAnalysis(true); autoSave();
-    } catch(e) { showError(e.message, handlePrimary); }
+    } catch(e) { stopStepLoading(); showError(e.message, handlePrimary); }
 
   } else {
     const isUrlMode = S.isUrl && S.urlExtracted;
@@ -4742,6 +4985,7 @@ Retorne APENAS este JSON (sem markdown):
 
     try {
       const analise = extractJSON(await callClaude(promptAnalise, 900));
+      await finishStepLoading();
       // Normalize: ensure evidencias exists for renderTriagem
       analise.evidencias = analise.evidencias_insumo || analise.evidencias || [];
       S.triagem = analise;
@@ -4793,7 +5037,7 @@ Retorne APENAS este JSON (sem markdown):
         initSidebar(); renderTriagem();
       }
 
-    } catch(e) { showError(e.message, handlePrimary); }
+    } catch(e) { stopStepLoading(); showError(e.message, handlePrimary); }
   }
 
 function showLoadingEvidencias() {
@@ -4982,10 +5226,35 @@ Retorne APENAS este JSON (sem markdown):
   }
 }
 
+// ── REAPROVEITAR ETAPAS JÁ GERADAS ──
+// Voltou uma etapa e seguiu com as MESMAS escolhas? Reusa o resultado salvo, sem nova chamada à IA
+// (não gasta crédito e não muda a pesquisa). Qualquer mudança no que veio antes, ou o botão "Refazer", gera de novo.
+const _insumoAtual = () => S.insumoFinal || S.insumo || '';
+const _hlMarca = h => h ? [h.num, h.l1, h.l2] : null;
+function _genKey(etapa) {
+  if (etapa === 'headlines') return JSON.stringify([S.triagem, _insumoAtual(), S.tom]);
+  if (etapa === 'espinha') return JSON.stringify([_hlMarca(S.selectedHeadline), S.triagem, _insumoAtual(), S.tom]);
+  if (etapa === 'roteiro') return JSON.stringify([S.espinha, _hlMarca(S.selectedHeadline), S.triagem, S.triagemDeep, S.profundidade, S.tom]);
+}
+function _markGen(etapa) { S.genKeys = { ...(S.genKeys || {}), [etapa]: _genKey(etapa) }; }
+const _canReuse = etapa => !!(S.genKeys && S.genKeys[etapa] && S.genKeys[etapa] === _genKey(etapa));
+function _reuseHeadlines() {
+  if (!S.headlines?.length || !_canReuse('headlines')) return false;
+  S.step = 2; initSidebar(); renderHeadlines(); autoSave(); return true;
+}
+function _reuseEspinha() {
+  if (!S.espinha || !_canReuse('espinha')) return false;
+  S.step = 3; initSidebar(); renderEspinha(); autoSave(); return true;
+}
+function _reuseRoteiro() {
+  if (!S.roteiro || !_canReuse('roteiro')) return false;
+  S.step = 3.2; initSidebar(); renderRoteiro(); autoSave(); return true;
+}
+
 // ── ETAPA 2 — HEADLINES ──
 async function runHeadlines() {
   document.getElementById('primary-btn').disabled = true;
-  showLoading('Gerando 10 headlines com lógicas distintas de captura...');
+  startStepLoading({ etapa: 1, total: 1, label: 'Criando 10 headlines', modo: 'headlines', estSeg: 14 });
   const t = S.triagem;
   const prompt = `Copywriter viral Instagram. Gere 10 headlines para capa do carrossel.
 
@@ -5000,9 +5269,10 @@ IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
 {"angulo_selecionado":"1 frase","headlines":[{"num":1,"natureza":"reenquadramento","l1":"","l2":""}]}`;
   try {
     const data = extractJSON(await callClaude(prompt, 1200));
+    await finishStepLoading();
     S.headlines = data.headlines; S.headlineAngle = data.angulo_selecionado;
-    S.selectedHeadline = null; S.step = 2; initSidebar(); renderHeadlines(); autoSave();
-  } catch(e) { showError(e.message, handlePrimary); }
+    S.selectedHeadline = null; _markGen('headlines'); S.step = 2; initSidebar(); renderHeadlines(); autoSave();
+  } catch(e) { stopStepLoading(); showError(e.message, handlePrimary); }
   document.getElementById('primary-btn').disabled = false;
 }
 
@@ -5035,7 +5305,7 @@ async function runEspinha() {
   const t = S.triagem; const h = S.selectedHeadline;
 
   // ── Etapa 1: Estrutura narrativa (hook, mecanismo, aplicação, direção) ──
-  showLoading('Construindo estrutura narrativa...');
+  startStepLoading({ etapa: 1, total: 2, label: 'Montando a estrutura', modo: 'estrutura', estSeg: 13 });
   const promptEstrutura = `Você é editor de um perfil editorial no Instagram. Construa a ESPINHA DORSAL de um carrossel: o plano narrativo que vai guiar o texto final.
 
 Tema: ${t.tema_central} | Headline: "${h.l1} / ${h.l2}" | Tom: ${S.tom} | Funil: ${t.funil_detectado}
@@ -5056,10 +5326,12 @@ IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
 
   try {
     const estrutura = extractJSON(await callClaude(promptEstrutura, 1400));
+    await finishStepLoading();
 
     // ── Etapa 2: Provas reais via web_search ──
-    showLoading('Buscando dados e evidências reais...');
+    startStepLoading({ etapa: 2, total: 2, label: 'Buscando provas na web', modo: 'busca', estSeg: 28 });
     const provasData = extractJSON(await callClaudeWithSearch(_promptProvas(t.tema_central, estrutura.mecanismo, 4), 2600));
+    await finishStepLoading();
     const provas = _normProvas(provasData.provas || []);
 
     // Merge estrutura + provas
@@ -5072,9 +5344,10 @@ IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem texto antes ou depois:
       direcao: estrutura.direcao
     };
     _syncProofSources();
+    _markGen('espinha');
 
     S.step = 3; initSidebar(); renderEspinha(); autoSave();
-  } catch(e) { showError(e.message, handlePrimary); }
+  } catch(e) { stopStepLoading(); showError(e.message, handlePrimary); }
   document.getElementById('primary-btn').disabled = false;
 }
 
@@ -5297,7 +5570,7 @@ function _regrasMarca() {
 async function runRoteiro() {
   document.getElementById('primary-btn').disabled = true;
   const pf = PROFUNDIDADES[S.profundidade || 'padrao'];
-  showLoading('Escrevendo o roteiro do carrossel...');
+  startStepLoading({ etapa: 1, total: 2, label: 'Escrevendo o roteiro', modo: 'roteiro', estSeg: 35 });
   const fonte = (S.sources || [])[0];
   const fonteTitulo = fonte ? (fonte.titulo || '').replace(/"/g, '') : '';
   const fonteVeiculo = fonte ? (fonte.veiculo || '').replace(/"/g, '') : '';
@@ -5319,12 +5592,14 @@ Responda SOMENTE com JSON válido:
   try {
     const data = extractJSON(await callClaude(prompt, 4000, 4, 150000));
     if (!data.blocos?.length) throw new Error('O roteiro veio vazio. Tente novamente.');
+    await finishStepLoading();
     S.roteiro = data;
     S.roteiroCompleto = null;
     S.cardCount = 'auto';
-    await revisarRoteiro();
+    await revisarRoteiro({ etapa: 2, total: 2 });
+    _markGen('roteiro');
     S.step = 3.2; initSidebar(); renderRoteiro(); autoSave();
-  } catch(e) { showError(e.message, handlePrimary); }
+  } catch(e) { stopStepLoading(); showError(e.message, handlePrimary); }
   document.getElementById('primary-btn').disabled = false;
 }
 
@@ -5379,7 +5654,7 @@ function paginarRoteiro(r, wanted) {
 
 async function condensarRoteiro(nBlocos) {
   const base = S.roteiroCompleto || S.roteiro;
-  showLoading(`Condensando a história em ${nBlocos + 2} cards...`);
+  startStepLoading({ etapa: 1, total: 2, label: `Condensando em ${nBlocos + 2} cards`, modo: 'condensar', estSeg: 12 });
   const prompt = `Reescreva o roteiro abaixo em EXATAMENTE ${nBlocos} bloco(s), cada um com 1 parágrafo de 35 a 55 palavras. Preserve os fatos mais fortes, as fontes e a sequência lógica. Mantenha conclusao, cta e credito.
 ${ROTEIRO_REGRAS}${_regrasMarca()}
 
@@ -5390,9 +5665,10 @@ Responda SOMENTE com JSON no mesmo formato:
 {"blocos":[{"virada":"","paragrafos":[{"destaque":"","manchete":"","texto":"","prova":""}]}],"conclusao":"","cta":"","credito":""}`;
   const data = extractJSON(await callClaude(prompt, 2500, 4, 150000));
   if (!data.blocos?.length) throw new Error('Não foi possível condensar o roteiro.');
+  await finishStepLoading();
   S.roteiro = { ...base, ...data };
   const completo = S.roteiroCompleto;
-  await revisarRoteiro();
+  await revisarRoteiro({ etapa: 2, total: 2 });
   S.roteiroCompleto = completo;   // a revisão não descarta a versão completa guardada
 }
 
@@ -5414,6 +5690,7 @@ async function setCardCount(val) {
       await condensarRoteiro(M);
     }
   } catch(e) {
+    stopStepLoading();
     showError(e.message, () => setCardCount(val));
     return;
   }
@@ -5423,7 +5700,7 @@ async function setCardCount(val) {
 async function aprofundarBloco(bi) {
   const b = S.roteiro?.blocos[bi];
   if (!b) return;
-  showLoading('Aprofundando o bloco...');
+  startStepLoading({ etapa: 1, total: 2, label: 'Aprofundando o bloco', modo: 'roteiro', estSeg: 16 });
   const prompt = `Aprofunde ESTE bloco de um carrossel editorial: mais especificidade (nomes, datas, números e exemplos concretos vindos do material), sem repetir os outros blocos. Mantenha a virada (pode lapidar) e entregue 2 a 3 parágrafos de 40 a 60 palavras.
 
 ${_roteiroContext()}
@@ -5436,8 +5713,9 @@ BLOCO ATUAL: ${JSON.stringify(b)}
 Responda SOMENTE com JSON: {"virada":"","paragrafos":[{"destaque":"","manchete":"","texto":"","prova":""}]}`;
   try {
     const nb = extractJSON(await callClaude(prompt, 1500, 4, 120000));
-    if (nb.paragrafos?.length) { S.roteiro.blocos[bi] = nb; S.roteiroCompleto = null; await revisarRoteiro(); }
-  } catch(e) { alert('Não foi possível aprofundar o bloco: ' + e.message); }
+    await finishStepLoading();
+    if (nb.paragrafos?.length) { S.roteiro.blocos[bi] = nb; S.roteiroCompleto = null; await revisarRoteiro({ etapa: 2, total: 2 }); }
+  } catch(e) { stopStepLoading(); alert('Não foi possível aprofundar o bloco: ' + e.message); }
   renderRoteiro(); autoSave();
 }
 
@@ -5527,7 +5805,7 @@ function _revisaoLocal(r) {
 async function revisarRoteiro(opts = {}) {
   const r = S.roteiro;
   if (!r?.blocos?.length) return;
-  if (!opts.silent) showLoading('Revisando o texto final...');
+  if (!opts.silent) startStepLoading({ etapa: opts.etapa || 1, total: opts.total || 1, label: 'Revisando o texto final', modo: 'revisao', estSeg: 8 });
   const locais = _revisaoLocal(r);
   const campos = _roteiroCampos(r);
   const provas = _provasList().filter(p => p.uso !== 'fora');
@@ -5554,6 +5832,7 @@ Responda SOMENTE com JSON. "trecho" é cópia EXATA de um pedaço do campo (com 
   let ia = null;
   try { ia = extractJSON(await callClaude(prompt, 1500, 2, 60000, REVISAO_IA)); }
   catch (e) { console.warn('Revisão final indisponível:', e.message); }
+  if (!opts.silent) await finishStepLoading();
 
   const feitas = [];
   for (const c of (ia?.correcoes || [])) {
@@ -5719,9 +5998,10 @@ Encontre UMA prova diferente e mais forte para o mesmo ponto.` : 'Encontre UMA p
 ${trecho ? `Trecho do roteiro que a prova deve sustentar: "${trecho}"` : ''}
 Já usadas (não repetir fonte nem dado): ${lista.map(p => `${p.dado} [${p.fonte_url || p.fonte_veiculo || ''}]`).join(' | ') || 'nenhuma'}
 `;
-  showLoading(atual ? 'Buscando outra prova...' : 'Buscando mais uma prova...');
+  startStepLoading({ etapa: 1, total: 1, label: atual ? 'Buscando outra prova na web' : 'Buscando mais uma prova na web', modo: 'busca', estSeg: 22 });
   try {
     const data = extractJSON(await callClaudeWithSearch(_promptProvas(t.tema_central, e.mecanismo, 1, extra), 1600));
+    await finishStepLoading();
     const nova = _normProvas((data.provas || []).slice(0, 1), lista.map(p => p.id))[0];
     if (!nova) throw new Error('nenhuma prova nova com dado verificável foi encontrada');
     nova.uso = atual ? atual.uso : 'texto';
@@ -5731,7 +6011,7 @@ Já usadas (não repetir fonte nem dado): ${lista.map(p => `${p.dado} [${p.fonte
     } else lista.push(nova);
     S.espinha.provasFontes = lista;
     _syncProofSources();
-  } catch (err) { alert('Não foi possível buscar a prova: ' + err.message); }
+  } catch (err) { stopStepLoading(); alert('Não foi possível buscar a prova: ' + err.message); }
   renderRoteiro(); autoSave();
 }
 
@@ -6732,7 +7012,7 @@ function defaultCardState(idx, titulo, corpo) {
 // ── ETAPA 5 — RENDER ──
 async function runRender() {
   document.getElementById('primary-btn').disabled = true;
-  showLoading('Montando o carrossel...');
+  startStepLoading({ etapa: 1, total: 1, label: 'Montando o carrossel', modo: 'carrossel', estSeg: 3 });
 
   try {
     if (!S.roteiro) throw new Error('Gere o roteiro antes de montar o carrossel.');
@@ -6822,10 +7102,12 @@ async function runRender() {
     // Garante que o texto caiba em cada card e, no modo box, posiciona título e corpo ao redor da imagem
     S.cards.forEach(c => { _ensureContrast(c); fitCardText(c); _layoutBoxText(c); });
 
+    await finishStepLoading();
     initSidebar();
     renderFinal();
     autoSave();
   } catch(err) {
+    stopStepLoading();
     showError(err.message, handlePrimary);
   }
   document.getElementById('primary-btn').disabled = false;
@@ -6941,6 +7223,7 @@ function renderFinal() {
     selectCard(0);
     _mobEdMount();
     if (S.postDescricao) {
+      S.postDescricao = _montarDescricao(S.postDescricao, S.roteiro?.credito);
       const dEl = document.getElementById('post-descricao'), cEl = document.getElementById('post-comentario');
       if (dEl) dEl.textContent = S.postDescricao;
       if (cEl) cEl.textContent = S.postComentario || '';
@@ -6951,12 +7234,7 @@ function renderFinal() {
     if (S.imageGuide && S.imageGuide.length) {
       _imageGuideGenerated = true;
       const el = document.getElementById('image-guide-body');
-      if (el) el.innerHTML = S.imageGuide.map(item => `
-        <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
-          <div style="font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Card ${item.card} — ${item.titulo || ''}</div>
-          <div style="color:var(--ink);line-height:1.65;">${item.descricao}</div>
-        </div>
-      `).join('');
+      if (el) el.innerHTML = _renderImageGuide(S.imageGuide);
     }
   }, 50);
 }
@@ -11154,6 +11432,24 @@ function copyPostText(id) {
 }
 
 // ── POST CONTENT GENERATION ──
+// Limpa a descrição da IA e põe a linha de crédito UMA vez, no fim.
+// Tira qualquer crédito que a IA tenha escrito e trechos repetidos (parágrafo
+// igual ou que só repete o final de um parágrafo anterior).
+function _montarDescricao(desc, credito) {
+  const norm = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+  const semCredito = String(desc || '').replace(/Produzido com ajuda de IA[^\n]*/gi, '');
+  const vistos = [];
+  const pars = semCredito.split(/\n/).map(p => p.trim()).filter((p, i, arr) => {
+    if (!p) return i > 0 && arr[i - 1].trim() !== '';   // mantém 1 linha em branco entre parágrafos
+    const n = norm(p);
+    if (vistos.some(v => v === n || (n.length >= 20 && v.endsWith(n)))) return false;
+    vistos.push(n);
+    return true;
+  });
+  const texto = pars.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return credito ? `${texto}\n\n${credito.trim()}` : texto;
+}
+
 async function generatePostContent() {
   const e = S.espinha; const h = S.selectedHeadline; const t = S.triagem;
   if (!e || !h || !t) return;
@@ -11163,14 +11459,14 @@ async function generatePostContent() {
   const prompt = `Crie para Instagram com base no carrossel:
 Headline: ${h.l1} ${h.l2}
 Tema: ${t.tema_central} | Hook: ${e.hook} | Tom: ${S.tom}
-${S.roteiro?.credito ? `Termine a descrição com esta linha de crédito, sem alterar: ${S.roteiro.credito}` : ''}
+Não escreva linha de crédito nem cite a fonte no fim: o sistema acrescenta isso depois. Não repita frases.
 
 JSON sem markdown:
 {"descricao":"texto do post max 150 palavras, hook forte, CTA para salvar, 2-3 hashtags","primeiro_comentario":"comentário do autor, curto e humano, max 3 linhas, sem hashtags"}`;
 
   try {
     const data = extractJSON(await callClaude(prompt, 800));
-    S.postDescricao = data.descricao || '';
+    S.postDescricao = _montarDescricao(data.descricao || '', S.roteiro?.credito);
     S.postComentario = data.primeiro_comentario || '';
     if (descEl) descEl.textContent = S.postDescricao;
     if (commEl) commEl.textContent = S.postComentario;
@@ -11182,6 +11478,39 @@ JSON sem markdown:
 
 // ── GUIA DE IMAGENS ──
 let _imageGuideGenerated = false;
+
+// Card que aceita foto no template: fundo de imagem ou box de foto.
+// Card de prova (notícia/dado no box) NÃO aceita foto, mesmo usando box.
+function _cardAcceptsImage(card) {
+  if (!card || !card.bg) return false;
+  if (_evidenceOn(card)) return false;
+  if (card.bg.boxMode && card.bg.type === 'solid' && card.evidence && card.evidence.visible) return false;
+  return card.bg.type === 'image' || !!card.bg.boxMode;
+}
+
+function _renderImageGuide(guia) {
+  return (guia || []).map((item, k) => `
+      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
+        <div style="font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Card ${item.card} — ${_escHtml(item.titulo || '')}</div>
+        <div style="color:var(--ink);line-height:1.65;">${_escHtml(item.descricao || '')}</div>
+        ${item.prompt ? `<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:var(--surface2, rgba(0,0,0,0.04));border:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;">
+            <span style="font-family:'Poppins',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);">Prompt para IA de imagem</span>
+            <button onclick="_copyImagePrompt(${k}, this)" style="padding:2px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Poppins',sans-serif;font-size:0.62rem;cursor:pointer;">Copiar</button>
+          </div>
+          <div style="color:var(--ink);font-size:0.74rem;line-height:1.55;">${_escHtml(item.prompt)}</div>
+        </div>` : ''}
+      </div>
+    `.replace(/>\s+</g, '><').trim()).join('');
+}
+
+function _copyImagePrompt(k, btn) {
+  const item = (S.imageGuide || [])[k];
+  if (!item || !item.prompt) return;
+  navigator.clipboard.writeText(item.prompt).then(() => {
+    if (btn) { btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = 'Copiar'; }, 1800); }
+  });
+}
 
 function initImageGuide() {
   _imageGuideGenerated = false;
@@ -11209,10 +11538,10 @@ async function generateImageGuide() {
   const el = document.getElementById('image-guide-body');
   if (!el) return;
 
-  // Only generate for cards that have image type (full or box)
+  // Só os cards que aceitam foto NESTE template (cards de prova ficam de fora)
   const imageCards = S.cards
     .map((c, i) => ({ card: c, idx: i }))
-    .filter(({ card }) => card.bg.type === 'image' || card.bg.boxMode);
+    .filter(({ card }) => _cardAcceptsImage(card));
 
   if (imageCards.length === 0) {
     el.innerHTML = '<p style="color:var(--muted);font-size:0.78rem;">Nenhum card com imagem neste carrossel.</p>';
@@ -11221,46 +11550,65 @@ async function generateImageGuide() {
 
   const tema = S.renderAnalysis?.tema || S.triagem?.tema_central || '';
   const tom = S.tom || '';
+  const capa = S.selectedHeadline ? _plainText([S.selectedHeadline.l1, S.selectedHeadline.l2].filter(Boolean).join(' / ')) : '';
+  const insumo = String(S.insumoFinal || S.insumo || '').replace(/\s+/g, ' ').trim().slice(0, 1500);
+  const corte = (t, n) => { t = _plainText(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n) + '…' : t; };
+
+  // O carrossel inteiro, para a IA saber das marcas, produtos e do caso concreto
+  const carrossel = S.cards.map((card, i) => {
+    const tit = corte(card.title?.text, 200);
+    const corpo = corte(card.body?.text, 400);
+    const prova = _evidenceOn(card) ? ` [prova: ${corte(card.evidence.manchete, 200)}]` : '';
+    return `Card ${i + 1}: "${tit}"${corpo ? ` — ${corpo}` : ''}${prova}`;
+  }).join('\n');
 
   const cardsContext = imageCards.map(({ card, idx }) => {
     const layout = card.bg.boxMode
-      ? `box ${card.bg.boxTextLayout === 'top' ? 'no topo' : card.bg.boxTextLayout === 'bottom' ? 'na base' : 'no meio'}`
-      : 'fundo completo';
-    return `Card ${idx + 1} (imagem ${layout}): "${card.title.text}"${card.body.text ? ` — ${card.body.text}` : ''}`;
+      ? `foto em box, texto ${card.bg.boxTextLayout === 'top' ? 'no topo' : card.bg.boxTextLayout === 'bottom' ? 'na base' : card.bg.boxTextLayout === 'over' ? 'sobre a foto' : 'no meio'}`
+      : 'foto de fundo inteiro, texto por cima';
+    return `Card ${idx + 1} (${layout}): "${corte(card.title?.text, 200)}"`;
   }).join('\n');
 
-  const prompt = `Você é um diretor de fotografia e curador de imagens para Instagram.
+  const prompt = `Você é diretor de arte de carrosséis de Instagram. Vai dizer ao criador que imagem montar em cada card com foto, para ele fazer numa IA de imagem ou no Photoshop.
 
-Com base neste carrossel:
-Tema: ${tema}
-Tom de voz: ${tom}
+Tema: ${tema}${capa ? `\nCapa: ${capa}` : ''}
+Tom de voz: ${tom}${insumo ? `\nMaterial de origem (resumo): ${insumo}` : ''}
 
-Para cada card abaixo, escreva uma descrição narrativa da imagem ideal. 
-NÃO é um prompt de IA — é uma descrição humana e rica que o criador pode usar para buscar ou criar a imagem perfeita.
-Inclua: o que aparece, atmosfera, composição, luz, emoção transmitida.
-Seja específico e inspirador. Máximo 3 linhas por card.
+CARROSSEL COMPLETO (para contexto):
+${carrossel}
 
-Cards:
+CARDS QUE TÊM LUGAR PARA FOTO (escreva só para estes, com estes números):
 ${cardsContext}
 
+Regras:
+- A imagem tem que mostrar o CASO CONCRETO do card: as marcas, produtos, embalagens, pessoas, lugares e objetos citados no carrossel. Se o card fala da Kibon, mostre um Chicabon de verdade, com a embalagem e as cores da marca; se fala de um pote de maionese, mostre aquele pote, com o rótulo e as cores reais.
+- Diga as cores (das marcas e da cena), o material das embalagens, a época (atual ou antiga/retrô) e o enquadramento (close, mesa vista de cima, mão segurando etc.).
+- Cada card deve ter uma imagem diferente, ligada ao que AQUELE card diz. Nada de cena genérica (prateleira desfocada, pessoa pensativa, fundo abstrato).
+- Pense no espaço do texto: se o texto vai por cima ou no box, deixe a área livre indicada.
+- "descricao": 2 a 3 frases em português, o que mostrar e como montar (se a IA de imagem não acertar o logo, diga para aplicar o rótulo real no Photoshop).
+- "prompt": 1 parágrafo curto em português pronto para colar numa IA de imagem: objeto/cena, marca e embalagem, cores, luz, enquadramento, formato vertical 4:5, estilo fotográfico realista.
+
 Responda em JSON sem markdown:
-{"guia":[{"card":1,"titulo":"...","descricao":"..."},...]}`;
+{"guia":[{"card":<número do card>,"descricao":"...","prompt":"..."}]}`;
 
   try {
     el.innerHTML = '<div class="post-card-loading"><div class="post-generating"></div> Gerando sugestões de imagem...</div>';
-    const data = extractJSON(await callClaude(prompt, 1200));
-    
+    const data = extractJSON(await callClaude(prompt, 2500));
+
     if (!data.guia || !data.guia.length) throw new Error('sem dados');
 
-    el.innerHTML = data.guia.map(item => `
-      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
-        <div style="font-family:'Poppins',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Card ${item.card} — ${item.titulo || ''}</div>
-        <div style="color:var(--ink);line-height:1.65;">${item.descricao}</div>
-      </div>
-    `).join('');
+    // Número e título vêm do carrossel, não da IA. Só entram cards que aceitam foto.
+    const porCard = new Map(data.guia.map(g => [Number(g.card), g]));
+    const guia = imageCards.map(({ card, idx }) => {
+      const g = porCard.get(idx + 1);
+      if (!g || !g.descricao) return null;
+      return { card: idx + 1, titulo: _plainText(card.title?.text || ''), descricao: String(g.descricao), prompt: g.prompt ? String(g.prompt) : '' };
+    }).filter(Boolean);
+    if (!guia.length) throw new Error('sem dados');
 
     // Cache in S
-    S.imageGuide = data.guia;
+    S.imageGuide = guia;
+    el.innerHTML = _renderImageGuide(guia);
     autoSave();
 
   } catch(err) {
@@ -13025,8 +13373,10 @@ function initTheme() {
 
 // ── SUPABASE AUTH ──
 // ?api=local (só no computador de desenvolvimento) testa contra o servidor local
-const BACKEND_URL = (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).get('api') === 'local')
-  ? 'http://localhost:3001'
+// ?api=local:3002 aponta para outra porta (dois servidores locais ao mesmo tempo)
+const _apiLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && (new URLSearchParams(location.search).get('api') || '').match(/^local(?::(\d{4,5}))?$/);
+const BACKEND_URL = _apiLocal
+  ? 'http://localhost:' + (_apiLocal[1] || '3001')
   : 'https://storylab-backend-production.up.railway.app';
 
 // ── Multi-layer session storage for maximum persistence ──
@@ -13149,7 +13499,7 @@ function hideLoginScreen() {
   document.querySelector('.app') && (document.querySelector('.app').style.visibility = 'visible');
   document.querySelector('header') && (document.querySelector('header').style.visibility = 'visible');
   // Verifica acesso e sincroniza marcas/templates; plano em seguida
-  checkAccessAndSync().then(() => { _offerResume(); refreshUsage(); return fetchUserPlan(); }).catch(() => {});
+  checkAccessAndSync().then(() => { try { renderTrends(); } catch(e) {} _offerResume(); refreshUsage(); return fetchUserPlan(); }).catch(() => {});
 }
 
 // ── ACESSO + SYNC ENTRE APARELHOS ──
@@ -13204,6 +13554,7 @@ async function checkAccessAndSync() {
     }
   }
   if (changed) { try { applyBrandToCards(); } catch(e) {} }
+  try { renderTrends(); } catch(e) {}
 }
 
 const SALES_URL = 'https://storycards.com.br/#oferta';
@@ -13305,6 +13656,7 @@ function getSessionSnapshot() {
     headlineAngle: S.headlineAngle,
     selectedHeadline: S.selectedHeadline,
     espinha: S.espinha,
+    genKeys: S.genKeys || {},
     profundidade: S.profundidade,
     roteiro: S.roteiro,
     roteiroCompleto: S.roteiroCompleto,
@@ -13587,6 +13939,169 @@ function closeHistory() {
   document.getElementById('history-overlay').style.display = 'none';
 }
 
+// ── EM ALTA AGORA: assuntos quentes da internet ligados ao nicho da marca ou a um tema digitado ──
+// O servidor guarda o resultado por marca/tema e por dia: abrir de novo no mesmo dia não chama a IA.
+const TR = { tab: 'nicho', query: '', nicho: null, nichoKey: '', tema: null, loading: '', error: '', items: {} };
+function _trEsc(t) { return String(t || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+async function _trFetch(body) {
+  let token = await getFreshAuthToken();
+  if (!token) throw new Error('Faça login para ver os temas em alta.');
+  const res = await fetchWithTimeout(BACKEND_URL + '/api/trends', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(body),
+  }, 120000);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Não consegui buscar os temas agora. Tente de novo.');
+  return data;
+}
+
+function _trBrandBody() {
+  const b = getActiveBrand() || {};
+  const territorios = String(b.territorios || '').split(/[,;\n]/).map(t => t.trim()).filter(Boolean);
+  return { brand_id: b.id || '', brand_name: b.name || '', nicho: b.nicho || '', tagline: b.tagline || '', territorios };
+}
+
+// Mostra o bloco na tela de início. Ao abrir, só lê o que já está guardado (sem custo).
+function renderTrends() {
+  const canvas = document.getElementById('canvas');
+  if (!canvas || S.step !== 0 || !getAuthToken()) return;
+  let box = document.getElementById('trends-box');
+  if (!box) {
+    const empty = canvas.querySelector('.empty-state');
+    if (!empty) return;
+    box = document.createElement('section');
+    box.id = 'trends-box'; box.className = 'trends-box';
+    canvas.insertBefore(box, empty);
+  }
+  const bb = _trBrandBody();
+  const key = bb.brand_id + '|' + bb.nicho + '|' + bb.territorios.join(',');
+  if (TR.nichoKey !== key) {
+    TR.nichoKey = key; TR.nicho = null; TR.error = ''; TR.territorios = null;
+    if (bb.nicho) _trFetch({ ...bb, cache_only: true }).then(d => {
+      if (TR.nichoKey !== key) return;
+      _trSetTerritorios(d, bb.brand_id);
+      if (d.temas) TR.nicho = d;
+      _trPaint();
+    }).catch(() => {});
+  }
+  _trPaint();
+}
+
+function _trSetTerritorios(d, brandId) {
+  if (Array.isArray(d?.territorios) && d.territorios.length) { TR.territorios = d.territorios; TR.territoriosBrand = brandId; }
+}
+
+function _trCards(list, origem) {
+  return `<div class="trends-grid">${list.map((t, i) => {
+    const id = origem + i; TR.items[id] = t;
+    const meta = [t.fonte, t.data].filter(Boolean).map(_trEsc).join(' · ');
+    return `<article class="trend-card ${i === 0 ? 'lead' : ''}">
+      ${t.lente || t.territorio ? `<div class="trend-tags">${t.lente ? `<span class="trend-lente l-${_trEsc(t.lente.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))}">${_trEsc(t.lente)}</span>` : ''}${t.territorio ? `<span class="trend-terr">${_trEsc(t.territorio)}</span>` : ''}</div>` : ''}
+      <div class="trend-meta">${meta}${t.url ? ` · <a href="${_trEsc(t.url)}" target="_blank" rel="noopener">ver matéria ↗</a>` : ''}</div>
+      <div class="trend-titulo">${_trEsc(t.titulo)}</div>
+      ${t.resumo ? `<div class="trend-resumo">${_trEsc(t.resumo)}</div>` : ''}
+      ${t.ponte ? `<div class="trend-ponte">${_trEsc(t.ponte)}</div>` : ''}
+      <div class="trend-gancho">“${_trEsc(t.gancho)}”</div>
+      <button class="trends-btn" onclick="startFromTrend('${id}')">Criar carrossel →</button>
+    </article>`;
+  }).join('')}</div>`;
+}
+
+function _trPaint() {
+  const box = document.getElementById('trends-box');
+  if (!box) return;
+  const bb = _trBrandBody();
+  const tabs = `<div class="trends-tabs">
+      <button class="trends-tab ${TR.tab === 'nicho' ? 'active' : ''}" onclick="TR.tab='nicho';TR.error='';_trPaint()">Do meu nicho</button>
+      <button class="trends-tab ${TR.tab === 'tema' ? 'active' : ''}" onclick="TR.tab='tema';TR.error='';_trPaint()">Tenho um tema</button>
+    </div>`;
+  const sub = TR.tab === 'nicho'
+    ? (bb.nicho ? `Notícias e movimentos da semana ligados a <strong>${_trEsc(bb.nicho)}</strong>${bb.brand_name ? ` · ${_trEsc(bb.brand_name)}` : ''}` : 'Assuntos quentes da semana ligados ao nicho da sua marca')
+    : 'Digite o que você quer abordar e veja o que saiu de novo sobre isso';
+  let body = '';
+  const loading = msg => `<div class="trends-loading"><div class="trends-spin"></div>${msg}</div>`;
+  const err = TR.error ? `<div class="trends-foot" style="color:#ff6b5e">${_trEsc(TR.error)}</div>` : '';
+  if (TR.tab === 'nicho') {
+    if (!bb.nicho) {
+      body = `<div class="trends-empty"><p>Para sugerir assuntos em alta, preciso saber o nicho da sua marca (ex.: branding, finanças pessoais, academias).</p><button class="trends-btn ghost" onclick="openBrand()">Preencher o nicho</button></div>`;
+    } else if (TR.loading === 'nicho') {
+      body = loading('Procurando o que está em alta no seu nicho... (leva uns 30 segundos)');
+    } else if (TR.nicho?.temas) {
+      body = _trCards(TR.nicho.temas, 'n') + `<div class="trends-foot">Atualizado hoje${TR.nicho.at ? ' às ' + new Date(TR.nicho.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}. Os temas se renovam uma vez por dia.${window._adminAccess ? ' · <a href="#" onclick="event.preventDefault();loadTrendsNicho(true)" style="color:inherit">Buscar de novo (admin)</a>' : ''}</div>`;
+    } else {
+      body = `<div class="trends-empty"><p>Veja as notícias, lançamentos e movimentos de marcas da semana que rendem carrossel para o seu nicho. Os temas se renovam uma vez por dia.</p><button class="trends-btn" onclick="loadTrendsNicho()">Ver temas de hoje</button></div>`;
+    }
+  } else {
+    body = `<div class="trends-search">
+        <input id="trends-q" type="text" maxlength="300" placeholder="ex: O que faz um logotipo durar?" value="${_trEsc(TR.query)}" onkeydown="if(event.key==='Enter')loadTrendsTema()"/>
+        <button class="trends-btn" onclick="loadTrendsTema()" ${TR.loading ? 'disabled' : ''}>Buscar em alta</button>
+      </div>`;
+    if (TR.loading === 'tema') body += loading('Procurando notícias recentes ligadas ao seu tema... (leva uns 30 segundos)');
+    else if (TR.tema?.temas) body += _trCards(TR.tema.temas, 't');
+  }
+  // Para onde as buscas do nicho olham: territórios em destaque, com botão para editar
+  let terrBox = '';
+  if (TR.tab === 'nicho' && bb.nicho) {
+    const usados = new Set((TR.nicho?.temas || []).map(t => (t.territorio || '').toLowerCase()));
+    const chips = TR.territorios
+      ? TR.territorios.map(t => `<span class="trends-terr-chip ${usados.has(t.toLowerCase()) ? 'on' : ''}">${_trEsc(t)}</span>`).join('')
+      : `<span style="font-size:0.74rem;color:var(--ink2)">Na primeira busca, a IA monta os territórios do seu nicho.</span>`;
+    terrBox = `<div class="trends-terr-box">
+        <div><div class="trends-terr-label">As buscas de notícias e temas em alta olham para estes territórios do seu nicho${usados.size ? ' · <b>em azul, os de hoje</b>' : ''}:</div>
+        <div class="trends-terr-chips">${chips}</div></div>
+        <button class="trends-btn ghost" onclick="openBrand()">Editar territórios</button>
+      </div>`;
+  }
+  box.innerHTML = `<div class="trends-head">
+      <div><div class="trends-kicker"><span class="trends-dot"></span>Em alta agora</div>
+      <div class="trends-title">Saia na frente das notícias</div>
+      <div class="trends-sub">${sub}</div></div>
+      ${tabs}
+    </div>${terrBox}${body}${err}`;
+}
+
+async function loadTrendsNicho(force) {
+  const bb = _trBrandBody();
+  if (!bb.nicho || TR.loading) return;
+  const key = TR.nichoKey;
+  TR.loading = 'nicho'; TR.error = ''; _trPaint();
+  try {
+    const d = await _trFetch(force === true ? { ...bb, force: true } : bb);
+    if (TR.nichoKey === key) { TR.nicho = d; _trSetTerritorios(d, bb.brand_id); }
+  } catch (e) { TR.error = e.message; }
+  TR.loading = ''; _trPaint();
+}
+
+async function loadTrendsTema() {
+  const q = (document.getElementById('trends-q')?.value || '').trim();
+  if (!q || TR.loading) return;
+  TR.query = q; TR.loading = 'tema'; TR.error = ''; TR.tema = null; _trPaint();
+  try { TR.tema = await _trFetch({ ..._trBrandBody(), tema: q }); }
+  catch (e) { TR.error = e.message; }
+  TR.loading = ''; _trPaint();
+}
+
+// Um clique: insumo preenchido com a notícia, a fonte guardada e a triagem já começa
+function startFromTrend(id) {
+  const t = TR.items[id];
+  if (!t || S.step !== 0) return;
+  const temaUsuario = id[0] === 't' && TR.tema ? TR.query : '';
+  S.inputMode = 'text'; S.isUrl = false; S.urlExtracted = false; S.fonteMode = 'enriquecer';
+  S.insumo = t.gancho;
+  S.insumoFinal = `${t.gancho}
+
+ASSUNTO EM ALTA: ${t.titulo}
+${t.resumo || ''}
+Fonte: ${t.fonte || ''}${t.data ? ' (' + t.data + ')' : ''}${t.url ? ' — ' + t.url : ''}
+Ligação com o nicho: ${t.ponte || ''}${temaUsuario ? `\nTema que a pessoa quer abordar: ${temaUsuario}` : ''}`;
+  S.trendSource = { titulo: t.titulo, veiculo: t.fonte || '', url: t.url || '', data: t.data || null, relevancia: 'Alta', gancho: t.gancho };
+  S.sources = [S.trendSource];
+  initSidebar();
+  handlePrimary();
+}
+
 // ── PAINEL CONTROLE: custo estimado do mês, por dia, por cliente e por etapa (só admin) ──
 let _ctlMonth = null;
 let _ctlAdmin = false; // incluir os testes do próprio admin nos números
@@ -13602,6 +14117,9 @@ const _CTL_KINDS = {
   revisao: 'Revisão final do texto (Haiku)',
   claude: 'Escrita e ajustes (sem pesquisa)',
   fetch_url: 'Leitura de link colado',
+  trends: 'Temas em alta (nicho da marca)',
+  trends_tema: 'Temas em alta (tema digitado)',
+  trends_mapa: 'Temas em alta (mapa do nicho)',
 };
 const _CTL_MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
@@ -14248,6 +14766,7 @@ function restoreSnap(snap, sessionId) {
     headlineAngle: snap.headlineAngle || '',
     selectedHeadline: snap.selectedHeadline || null,
     espinha: snap.espinha || null,
+    genKeys: snap.genKeys || {},
     profundidade: snap.profundidade || 'padrao',
     roteiro: snap.roteiro || null,
     roteiroCompleto: snap.roteiroCompleto || null,
